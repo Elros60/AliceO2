@@ -72,6 +72,7 @@ class Geometry : public TNamed
   static const Double_t sConnectorHeight;
   static const Double_t sConnectorThickness;
   static const Double_t sEpsilon;
+  static const Double_t sOtherGlueThickness;
   static const Double_t sGlueThickness;
   static const Double_t sGlueEdge;
   static const Double_t sShiftDDGNDline;

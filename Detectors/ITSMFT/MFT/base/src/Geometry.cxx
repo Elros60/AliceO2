@@ -43,7 +43,7 @@ const Double_t Geometry::sAluThickness = 25.e-4;     // 25 microns
 const Double_t Geometry::sKaptonThickness = 75.e-4;  // 75 microns FPC
 const Double_t Geometry::sFlexThickness =
   sKaptonThickness + 2 * sAluThickness + 2 * sVarnishThickness; // total thickness of a FPC
-const Double_t Geometry::sFlexHeight = 1.68;
+const Double_t Geometry::sFlexHeight = 1.67;
 const Double_t Geometry::sClearance = 300.e-4; // 300 microns clearance without any conducting metal all around the FPC
 const Double_t Geometry::sRadiusHole1 = 0.125; // diameter of the FPC crew, closest to the FPC electric connector
 const Double_t Geometry::sRadiusHole2 = 0.1;   // diameter of the FPC pin locator, after the previous hole crew
@@ -57,12 +57,13 @@ const Double_t Geometry::sConnectorLength = 0.1;
 const Double_t Geometry::sConnectorWidth = 0.025;
 const Double_t Geometry::sConnectorHeight = 0.1;
 const Double_t Geometry::sConnectorThickness = 0.01;
-const Double_t Geometry::sShiftDDGNDline =
-  0.4;                                       // positionning of the line to separate AVDD/DVDD et AGND/DGND on the FPC
+const Double_t Geometry::sShiftDDGNDline =  0.4; // positionning of the line to separate AVDD/DVDD et AGND/DGND on the FPC
 const Double_t Geometry::sShiftline = 0.025; // positionning of the line along the FPC side
 const Double_t Geometry::sEpsilon = 0.0001;  // to see the removed volumes produced by TGeoSubtraction
-const Double_t Geometry::sRohacell = -0.001; // to modify the thickness of the rohacell
+//const Double_t Geometry::sRohacell = -0.001; // to modify the thickness of the rohacell
+const Double_t Geometry::sRohacell = -0.000; // to modify the thickness of the rohacell
 
+const Double_t Geometry::sOtherGlueThickness = 0.; // 100 microns of SE4445 to be confirmed
 const Double_t Geometry::sGlueThickness = 100.e-4; // 100 microns of SE4445 to be confirmed
 const Double_t Geometry::sGlueEdge = 300.e-4; // in case the glue is not spreaded on the whole surface of the sensor
 

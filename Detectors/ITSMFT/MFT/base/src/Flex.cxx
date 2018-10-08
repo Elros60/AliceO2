@@ -82,12 +82,12 @@ TGeoVolumeAssembly* Flex::makeFlex(Int_t nbsensors, Double_t length)
 
   // Final flex building
   Double_t zvarnishIn = Geometry::sKaptonThickness / 2 + Geometry::sAluThickness + Geometry::sVarnishThickness / 2 -
-                        Geometry::sGlueThickness;
-  Double_t zgnd = Geometry::sKaptonThickness / 2 + Geometry::sAluThickness / 2 - Geometry::sGlueThickness;
-  Double_t zkaptonlayer = -Geometry::sGlueThickness;
-  Double_t zlines = -Geometry::sKaptonThickness / 2 - Geometry::sAluThickness / 2 - Geometry::sGlueThickness;
+                        Geometry::sOtherGlueThickness;
+  Double_t zgnd = Geometry::sKaptonThickness / 2 + Geometry::sAluThickness / 2 - Geometry::sOtherGlueThickness;
+  Double_t zkaptonlayer = -Geometry::sOtherGlueThickness;
+  Double_t zlines = -Geometry::sKaptonThickness / 2 - Geometry::sAluThickness / 2 - Geometry::sOtherGlueThickness;
   Double_t zvarnishOut = -Geometry::sKaptonThickness / 2 - Geometry::sAluThickness - Geometry::sVarnishThickness / 2 -
-                         Geometry::sGlueThickness;
+                         Geometry::sOtherGlueThickness;
 
   //-----------------------------------------------------------------------------------------
   //-------------------------- Adding all layers of the FPC ----------------------------------

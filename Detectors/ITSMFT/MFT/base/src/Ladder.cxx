@@ -75,8 +75,8 @@ TGeoVolume* Ladder::createVolume()
   Double_t shiftY =
     2 * Geometry::sSensorTopOffset + SegmentationAlpide::SensorSizeRows - Geometry::sFlexHeight / 2; // strange
   TGeoVolumeAssembly* flexVol = mFlex->makeFlex(mSegmentation->getNSensors(), flexLength);
-  mLadderVolume->AddNode(flexVol, 1, new TGeoTranslation(flexLength / 2 + Geometry::sSensorSideOffset / 2, shiftY,
-                                                         Geometry::sFlexThickness / 2 - Geometry::sRohacell));
+//  mLadderVolume->AddNode(flexVol, 1, new TGeoTranslation(flexLength / 2, Geometry::sFlexHeight / 2, Geometry::sFlexThickness / 2 - Geometry::sRohacell));
+    mLadderVolume->AddNode(flexVol, 1, new TGeoTranslation(flexLength / 2, Geometry::sFlexHeight / 2, Geometry::sFlexThickness / 2 ));
 
   // Create the CMOS Sensors
   createSensors();
@@ -131,22 +131,40 @@ void Ladder::createSensors()
     TGeoCombiTrans* chipPosGlue = chipSeg->getTransformation();
 
     // Position of the center on the chip in the chip coordinate system
+//    Double_t pos[3] = { SegmentationAlpide::SensorSizeCols / 2., SegmentationAlpide::SensorSizeRows / 2.,
+//                        Geometry::sChipThickness / 2. - Geometry::sGlueThickness - Geometry::sRohacell };
+//
+//    Double_t posglue[3] = { SegmentationAlpide::SensorSizeCols / 2., SegmentationAlpide::SensorSizeRows / 2.,
+//                            Geometry::sGlueThickness / 2 - Geometry::sChipThickness - Geometry::sRohacell };
+
+    // Position of the center on the chip in the chip coordinate system
     Double_t pos[3] = { SegmentationAlpide::SensorSizeCols / 2., SegmentationAlpide::SensorSizeRows / 2.,
-                        Geometry::sChipThickness / 2. - Geometry::sGlueThickness - Geometry::sRohacell };
-
+       - Geometry::sRohacell };
+    
     Double_t posglue[3] = { SegmentationAlpide::SensorSizeCols / 2., SegmentationAlpide::SensorSizeRows / 2.,
-                            Geometry::sGlueThickness / 2 - Geometry::sChipThickness - Geometry::sRohacell };
-
+      Geometry::sGlueThickness / 2. + Geometry::sChipThickness / 2. - Geometry::sRohacell };
+    
     Double_t master[3];
     Double_t masterglue[3];
     chipPos->LocalToMaster(pos, master);
     chipPosGlue->LocalToMaster(posglue, masterglue);
 
+    LOG(INFO) << "CreateSensors " << Form("adding chip %s_%d pos: %f, %f, %f", namePrefixS.Data(), ichip, pos[0], pos[1], pos[2]) << FairLogger::endl;
+    LOG(INFO) << "CreateSensors " << Form("adding chip %s_%d master: %f, %f, %f", namePrefixS.Data(), ichip, master[0], master[1], master[2]) << FairLogger::endl;
+    chipPos->Print();
+    LOG(INFO) << "CreateSensors " << Form("adding chip %s_%d posg: %f, %f, %f", namePrefixS.Data(), ichip, posglue[0], posglue[1], posglue[2]) << FairLogger::endl;
+    LOG(INFO) << "CreateSensors " << Form("adding chip %s_%d masterg: %f, %f, %f", namePrefixS.Data(), ichip, masterglue[0], masterglue[1], masterglue[2]) << FairLogger::endl;
+    chipPos->Print();
+
     TGeoBBox* shape = (TGeoBBox*)mLadderVolume->GetShape();
+    LOG(INFO) << "CreateSensors " << Form("adding chip %s_%d shape: %f, %f, %f", namePrefixS.Data(), ichip, shape->GetDX(), shape->GetDY(), shape->GetDZ()) << FairLogger::endl;
     master[0] -= shape->GetDX();
     master[1] -= shape->GetDY();
     master[2] -= shape->GetDZ();
-
+    
+    shape->Print();
+    LOG(INFO) << "CreateSensors " << Form("adding chip %s_%d masterm: %f, %f, %f", namePrefixS.Data(), ichip, master[0], master[1], master[2]) << FairLogger::endl;
+    
     masterglue[0] -= shape->GetDX();
     masterglue[1] -= shape->GetDY();
     masterglue[2] -= shape->GetDZ();

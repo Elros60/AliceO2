@@ -133,7 +133,7 @@ void HalfDiskSegmentation::createLadders(TXMLEngine* xml, XMLNodePointer_t node)
       plane = 1;
       // ladderID -= getNLadders()/2;
     }
-
+//    pos[2] -= Geometry::sFlexThickness / 2.;
     UInt_t ladderUniqueID = mftGeom->getObjectID(Geometry::LadderType, mftGeom->getHalfID(GetUniqueID()),
                                                  mftGeom->getDiskID(GetUniqueID()), plane, ladderID);
 
@@ -147,12 +147,12 @@ void HalfDiskSegmentation::createLadders(TXMLEngine* xml, XMLNodePointer_t node)
     /// Need to put in the XML file the position of the ladder coordinate center
     // Find the position of the corner of the flex which is the ladder corrdinate system center.
 
-    pos[0] = -Geometry::sSensorSideOffset;
-    pos[1] = -Geometry::sSensorTopOffset - SegmentationAlpide::SensorSizeRows;
-    pos[2] = -Geometry::sFlexThickness - Geometry::sChipThickness;
-    Double_t master[3];
-    ladder->getTransformation()->LocalToMaster(pos, master);
-    ladder->setPosition(master);
+//    pos[0] = -Geometry::sSensorSideOffset;
+//    pos[1] = -Geometry::sSensorTopOffset - SegmentationAlpide::SensorSizeRows;
+//    pos[2] = -Geometry::sFlexThickness - Geometry::sChipThickness;
+//    Double_t master[3];
+//    ladder->getTransformation()->LocalToMaster(pos, master);
+//    ladder->setPosition(master);
     
     ladder->createSensors(xml, node);
 
