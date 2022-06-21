@@ -28,7 +28,6 @@
 #include "GPUTPCGMMergedTrackHit.h"
 #include "GPUTPCTrack.h"
 #include "GPUTPCHitId.h"
-#include "TPCZSLinkMapping.h"
 #include "GPUTRDTrackletWord.h"
 #include "AliHLTTPCClusterMCData.h"
 #include "GPUTPCMCInfo.h"
@@ -245,10 +244,6 @@ bool GPUChainTracking::ValidateSteps()
     GPUError("Cannot run gain calibration without calibration object");
     return false;
   }
-  if ((GetRecoSteps() & GPUDataTypes::RecoStep::TPCClusterFinding) && processors()->calibObjects.tpcZSLinkMapping == nullptr && mIOPtrs.tpcZS != nullptr) {
-    GPUError("Cannot run TPC ZS Decoder without mapping object. (tpczslinkmapping.dump missing?)");
-    return false;
-  }
   if ((GetRecoSteps() & GPUDataTypes::RecoStep::Refit) && !param().rec.trackingRefitGPUModel && (processors()->calibObjects.o2Propagator == nullptr || processors()->calibObjects.matLUT == nullptr)) {
     GPUError("Cannot run refit with o2 track model without o2 propagator");
     return false;
@@ -369,9 +364,7 @@ int GPUChainTracking::Init()
     mQA.reset(new GPUQA(this));
   }
   if (GetProcessingSettings().eventDisplay) {
-#ifndef GPUCA_ALIROOT_LIB
     mEventDisplay.reset(GPUDisplayInterface::getDisplay(GetProcessingSettings().eventDisplay, this, mQA.get()));
-#endif
     if (mEventDisplay == nullptr) {
       throw std::runtime_error("Error loading event display");
     }
@@ -426,9 +419,6 @@ void GPUChainTracking::UpdateGPUCalibObjects(int stream)
   if (processors()->calibObjects.tpcPadGain) {
     memcpy((void*)mFlatObjectsShadow.mCalibObjects.tpcPadGain, (const void*)processors()->calibObjects.tpcPadGain, sizeof(*processors()->calibObjects.tpcPadGain));
   }
-  if (processors()->calibObjects.tpcZSLinkMapping) {
-    memcpy((void*)mFlatObjectsShadow.mCalibObjects.tpcZSLinkMapping, (const void*)processors()->calibObjects.tpcZSLinkMapping, sizeof(*processors()->calibObjects.tpcZSLinkMapping));
-  }
   if (processors()->calibObjects.o2Propagator) {
     memcpy((void*)mFlatObjectsShadow.mCalibObjects.o2Propagator, (const void*)processors()->calibObjects.o2Propagator, sizeof(*processors()->calibObjects.o2Propagator));
     mFlatObjectsShadow.mCalibObjects.o2Propagator->setGPUField(&processorsDevice()->param.polynomialField);
@@ -471,7 +461,7 @@ int GPUChainTracking::ForceInitQA()
 
 int GPUChainTracking::Finalize()
 {
-  if (GetProcessingSettings().runQA && mQA->IsInitialized() && !(mConfigQA && mConfigQA->shipToQC) && mFractionalQAEnabled) {
+  if (GetProcessingSettings().runQA && mQA->IsInitialized() && !(mConfigQA && mConfigQA->shipToQC)) {
     mQA->DrawQAHistograms();
   }
   if (GetProcessingSettings().debugLevel >= 6) {
@@ -491,9 +481,6 @@ void* GPUChainTracking::GPUTrackingFlatObjects::SetPointersFlatObjects(void* mem
   }
   if (mChainTracking->GetTPCPadGainCalib()) {
     computePointerWithAlignment(mem, mCalibObjects.tpcPadGain, 1);
-  }
-  if (mChainTracking->GetTPCZSLinkMapping()) {
-    computePointerWithAlignment(mem, mCalibObjects.tpcZSLinkMapping, 1);
   }
 #ifdef GPUCA_HAVE_O2HEADERS
   if (mChainTracking->GetMatLUT()) {
@@ -612,9 +599,6 @@ int GPUChainTracking::RunChain()
       return 1;
     }
   }
-  if (needQA) {
-    mFractionalQAEnabled = GetProcessingSettings().qcRunFraction == 100.f || (unsigned int)(rand() % 10000) < (unsigned int)(GetProcessingSettings().qcRunFraction * 100);
-  }
   if (GetProcessingSettings().debugLevel >= 6) {
     *mDebugFile << "\n\nProcessing event " << mRec->getNEventsProcessed() << std::endl;
   }
@@ -719,13 +703,10 @@ int GPUChainTracking::RunChainFinalize()
 #endif
 
   const bool needQA = GPUQA::QAAvailable() && (GetProcessingSettings().runQA || (GetProcessingSettings().eventDisplay && mIOPtrs.nMCInfosTPC));
-  if (needQA && mFractionalQAEnabled) {
+  if (needQA) {
     mRec->getGeneralStepTimer(GeneralStep::QA).Start();
     mQA->RunQA(!GetProcessingSettings().runQA);
     mRec->getGeneralStepTimer(GeneralStep::QA).Stop();
-    if (GetProcessingSettings().debugLevel == 0) {
-      GPUInfo("Total QA runtime: %d us", (int)(mRec->getGeneralStepTimer(GeneralStep::QA).GetElapsedTime() * 1000000));
-    }
   }
 
   if (GetProcessingSettings().showOutputStat) {
@@ -825,7 +806,7 @@ int GPUChainTracking::HelperOutput(int iSlice, int threadId, GPUReconstructionHe
   return 0;
 }
 
-int GPUChainTracking::CheckErrorCodes(bool cpuOnly, bool forceShowErrors)
+int GPUChainTracking::CheckErrorCodes(bool cpuOnly)
 {
   int retVal = 0;
   for (int i = 0; i < 1 + (!cpuOnly && mRec->IsGPU()); i++) {
@@ -842,7 +823,7 @@ int GPUChainTracking::CheckErrorCodes(bool cpuOnly, bool forceShowErrors)
       static int errorsShown = 0;
       static bool quiet = false;
       static std::chrono::time_point<std::chrono::steady_clock> silenceFrom;
-      if (!quiet && errorsShown++ >= 10 && GetProcessingSettings().throttleAlarms && !forceShowErrors) {
+      if (!quiet && errorsShown++ >= 10 && GetProcessingSettings().throttleAlarms) {
         silenceFrom = std::chrono::steady_clock::now();
         quiet = true;
       } else if (quiet) {
@@ -854,28 +835,27 @@ int GPUChainTracking::CheckErrorCodes(bool cpuOnly, bool forceShowErrors)
         }
       }
       retVal = 1;
-      if (GetProcessingSettings().throttleAlarms && !forceShowErrors) {
+      if (GetProcessingSettings().throttleAlarms) {
         GPUWarning("GPUReconstruction suffered from an error in the %s part", i ? "GPU" : "CPU");
       } else {
         GPUError("GPUReconstruction suffered from an error in the %s part", i ? "GPU" : "CPU");
       }
       if (!quiet) {
-        processors()->errorCodes.printErrors(GetProcessingSettings().throttleAlarms && !forceShowErrors);
+        processors()->errorCodes.printErrors(GetProcessingSettings().throttleAlarms);
       }
     }
   }
-  ClearErrorCodes(cpuOnly);
   return retVal;
 }
 
-void GPUChainTracking::ClearErrorCodes(bool cpuOnly)
+void GPUChainTracking::ClearErrorCodes()
 {
   processors()->errorCodes.clear();
-  if (mRec->IsGPU() && !cpuOnly) {
-    const auto& threadContext = GetThreadContext();
+  const auto& threadContext = GetThreadContext();
+  if (mRec->IsGPU()) {
     WriteToConstantMemory(RecoStep::NoRecoStep, (char*)&processors()->errorCodes - (char*)processors(), &processorsShadow()->errorCodes, sizeof(processorsShadow()->errorCodes), 0);
-    TransferMemoryResourceLinkToGPU(RecoStep::NoRecoStep, mInputsHost->mResourceErrorCodes, 0);
   }
+  TransferMemoryResourceLinkToGPU(RecoStep::NoRecoStep, mInputsHost->mResourceErrorCodes, 0);
 }
 
 void GPUChainTracking::SetDefaultInternalO2Propagator(bool useGPUField)

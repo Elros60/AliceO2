@@ -48,7 +48,6 @@ void EntropyDecoderSpec::run(ProcessingContext& pc)
 {
   auto cput = mTimer.CpuTime();
   mTimer.Start(false);
-  o2::ctf::CTFIOSize iosize;
 
   mCTFCoder.updateTimeDependentParams(pc);
   auto buff = pc.inputs().get<gsl::span<o2::ctf::BufferType>>("ctf");
@@ -59,11 +58,10 @@ void EntropyDecoderSpec::run(ProcessingContext& pc)
   // since the buff is const, we cannot use EncodedBlocks::relocate directly, instead we wrap its data to another flat object
   if (buff.size()) {
     const auto ctfImage = o2::emcal::CTF::getImage(buff.data());
-    iosize = mCTFCoder.decode(ctfImage, triggers, cells);
+    mCTFCoder.decode(ctfImage, triggers, cells);
   }
-  pc.outputs().snapshot({"ctfrep", 0}, iosize);
   mTimer.Stop();
-  LOG(info) << "Decoded " << cells.size() << " EMCAL cells in " << triggers.size() << " triggers, (" << iosize.asString() << ") in " << mTimer.CpuTime() - cput << " s";
+  LOG(info) << "Decoded " << cells.size() << " EMCAL cells in " << triggers.size() << " triggers in " << mTimer.CpuTime() - cput << " s";
 }
 
 void EntropyDecoderSpec::endOfStream(EndOfStreamContext& ec)
@@ -76,8 +74,7 @@ DataProcessorSpec getEntropyDecoderSpec(int verbosity, unsigned int sspec)
 {
   std::vector<OutputSpec> outputs{
     OutputSpec{{"triggers"}, "EMC", "CELLSTRGR", 0, Lifetime::Timeframe},
-    OutputSpec{{"cells"}, "EMC", "CELLS", 0, Lifetime::Timeframe},
-    OutputSpec{{"ctfrep"}, "EMC", "CTFDECREP", 0, Lifetime::Timeframe}};
+    OutputSpec{{"cells"}, "EMC", "CELLS", 0, Lifetime::Timeframe}};
 
   std::vector<InputSpec> inputs;
   inputs.emplace_back("ctf", "EMC", "CTFDATA", sspec, Lifetime::Timeframe);

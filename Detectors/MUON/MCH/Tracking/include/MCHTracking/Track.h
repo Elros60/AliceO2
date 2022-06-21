@@ -65,7 +65,7 @@ class Track
   auto rend() const { return mParamAtClusters.rend(); }
 
   TrackParam& createParamAtCluster(const Cluster& cluster);
-  void addParamAtCluster(const TrackParam& param);
+  void addParamAtCluster(const TrackParam param);
   /// Remove the given track parameters from the internal list and return an iterator to the parameters that follow
   auto removeParamAtCluster(std::list<TrackParam>::iterator& itParam) { return mParamAtClusters.erase(itParam); }
 
@@ -75,7 +75,7 @@ class Track
 
   void tagRemovableClusters(uint8_t requestedStationMask, bool request2ChInSameSt45);
 
-  void setCurrentParam(const TrackParam& param, int chamber);
+  void setCurrentParam(const TrackParam param, int chamber);
   TrackParam& getCurrentParam();
   /// get a reference to the current chamber on which the current parameters are given
   int& getCurrentChamber() { return mCurrentChamber; }

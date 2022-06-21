@@ -30,8 +30,8 @@
 #include "./DeviceSpecHelpers.h"
 #include "Framework/DataProcessingHelpers.h"
 
-#include <fairmq/Parts.h>
-#include <fairmq/Device.h>
+#include <fairmq/FairMQParts.h>
+#include <fairmq/FairMQDevice.h>
 #include <cstring>
 #include <cassert>
 #include <memory>
@@ -59,7 +59,7 @@ std::string formatExternalChannelConfiguration(OutputChannelSpec const& spec)
 
 std::string formatExternalChannelConfiguration(OutputChannelSpec const&);
 
-void sendOnChannel(fair::mq::Device& device, fair::mq::Parts& messages, std::string const& channel, size_t timeSlice)
+void sendOnChannel(FairMQDevice& device, FairMQParts& messages, std::string const& channel, size_t timeSlice)
 {
   // Note: DPL is only setting up one instance of a channel while FairMQ allows to have an
   // array of channels, the index is 0 in the call
@@ -99,12 +99,17 @@ void sendOnChannel(fair::mq::Device& device, fair::mq::Parts& messages, std::str
       break;
     }
   }
-
+  if (timeSlice != (size_t)-1) {
+    // We propagate the information about the oldest possible timeframe downstream.
+    // Notice that the oldest possible timeframe is not the one we just sent, but the one
+    // after because we know we will not send twice the same timeframe.
+    o2::framework::DataProcessingHelpers::sendOldestPossibleTimeframe(device.GetChannel(channel, 0), timeSlice + 1);
+  }
   // FIXME: we need a better logic for avoiding message spam
   if (timeout > 1 && timeout <= maxTimeout) {
     LOG(warning) << "dispatching on channel " << channel << " was delayed by " << timeout << " ms";
   }
-  // TODO: feeling this is a bit awkward, but the interface of fair::mq::Parts does not provide a
+  // TODO: feeling this is a bit awkward, but the interface of FairMQParts does not provide a
   // method to clear the content.
   // Maybe the FairMQ API can be improved at some point. Actually the ownership of all messages should be passed
   // on to the transport and the messages should be empty after sending and the parts content can be cleared.
@@ -112,7 +117,7 @@ void sendOnChannel(fair::mq::Device& device, fair::mq::Parts& messages, std::str
   messages.fParts.clear();
 }
 
-void sendOnChannel(fair::mq::Device& device, fair::mq::Parts& messages, OutputSpec const& spec, DataProcessingHeader::StartTime tslice, ChannelRetriever& channelRetriever)
+void sendOnChannel(FairMQDevice& device, FairMQParts& messages, OutputSpec const& spec, DataProcessingHeader::StartTime tslice, ChannelRetriever& channelRetriever)
 {
   // Note: DPL is only setting up one instance of a channel while FairMQ allows to have an
   // array of channels, the index is 0 in the call
@@ -124,7 +129,7 @@ void sendOnChannel(fair::mq::Device& device, fair::mq::Parts& messages, OutputSp
   sendOnChannel(device, messages, channel, tslice);
 }
 
-void sendOnChannel(fair::mq::Device& device, o2::header::Stack&& headerStack, fair::mq::MessagePtr&& payloadMessage, OutputSpec const& spec, ChannelRetriever& channelRetriever)
+void sendOnChannel(FairMQDevice& device, o2::header::Stack&& headerStack, FairMQMessagePtr&& payloadMessage, OutputSpec const& spec, ChannelRetriever& channelRetriever)
 {
   const auto* dph = o2::header::get<DataProcessingHeader*>(headerStack.data());
   if (!dph) {
@@ -144,9 +149,9 @@ void sendOnChannel(fair::mq::Device& device, o2::header::Stack&& headerStack, fa
     assert(channelInfo.second.size() == 1);
     // allocate the header message using the underlying transport of the channel
     auto channelAlloc = o2::pmr::getTransportAllocator(channelInfo.second[index].Transport());
-    fair::mq::MessagePtr headerMessage = o2::pmr::getMessage(std::move(headerStack), channelAlloc);
+    FairMQMessagePtr headerMessage = o2::pmr::getMessage(std::move(headerStack), channelAlloc);
 
-    fair::mq::Parts out;
+    FairMQParts out;
     out.AddPart(std::move(headerMessage));
     out.AddPart(std::move(payloadMessage));
     sendOnChannel(device, out, channelName, dph->startTime);
@@ -155,7 +160,7 @@ void sendOnChannel(fair::mq::Device& device, o2::header::Stack&& headerStack, fa
   LOG(error) << "internal mismatch, can not find channel " << channelName << " in the list of channel infos of the device";
 }
 
-void sendOnChannel(fair::mq::Device& device, fair::mq::MessagePtr&& headerMessage, fair::mq::MessagePtr&& payloadMessage, OutputSpec const& spec, ChannelRetriever& channelRetriever)
+void sendOnChannel(FairMQDevice& device, FairMQMessagePtr&& headerMessage, FairMQMessagePtr&& payloadMessage, OutputSpec const& spec, ChannelRetriever& channelRetriever)
 {
   //  const auto* dph = o2::header::get<DataProcessingHeader*>( *reinterpret_cast<o2::header::Stack*>(headerMessage->GetData()) );
   const auto* dph = o2::header::get<DataProcessingHeader*>(headerMessage->GetData());
@@ -164,7 +169,7 @@ void sendOnChannel(fair::mq::Device& device, fair::mq::MessagePtr&& headerMessag
     return;
   }
   auto tslice = dph->startTime;
-  fair::mq::Parts out;
+  FairMQParts out;
   out.AddPart(std::move(headerMessage));
   out.AddPart(std::move(payloadMessage));
   sendOnChannel(device, out, spec, tslice, channelRetriever);
@@ -173,7 +178,7 @@ void sendOnChannel(fair::mq::Device& device, fair::mq::MessagePtr&& headerMessag
 InjectorFunction o2DataModelAdaptor(OutputSpec const& spec, uint64_t startTime, uint64_t /*step*/)
 {
   auto timesliceId = std::make_shared<size_t>(startTime);
-  return [timesliceId, spec](TimingInfo&, fair::mq::Device& device, fair::mq::Parts& parts, ChannelRetriever channelRetriever) {
+  return [timesliceId, spec](TimingInfo&, FairMQDevice& device, FairMQParts& parts, ChannelRetriever channelRetriever) {
     for (int i = 0; i < parts.Size() / 2; ++i) {
       auto dh = o2::header::get<DataHeader*>(parts.At(i * 2)->GetData());
 
@@ -221,8 +226,8 @@ InjectorFunction dplModelAdaptor(std::vector<OutputSpec> const& filterSpecs, DPL
     std::string descriptions;
   };
 
-  return [filterSpecs = std::move(filterSpecs), throwOnUnmatchedInputs, droppedDataSpecs = std::make_shared<DroppedDataSpecs>()](TimingInfo& timingInfo, fair::mq::Device& device, fair::mq::Parts& parts, ChannelRetriever channelRetriever) {
-    std::unordered_map<std::string, fair::mq::Parts> outputs;
+  return [filterSpecs = std::move(filterSpecs), throwOnUnmatchedInputs, droppedDataSpecs = std::make_shared<DroppedDataSpecs>()](TimingInfo& timingInfo, FairMQDevice& device, FairMQParts& parts, ChannelRetriever channelRetriever) {
+    std::unordered_map<std::string, FairMQParts> outputs;
     std::vector<std::string> unmatchedDescriptions;
     static int64_t dplCounter = -1;
     dplCounter++;
@@ -344,7 +349,7 @@ InjectorFunction incrementalConverter(OutputSpec const& spec, uint64_t startTime
 {
   auto timesliceId = std::make_shared<size_t>(startTime);
 
-  return [timesliceId, spec, step](TimingInfo&, fair::mq::Device& device, fair::mq::Parts& parts, ChannelRetriever channelRetriever) {
+  return [timesliceId, spec, step](TimingInfo&, FairMQDevice& device, FairMQParts& parts, ChannelRetriever channelRetriever) {
     // We iterate on all the parts and we send them two by two,
     // adding the appropriate O2 header.
     for (int i = 0; i < parts.Size(); ++i) {
@@ -371,8 +376,8 @@ DataProcessorSpec specifyExternalFairMQDeviceProxy(char const* name,
                                                    std::vector<OutputSpec> const& outputs,
                                                    char const* defaultChannelConfig,
                                                    std::function<void(TimingInfo&,
-                                                                      fair::mq::Device&,
-                                                                      fair::mq::Parts&,
+                                                                      FairMQDevice&,
+                                                                      FairMQParts&,
                                                                       ChannelRetriever)>
                                                      converter,
                                                    uint64_t minSHM)
@@ -395,7 +400,7 @@ DataProcessorSpec specifyExternalFairMQDeviceProxy(char const* name,
     // to the configured output channel, unfortunately we can not automatically
     // deduce this from list of channels without knowing the name, because there
     // will be multiple channels. At least we throw a more informative exception.
-    // fair::mq::Device calls the custom init before the channels have been configured
+    // FairMQDevice calls the custom init before the channels have been configured
     // so we do the check before starting in a dedicated callback
     auto channelConfigurationChecker = [channel, device]() {
       if (device->fChannels.count(channel) == 0) {
@@ -409,7 +414,7 @@ DataProcessorSpec specifyExternalFairMQDeviceProxy(char const* name,
                         outputRoutes = std::move(outputRoutes),
                         control = &ctx.services().get<ControlService>(),
                         &timingInfo = ctx.services().get<TimingInfo>(),
-                        outputChannels = std::move(outputChannels)](fair::mq::Parts& inputs, int) {
+                        outputChannels = std::move(outputChannels)](FairMQParts& inputs, int) {
       // pass a copy of the outputRoutes
       auto channelRetriever = [&outputRoutes](OutputSpec const& query, DataProcessingHeader::StartTime timeslice) -> std::string {
         for (auto& route : outputRoutes) {
@@ -448,7 +453,7 @@ DataProcessorSpec specifyExternalFairMQDeviceProxy(char const* name,
       auto device = ctx.services().get<RawDeviceService>().device();
       limiter.check(ctx, std::stoi(device->fConfig->GetValue<std::string>("timeframes-rate-limit")), minSHM);
 
-      fair::mq::Parts parts;
+      FairMQParts parts;
       device->Receive(parts, channel, 0);
       // Populate TimingInfo from the first message
       if (parts.Size() != 0) {
@@ -477,7 +482,7 @@ DataProcessorSpec specifyExternalFairMQDeviceProxy(char const* name,
 }
 
 // Decide where to sent the output. Everything to "downstream" if there is such a channel.
-std::string defaultOutputProxyChannelSelector(InputSpec const& input, const std::unordered_map<std::string, std::vector<fair::mq::Channel>>& channels)
+std::string defaultOutputProxyChannelSelector(InputSpec const& input, const std::unordered_map<std::string, std::vector<FairMQChannel>>& channels)
 {
   return channels.count("downstream") ? "downstream" : input.binding;
 }
@@ -506,7 +511,7 @@ DataProcessorSpec specifyFairMQDeviceOutputProxy(char const* name,
 
     auto* device = rds.device();
     // check that the input spec bindings have corresponding output channels
-    // fair::mq::Device calls the custom init before the channels have been configured
+    // FairMQDevice calls the custom init before the channels have been configured
     // so we do the check before starting in a dedicated callback
     auto channelConfigurationChecker = [inputSpecs = std::move(inputSpecs), device, outputChannelName]() {
       LOG(info) << "checking channel configuration";
@@ -552,7 +557,7 @@ DataProcessorSpec specifyFairMQDeviceOutputProxy(char const* name,
         // allocate the header message using the underlying transport of the channel
         auto channelAlloc = o2::pmr::getTransportAllocator(channelInfo.second[0].Transport());
         auto headerMessage = o2::pmr::getMessage(o2::header::Stack{channelAlloc, dh, *lastDataProcessingHeader, sih});
-        fair::mq::Parts out;
+        FairMQParts out;
         out.AddPart(std::move(headerMessage));
         // add empty payload message
         out.AddPart(device->NewMessageFor(channelName, 0, 0));
@@ -598,7 +603,7 @@ DataProcessorSpec specifyFairMQDeviceMultiOutputProxy(char const* name,
   spec.algorithm = adaptStateful([inputSpecs, channelSelector](CallbackService& callbacks, RawDeviceService& rds, const DeviceSpec& deviceSpec) {
     auto device = rds.device();
     // check that the input spec bindings have corresponding output channels
-    // fair::mq::Device calls the custom init before the channels have been configured
+    // FairMQDevice calls the custom init before the channels have been configured
     // so we do the check before starting in a dedicated callback
     // also we set forwards for all input specs and keep a list of all channels so we can send EOS on them
     auto channelNames = std::make_shared<std::vector<std::string>>();
@@ -657,7 +662,7 @@ DataProcessorSpec specifyFairMQDeviceMultiOutputProxy(char const* name,
         // allocate the header message using the underlying transport of the channel
         auto channelAlloc = o2::pmr::getTransportAllocator(channelInfo.second[0].Transport());
         auto headerMessage = o2::pmr::getMessage(o2::header::Stack{channelAlloc, dh, *lastDataProcessingHeader, sih});
-        fair::mq::Parts out;
+        FairMQParts out;
         out.AddPart(std::move(headerMessage));
         // add empty payload message
         out.AddPart(device->NewMessageFor(channelName, 0, 0));

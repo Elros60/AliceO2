@@ -35,8 +35,9 @@ using namespace o2::emcal;
 // including Framework/runDataProcessing
 void customize(std::vector<ConfigParamSpec>& workflowOptions)
 {
-  std::vector<ConfigParamSpec> options{
-    {"configKeyValues", VariantType::String, "", {"Semicolon separated key=value strings"}}};
+  std::vector<ConfigParamSpec> options{{"calibMode", VariantType::String, "badcell", {"specify time for time calib or badcell for bad channel calib"}},
+                                       {"localRootFilePath", VariantType::String, "", {"path to local root file for storage of calibration params"}},
+                                       {"configKeyValues", VariantType::String, "", {"Semicolon separated key=value strings"}}};
 
   std::swap(workflowOptions, options);
 }
@@ -45,8 +46,11 @@ void customize(std::vector<ConfigParamSpec>& workflowOptions)
 
 WorkflowSpec defineDataProcessing(ConfigContext const& cfgc)
 {
+  std::string strCalibType = cfgc.options().get<std::string>("calibMode");
+  std::string strFilePath = cfgc.options().get<std::string>("localRootFilePath");
+
   WorkflowSpec specs;
-  specs.emplace_back(getEMCALChannelCalibDeviceSpec());
+  specs.emplace_back(getEMCALChannelCalibDeviceSpec(strCalibType, strFilePath));
 
   o2::conf::ConfigurableParam::updateFromString(cfgc.options().get<std::string>("configKeyValues"));
 

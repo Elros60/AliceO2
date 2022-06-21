@@ -28,8 +28,8 @@
 #include "Framework/RunningWorkflowInfo.h"
 #include "Framework/ObjectCache.h"
 
-#include <fairmq/Device.h>
-#include <fairmq/Parts.h>
+#include <fairmq/FairMQDevice.h>
+#include <fairmq/FairMQParts.h>
 
 #include <memory>
 #include <mutex>
@@ -93,7 +93,6 @@ struct DataProcessorContext {
   /// Wether or not the associated DataProcessor can forward things early
   bool canForwardEarly = true;
   bool isSink = false;
-  bool balancingInputs = true;
 
   std::function<void(o2::framework::RuntimeErrorRef e, InputRecord& record)>* errorHandling = nullptr;
 };
@@ -119,7 +118,7 @@ struct DeviceConfigurationHelpers {
 
 /// A device actually carrying out all the DPL
 /// Data Processing needs.
-class DataProcessingDevice : public fair::mq::Device
+class DataProcessingDevice : public FairMQDevice
 {
  public:
   DataProcessingDevice(RunningDeviceRef ref, ServiceRegistry&, ProcessingPolicies& policies);
@@ -171,7 +170,7 @@ class DataProcessingDevice : public fair::mq::Device
   uint64_t mLastMetricFlushedTimestamp = 0;          /// The timestamp of the last time we actually flushed metrics
   uint64_t mBeginIterationTimestamp = 0;             /// The timestamp of when the current ConditionalRun was started
   DataProcessingStats mStats;                        /// Stats about the actual data processing.
-  std::vector<fair::mq::RegionInfo> mPendingRegionInfos; /// A list of the region infos not yet notified.
+  std::vector<FairMQRegionInfo> mPendingRegionInfos; /// A list of the region infos not yet notified.
   std::mutex mRegionInfoMutex;
   ProcessingPolicies mProcessingPolicies;                        /// User policies related to data processing
   bool mWasActive = false;                                       /// Whether or not the device was active at last iteration.

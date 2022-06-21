@@ -25,11 +25,11 @@ namespace cpv
 //=========================================================================
 using Digit = o2::cpv::Digit;
 struct NoiseCalibData {
-  uint32_t mNEvents = 0;
-  float mNoiseThreshold = 10.; // ADC counts threshold
+  int mNEvents = 0;
+  int mNoiseThreshold = 10; //ADC counts threshold
   std::vector<int> mOccupancyMap;
 
-  NoiseCalibData(float noiseThreshold = 10.);
+  NoiseCalibData();
   ~NoiseCalibData() = default;
 
   void fill(const gsl::span<const o2::cpv::Digit> data);
@@ -63,17 +63,15 @@ class NoiseCalibrator final : public o2::calibration::TimeSlotCalibration<o2::cp
   void initOutput() final;
   void finalizeSlot(NoiseTimeSlot& slot) final;
   NoiseTimeSlot& emplaceNewSlot(bool front, TFType tstart, TFType tend) final;
-  void configParameters();
 
  private:
   std::unique_ptr<std::vector<float>> mPedEfficiencies = nullptr;
   std::unique_ptr<std::vector<int>> mDeadChannels = nullptr;
   std::unique_ptr<std::vector<int>> mHighPedChannels = nullptr;
-  uint32_t mMinEvents = 100;
+  int mMinEvents = 100;
   float mNoiseFrequencyCriteria = 0.5; // how often channel should appear to be considered as noisy
   float mToleratedChannelEfficiencyLow = 0.9;
   float mToleratedChannelEfficiencyHigh = 1.01;
-  float mNoiseThreshold = 10.;
   std::vector<o2::ccdb::CcdbObjectInfo> mCcdbInfoBadChannelMapVec;
   std::vector<o2::cpv::BadChannelMap> mBadChannelMapVec;
 

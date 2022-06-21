@@ -11,7 +11,7 @@
 
 /// @author Sandro Wenzel
 
-#include <fairmq/runDevice.h>
+#include "runFairMQDevice.h"
 #include "O2HitMerger.h"
 
 namespace bpo = boost::program_options;
@@ -19,7 +19,7 @@ void addCustomOptions(bpo::options_description& options)
 {
 }
 
-std::unique_ptr<fair::mq::Device> getDevice(fair::mq::ProgOptions& config)
+FairMQDevice* getDevice(const FairMQProgOptions& config)
 {
-  return std::make_unique<o2::devices::O2HitMerger>();
+  return new o2::devices::O2HitMerger();
 }

@@ -65,12 +65,6 @@ void RecEventFlat::clearBitmaps()
 
 int RecEventFlat::next()
 {
-  return at(mEntry);
-}
-
-int RecEventFlat::at(int ientry)
-{
-  mEntry = ientry;
   ezdcDecoded = 0;
   if (mEntry >= mNEntries) {
     return 0;

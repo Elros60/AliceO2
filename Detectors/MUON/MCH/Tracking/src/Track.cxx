@@ -17,7 +17,7 @@
 #include "MCHTracking/Track.h"
 
 #include <iostream>
-
+#include <list>
 #include "Framework/Logger.h"
 
 namespace o2
@@ -64,28 +64,29 @@ TrackParam& Track::createParamAtCluster(const Cluster& cluster)
 }
 
 //__________________________________________________________________________
-void Track::addParamAtCluster(const TrackParam& param)
+void Track::addParamAtCluster(const TrackParam param)
 {
   /// Add a copy of the given track parameters in the internal list
   /// The parameters must be associated with a cluster
   /// Keep the internal list of track parameters sorted in clusters z
 
-  const Cluster* cluster = param.getClusterPtr();
-  if (cluster == nullptr) {
+  const Cluster* cluster_ptr = param.getClusterPtr();
+  if (cluster_ptr == nullptr) {
     LOG(error) << "The TrackParam must be associated with a cluster --> not added";
     return;
   }
-
+  
   // find the iterator before which the new element will be constructed
-  auto itParam = mParamAtClusters.begin();
-  for (; itParam != mParamAtClusters.end(); ++itParam) {
-    if (cluster->getZ() >= itParam->getZ()) {
+  auto itParam_ptr = mParamAtClusters.begin();
+  for (; itParam_ptr != mParamAtClusters.end(); ++itParam_ptr) {
+    if (cluster_ptr->getZ() <= itParam_ptr->getZ()) {
       break;
     }
   }
 
   // add the new track parameters
-  mParamAtClusters.emplace(itParam, param);
+  mParamAtClusters.emplace(itParam_ptr, param);
+  // mParamAtClusters.insert(itParam_ptr, param);
 }
 
 //__________________________________________________________________________
@@ -192,7 +193,7 @@ void Track::tagRemovableClusters(uint8_t requestedStationMask, bool request2ChIn
 }
 
 //__________________________________________________________________________
-void Track::setCurrentParam(const TrackParam& param, int chamber)
+void Track::setCurrentParam(const TrackParam param, int chamber)
 {
   /// set the current track parameters and the associated chamber
   if (mCurrentParam) {

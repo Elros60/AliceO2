@@ -24,10 +24,10 @@
 
 namespace o2::framework
 {
-void DataProcessingHelpers::sendEndOfStream(fair::mq::Device& device, OutputChannelSpec const& channel)
+void DataProcessingHelpers::sendEndOfStream(FairMQDevice& device, OutputChannelSpec const& channel)
 {
-  fair::mq::Parts parts;
-  fair::mq::MessagePtr payload(device.NewMessage());
+  FairMQParts parts;
+  FairMQMessagePtr payload(device.NewMessage());
   SourceInfoHeader sih;
   sih.state = InputChannelState::Completed;
   auto channelAlloc = o2::pmr::getTransportAllocator(device.GetChannel(channel.name, 0).Transport());
@@ -42,26 +42,18 @@ void DataProcessingHelpers::sendEndOfStream(fair::mq::Device& device, OutputChan
 
 void DataProcessingHelpers::sendOldestPossibleTimeframe(fair::mq::Channel& channel, size_t timeslice)
 {
-  fair::mq::Parts parts;
-  fair::mq::MessagePtr payload(channel.Transport()->CreateMessage());
+  FairMQParts oldestParts;
+  FairMQMessagePtr payload(channel.Transport()->CreateMessage());
   o2::framework::DomainInfoHeader dih;
   dih.oldestPossibleTimeslice = timeslice;
   auto channelAlloc = o2::pmr::getTransportAllocator(channel.Transport());
   auto header = o2::pmr::getMessage(o2::header::Stack{channelAlloc, dih});
   // sigh... See if we can avoid having it const by not
   // exposing it to the user in the first place.
-  parts.AddPart(std::move(header));
-  parts.AddPart(std::move(payload));
-
-  auto timeout = 1000;
-  auto res = channel.Send(parts, timeout);
-  if (res == (size_t)fair::mq::TransferCode::timeout) {
-    LOGP(warning, "Timed out sending oldest possible timeslice after {}s. Downstream backpressure detected on {}.", timeout / 1000, channel.GetName());
-    channel.Send(parts);
-    LOGP(info, "Downstream backpressure on {} recovered.", channel.GetName());
-  } else if (res == (size_t)fair::mq::TransferCode::error) {
-    LOGP(fatal, "Error while sending on channel {}", channel.GetName());
-  }
+  oldestParts.AddPart(std::move(header));
+  oldestParts.AddPart(std::move(payload));
+  LOGP(debug, "Notifying {} about oldest possible timeslice being {}", channel.GetName(), timeslice);
+  channel.Send(oldestParts);
 }
 
 void DataProcessingHelpers::broadcastOldestPossibleTimeslice(FairMQDeviceProxy& proxy, size_t timeslice)

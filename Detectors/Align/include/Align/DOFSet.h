@@ -17,7 +17,6 @@
 #define ALG_DOFSET_H
 
 #include <TNamed.h>
-#include "Framework/Logger.h"
 
 namespace o2
 {
@@ -57,11 +56,7 @@ class DOFSet : public TNamed
   void setParVals(int npar, double* vl, double* er);
   void setParVal(int par, double v = 0) { getParVals()[par] = v; }
   void setParErr(int par, double e = 0) { getParErrs()[par] = e; }
-  void setParLab(int par, int lab)
-  {
-    getParLabs()[par] = lab;
-    LOGP(debug, "Assign label {} to DOF{}/{} of {}", lab, par, mNDOFs, GetName());
-  }
+  void setParLab(int par, int lab) { getParLabs()[par] = lab; }
 
  protected:
   auto getController() { return mController; }

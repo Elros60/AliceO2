@@ -53,7 +53,8 @@ RootTreeReader::SpecialPublishHook logging{
       printBranch<Cluster>(data, "TRACKCLUSTERS");
     }
     if (name == "MIDTrackLabels") {
-      printBranch<MCCompLabel>(data, "TRACKLABELS");
+      auto tdata = reinterpret_cast<o2::dataformats::MCTruthContainer<MCCompLabel>*>(data);
+      LOGP(info, "MID {:d} {:s}", tdata->getNElements(), "TRACKLABELS");
     }
     if (name == "MIDTrackClusterLabels") {
       auto tdata = reinterpret_cast<o2::dataformats::MCTruthContainer<MCClusterLabel>*>(data);
@@ -84,7 +85,7 @@ struct TrackReader {
         RootTreeReader::BranchDefinition<std::vector<ROFRecord>>{Output{"MID", "TRACKROFS", 0}, "MIDTrackROF"},
         RootTreeReader::BranchDefinition<std::vector<Cluster>>{Output{"MID", "TRACKCLUSTERS", 0}, "MIDTrackCluster"},
         RootTreeReader::BranchDefinition<std::vector<ROFRecord>>{Output{"MID", "TRCLUSROFS", 0}, "MIDTrackClusterROF"},
-        RootTreeReader::BranchDefinition<std::vector<MCCompLabel>>{Output{"MID", "TRACKLABELS", 0}, "MIDTrackLabels"},
+        RootTreeReader::BranchDefinition<o2::dataformats::MCTruthContainer<MCCompLabel>>{Output{"MID", "TRACKLABELS", 0}, "MIDTrackLabels"},
         RootTreeReader::BranchDefinition<o2::dataformats::MCTruthContainer<MCClusterLabel>>{Output{"MID", "TRCLUSLABELS", 0}, "MIDTrackClusterLabels"},
         &logging);
     } else {

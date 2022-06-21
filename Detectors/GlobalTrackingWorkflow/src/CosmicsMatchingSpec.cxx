@@ -81,6 +81,14 @@ void CosmicsMatchingSpec::init(InitContext& ic)
   //-------- init geometry and field --------//
   o2::base::GeometryManager::loadGeometry();
   o2::base::Propagator::initFieldFromGRP();
+  std::unique_ptr<o2::parameters::GRPObject> grp{o2::parameters::GRPObject::loadFrom()};
+  const auto& alpParams = o2::itsmft::DPLAlpideParam<o2::detectors::DetID::ITS>::Instance();
+  if (!grp->isDetContinuousReadOut(DetID::ITS)) {
+    mMatching.setITSROFrameLengthMUS(alpParams.roFrameLengthTrig / 1.e3); // ITS ROFrame duration in \mus
+  } else {
+    mMatching.setITSROFrameLengthMUS(alpParams.roFrameLengthInBC * o2::constants::lhc::LHCBunchSpacingNS * 1e-3); // ITS ROFrame duration in \mus
+  }
+  //
   o2::its::GeometryTGeo::Instance()->fillMatrixCache(o2::math_utils::bit2Mask(o2::math_utils::TransformType::T2GRot) | o2::math_utils::bit2Mask(o2::math_utils::TransformType::T2L));
 
   // this is a hack to provide Mat.LUT from the local file, in general will be provided by the framework from CCDB
@@ -95,16 +103,18 @@ void CosmicsMatchingSpec::init(InitContext& ic)
   }
 
   mMatching.setDebugFlag(ic.options().get<int>("debug-tree-flags"));
+
   mMatching.setUseMC(mUseMC);
+  mMatching.init();
   //
 }
 
 void CosmicsMatchingSpec::run(ProcessingContext& pc)
 {
   mTimer.Start(false);
+  updateTimeDependentParams(pc);
   RecoContainer recoData;
   recoData.collectData(pc, *mDataRequest.get());
-  updateTimeDependentParams(pc); // Make sure this is called after recoData.collectData, which may load some conditions
 
   mMatching.process(recoData);
   pc.outputs().snapshot(Output{"GLO", "COSMICTRC", 0, Lifetime::Timeframe}, mMatching.getCosmicTracks());
@@ -116,22 +126,7 @@ void CosmicsMatchingSpec::run(ProcessingContext& pc)
 
 void CosmicsMatchingSpec::updateTimeDependentParams(ProcessingContext& pc)
 {
-  static bool initOnceDone = false;
-  if (!initOnceDone) { // this params need to be queried only once
-    initOnceDone = true;
-
-    // pc.inputs().get<o2::itsmft::TopologyDictionary*>("cldict"); // called by the RecoContainer
-    // also alpParams is called by the RecoContainer
-    std::unique_ptr<o2::parameters::GRPObject> grp{o2::parameters::GRPObject::loadFrom()};
-    const auto& alpParams = o2::itsmft::DPLAlpideParam<o2::detectors::DetID::ITS>::Instance();
-    if (!grp->isDetContinuousReadOut(DetID::ITS)) {
-      mMatching.setITSROFrameLengthMUS(alpParams.roFrameLengthTrig / 1.e3); // ITS ROFrame duration in \mus
-    } else {
-      mMatching.setITSROFrameLengthMUS(alpParams.roFrameLengthInBC * o2::constants::lhc::LHCBunchSpacingNS * 1e-3); // ITS ROFrame duration in \mus
-    }
-
-    mMatching.init();
-  }
+  // pc.inputs().get<o2::itsmft::TopologyDictionary*>("cldict"); // called by the RecoContainer
 }
 
 void CosmicsMatchingSpec::finaliseCCDB(ConcreteDataMatcher& matcher, void* obj)

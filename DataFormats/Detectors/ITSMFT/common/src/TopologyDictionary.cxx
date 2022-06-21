@@ -144,28 +144,16 @@ void TopologyDictionary::getTopologyDistribution(const TopologyDictionary& dict,
   }
 }
 
-template <typename T>
-std::array<T, 3> TopologyDictionary::getClusterCoordinatesA(const CompCluster& cl) const
+math_utils::Point3D<float> TopologyDictionary::getClusterCoordinates(const CompCluster& cl) const
 {
-  std::array<T, 3> locCl;
-  o2::itsmft::SegmentationAlpide::detectorToLocalUnchecked(cl.getRow(), cl.getCol(), locCl);
-  locCl[0] += this->getXCOG(cl.getPatternID());
-  locCl[2] += this->getZCOG(cl.getPatternID());
-  return locCl;
-}
-
-template <typename T>
-math_utils::Point3D<T> TopologyDictionary::getClusterCoordinates(const CompCluster& cl) const
-{
-  math_utils::Point3D<T> locCl;
+  math_utils::Point3D<float> locCl;
   o2::itsmft::SegmentationAlpide::detectorToLocalUnchecked(cl.getRow(), cl.getCol(), locCl);
   locCl.SetX(locCl.X() + this->getXCOG(cl.getPatternID()));
   locCl.SetZ(locCl.Z() + this->getZCOG(cl.getPatternID()));
   return locCl;
 }
 
-template <typename T>
-math_utils::Point3D<T> TopologyDictionary::getClusterCoordinates(const CompCluster& cl, const ClusterPattern& patt, bool isGroup)
+math_utils::Point3D<float> TopologyDictionary::getClusterCoordinates(const CompCluster& cl, const ClusterPattern& patt, bool isGroup)
 {
   auto refRow = cl.getRow();
   auto refCol = cl.getCol();
@@ -175,23 +163,7 @@ math_utils::Point3D<T> TopologyDictionary::getClusterCoordinates(const CompClust
     refRow -= round(xCOG);
     refCol -= round(zCOG);
   }
-  math_utils::Point3D<T> locCl;
-  o2::itsmft::SegmentationAlpide::detectorToLocalUnchecked(refRow + xCOG, refCol + zCOG, locCl);
-  return locCl;
-}
-
-template <typename T>
-std::array<T, 3> TopologyDictionary::getClusterCoordinatesA(const CompCluster& cl, const ClusterPattern& patt, bool isGroup)
-{
-  auto refRow = cl.getRow();
-  auto refCol = cl.getCol();
-  float xCOG = 0, zCOG = 0;
-  patt.getCOG(xCOG, zCOG);
-  if (isGroup) {
-    refRow -= round(xCOG);
-    refCol -= round(zCOG);
-  }
-  std::array<T, 3> locCl;
+  math_utils::Point3D<float> locCl;
   o2::itsmft::SegmentationAlpide::detectorToLocalUnchecked(refRow + xCOG, refCol + zCOG, locCl);
   return locCl;
 }
@@ -210,16 +182,6 @@ TopologyDictionary* TopologyDictionary::loadFrom(const std::string& fname, const
   }
   return dict;
 }
-
-template math_utils::Point3D<float> TopologyDictionary::getClusterCoordinates<float>(const CompCluster& cl) const;
-template math_utils::Point3D<double> TopologyDictionary::getClusterCoordinates<double>(const CompCluster& cl) const;
-template math_utils::Point3D<float> TopologyDictionary::getClusterCoordinates<float>(const CompCluster& cl, const ClusterPattern& patt, bool isGroup);
-template math_utils::Point3D<double> TopologyDictionary::getClusterCoordinates<double>(const CompCluster& cl, const ClusterPattern& patt, bool isGroup);
-
-template std::array<float, 3> TopologyDictionary::getClusterCoordinatesA<float>(const CompCluster& cl) const;
-template std::array<double, 3> TopologyDictionary::getClusterCoordinatesA<double>(const CompCluster& cl) const;
-template std::array<float, 3> TopologyDictionary::getClusterCoordinatesA<float>(const CompCluster& cl, const ClusterPattern& patt, bool isGroup);
-template std::array<double, 3> TopologyDictionary::getClusterCoordinatesA<double>(const CompCluster& cl, const ClusterPattern& patt, bool isGroup);
 
 } // namespace itsmft
 } // namespace o2

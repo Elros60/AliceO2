@@ -57,7 +57,6 @@ struct GPUInterfaceQAOutputs {
   const std::vector<TH1F>* hist1 = nullptr;
   const std::vector<TH2F>* hist2 = nullptr;
   const std::vector<TH1D>* hist3 = nullptr;
-  bool newQAHistsCreated = false;
 };
 
 struct GPUInterfaceOutputs : public GPUTrackingOutputs {

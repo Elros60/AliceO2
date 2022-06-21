@@ -50,7 +50,6 @@ class VisualisationEventJSONSerializer : public VisualisationEventSerializer
  public:
   bool fromFile(VisualisationEvent& event, std::string fileName) override;
   void toFile(const VisualisationEvent& event, std::string fileName) override;
-  ~VisualisationEventJSONSerializer() override = default;
 };
 
 } // namespace event_visualisation

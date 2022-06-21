@@ -21,7 +21,6 @@
 #include <queue>
 #include <mutex>
 #include <condition_variable>
-#include <array>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -262,7 +261,7 @@ int GPUReconstruction::InitPhaseBeforeDevice()
       mProcessingSettings.trackletSelectorSlices = 1;
     }
   }
-  if (mProcessingSettings.createO2Output > 1 && mProcessingSettings.runQA && mProcessingSettings.qcRunFraction == 100.f) {
+  if (mProcessingSettings.createO2Output > 1 && mProcessingSettings.runQA) {
     mProcessingSettings.createO2Output = 1;
   }
   if (!mProcessingSettings.createO2Output || !IsGPU()) {
@@ -1000,11 +999,11 @@ void GPUReconstruction::PrepareEvent() // TODO: Clean this up, this should not b
   AllocateRegisteredMemory(nullptr);
 }
 
-int GPUReconstruction::CheckErrorCodes(bool cpuOnly, bool forceShowErrors)
+int GPUReconstruction::CheckErrorCodes(bool cpuOnly)
 {
   int retVal = 0;
   for (unsigned int i = 0; i < mChains.size(); i++) {
-    if (mChains[i]->CheckErrorCodes(cpuOnly, forceShowErrors)) {
+    if (mChains[i]->CheckErrorCodes(cpuOnly)) {
       retVal++;
     }
   }

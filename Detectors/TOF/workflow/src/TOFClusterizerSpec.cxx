@@ -64,7 +64,7 @@ class TOFDPLClustererTask
   o2::tof::CalibTOFapi* mCalibApi = nullptr;
 
  public:
-  explicit TOFDPLClustererTask(bool useMC, bool useCCDB, bool doCalib, bool isCosmic, std::string ccdb_url, bool isForCalib) : mUseMC(useMC), mUseCCDB(useCCDB), mIsCalib(doCalib), mIsCosmic(isCosmic), mCCDBurl(ccdb_url), mForCalib(isForCalib) {}
+  explicit TOFDPLClustererTask(bool useMC, bool useCCDB, bool doCalib, bool isCosmic, std::string ccdb_url) : mUseMC(useMC), mUseCCDB(useCCDB), mIsCalib(doCalib), mIsCosmic(isCosmic), mCCDBurl(ccdb_url) {}
   void init(framework::InitContext& ic)
   {
     // nothing special to be set up
@@ -78,7 +78,6 @@ class TOFDPLClustererTask
 
     mClusterer.setCalibFromCluster(mIsCalib);
     mClusterer.setDeltaTforClustering(mTimeWin);
-    mClusterer.setCalibStored(mForCalib);
 
     // initialize collision context
     if (gSystem->AccessPathName("collisioncontext.root")) {
@@ -279,10 +278,9 @@ class TOFDPLClustererTask
   std::vector<Cluster> mClustersArray; ///< Array of clusters
   MCLabelContainer mClsLabels;
   std::vector<CalibInfoCluster> mClusterCalInfo; ///< Array of clusters
-  bool mForCalib = false;
 };
 
-o2::framework::DataProcessorSpec getTOFClusterizerSpec(bool useMC, bool useCCDB, bool doCalib, bool isCosmic, std::string ccdb_url, bool isForCalib)
+o2::framework::DataProcessorSpec getTOFClusterizerSpec(bool useMC, bool useCCDB, bool doCalib, bool isCosmic, std::string ccdb_url)
 {
   std::vector<InputSpec> inputs;
   inputs.emplace_back("tofdigits", o2::header::gDataOriginTOF, "DIGITS", 0, Lifetime::Timeframe);
@@ -320,7 +318,7 @@ o2::framework::DataProcessorSpec getTOFClusterizerSpec(bool useMC, bool useCCDB,
     "TOFClusterer",
     inputs,
     outputs,
-    AlgorithmSpec{adaptFromTask<TOFDPLClustererTask>(useMC, useCCDB, doCalib, isCosmic, ccdb_url, isForCalib)},
+    AlgorithmSpec{adaptFromTask<TOFDPLClustererTask>(useMC, useCCDB, doCalib, isCosmic, ccdb_url)},
     Options{{"cluster-time-window", VariantType::Int, 5000, {"time window for clusterization in ps"}}}};
 }
 

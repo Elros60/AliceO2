@@ -65,10 +65,10 @@ void EntropyEncoderSpec::run(ProcessingContext& pc)
   mTimer.Start(false);
 
   auto& buffer = pc.outputs().make<std::vector<o2::ctf::BufferType>>(Output{"TPC", "CTFDATA", 0, Lifetime::Timeframe});
-  auto iosize = mCTFCoder.encode(buffer, clusters);
-  pc.outputs().snapshot({"ctfrep", 0}, iosize);
+  mCTFCoder.encode(buffer, clusters);
+  auto sz = mCTFCoder.finaliseCTFOutput<CTF>(buffer);
   mTimer.Stop();
-  LOG(info) << iosize.asString() << " in " << mTimer.CpuTime() - cput << " s";
+  LOG(info) << "Created encoded data of size " << sz << " for TPC in " << mTimer.CpuTime() - cput << " s";
 }
 
 void EntropyEncoderSpec::endOfStream(EndOfStreamContext& ec)
@@ -87,8 +87,7 @@ DataProcessorSpec getEntropyEncoderSpec(bool inputFromFile)
   return DataProcessorSpec{
     "tpc-entropy-encoder", // process id
     inputs,
-    Outputs{{"TPC", "CTFDATA", 0, Lifetime::Timeframe},
-            {{"ctfrep"}, "TPC", "CTFENCREP", 0, Lifetime::Timeframe}},
+    Outputs{{"TPC", "CTFDATA", 0, Lifetime::Timeframe}},
     AlgorithmSpec{adaptFromTask<EntropyEncoderSpec>(inputFromFile)},
     Options{{"ctf-dict", VariantType::String, "ccdb", {"CTF dictionary: empty or ccdb=CCDB, none=no external dictionary otherwise: local filename"}},
             {"no-ctf-columns-combining", VariantType::Bool, false, {"Do not combine correlated columns in CTF"}},

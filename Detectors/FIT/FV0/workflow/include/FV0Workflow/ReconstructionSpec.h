@@ -18,6 +18,7 @@
 #include "Framework/Task.h"
 #include "FV0Reconstruction/BaseRecoTask.h"
 #include "DataFormatsFV0/RecPoints.h"
+#include "CCDB/BasicCCDBManager.h"
 #include "FV0Base/Constants.h"
 #include "TStopwatch.h"
 
@@ -33,16 +34,15 @@ class ReconstructionDPL : public Task
   static constexpr int NCHANNELS = o2::fv0::Constants::nFv0Channels;
 
  public:
-  ReconstructionDPL(bool useMC) : mUseMC(useMC) {}
+  ReconstructionDPL(bool useMC, const std::string ccdbpath) : mUseMC(useMC), mCCDBpath(ccdbpath) {}
   ~ReconstructionDPL() override = default;
   void init(InitContext& ic) final;
   void run(ProcessingContext& pc) final;
   void endOfStream(framework::EndOfStreamContext& ec) final;
-  void finaliseCCDB(o2::framework::ConcreteDataMatcher& matcher, void* obj) final;
 
  private:
-  void updateTimeDependentParams(o2::framework::ProcessingContext& pc);
   bool mUseMC = false;
+  const std::string mCCDBpath = o2::base::NameConf::getCCDBServer();
   std::vector<o2::fv0::RecPoints> mRecPoints;
   std::vector<o2::fv0::ChannelDataFloat> mRecChData;
   o2::fv0::BaseRecoTask mReco;
@@ -51,7 +51,7 @@ class ReconstructionDPL : public Task
 };
 
 /// create a processor spec
-framework::DataProcessorSpec getReconstructionSpec(bool useMC = false);
+framework::DataProcessorSpec getReconstructionSpec(bool useMC = false, const std::string ccdbpath = "http://alice-ccdb.cern.ch");
 
 } // namespace fv0
 } // namespace o2

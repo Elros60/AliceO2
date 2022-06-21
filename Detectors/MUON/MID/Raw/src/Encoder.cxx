@@ -109,21 +109,22 @@ void Encoder::completeWord(std::vector<char>& buffer)
   }
 }
 
-void Encoder::writePayload(uint16_t feeId, const InteractionRecord& ir, bool onlyNonEmpty)
+void Encoder::writePayload(uint16_t feeId, const InteractionRecord& ir)
 {
   /// Writes data
 
-  std::vector<char> buf = mOrbitResponse[feeId];
+  std::vector<char> buf;
   for (auto& gbtUniqueId : mFEEIdConfig.getGBTUniqueIdsInLink(feeId)) {
     if (!mGBTEncoders[gbtUniqueId].isEmpty()) {
       mGBTEncoders[gbtUniqueId].flush(buf, ir);
     }
   }
-  if (onlyNonEmpty && buf.size() == mOrbitResponse[feeId].size()) {
+  if (buf.empty()) {
     return;
   }
 
   // Add the orbit response
+  buf.insert(buf.begin(), mOrbitResponse[feeId].begin(), mOrbitResponse[feeId].end());
   completeWord(buf);
   mRawWriter.addData(feeId, feeId / 2, raw::sUserLogicLinkID, feeId % 2, ir, buf);
 }
@@ -131,16 +132,19 @@ void Encoder::writePayload(uint16_t feeId, const InteractionRecord& ir, bool onl
 void Encoder::finalize(bool closeFile)
 {
   /// Writes remaining data and closes the file
-  initIR();
+  if (mLastIR.isDummy()) {
+    mLastIR = mRawWriter.getHBFUtils().getFirstSampledTFIR();
+  }
   auto ir = getOrbitIR(mLastIR.orbit);
   auto nextIr = getOrbitIR(mLastIR.orbit + 1);
   for (uint16_t feeId = 0; feeId < 4; ++feeId) {
+    auto ir = getOrbitIR(mLastIR.orbit);
     // Write the last payload
-    writePayload(feeId, ir, true);
+    writePayload(feeId, ir);
     // Since the regional response comes after few clocks,
     // we might have the corresponding regional cards in the next orbit.
     // If this is the case, we flush all data of the next orbit
-    writePayload(feeId, nextIr, true);
+    writePayload(feeId, nextIr);
   }
   if (closeFile) {
     mRawWriter.close();
@@ -152,16 +156,11 @@ void Encoder::process(gsl::span<const ColumnData> data, InteractionRecord ir, Ev
   /// Encodes data
 
   // The CTP trigger arrives to the electronics with a delay
-  if (ir.differenceInBC(mRawWriter.getHBFUtils().getFirstSampledTFIR()) < mElectronicsDelay.localToBC) {
-    // Due to the delay, these data would arrive in the TF before the first sampled one.
-    // We therefore reject them.
-    return;
+  if (ir.differenceInBC(mRawWriter.getHBFUtils().getFirstSampledTFIR()) > mElectronicsDelay.localToBC) { // RS: not sure this is correct.
+    applyElectronicsDelay(ir.orbit, ir.bc, -mElectronicsDelay.localToBC);
   }
-  applyElectronicsDelay(ir.orbit, ir.bc, -mElectronicsDelay.localToBC);
 
-  initIR();
-
-  if (ir.orbit != mLastIR.orbit) {
+  if (ir.orbit != mLastIR.orbit && !mLastIR.isDummy()) {
     onOrbitChange(mLastIR.orbit);
   }
 
@@ -182,13 +181,5 @@ void Encoder::process(gsl::span<const ColumnData> data, InteractionRecord ir, Ev
   }
   mLastIR = ir;
 }
-
-void Encoder::initIR()
-{
-  if (mLastIR.isDummy()) {
-    mLastIR = mRawWriter.getHBFUtils().getFirstSampledTFIR();
-  }
-}
-
 } // namespace mid
 } // namespace o2

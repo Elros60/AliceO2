@@ -25,17 +25,9 @@
 
 using namespace o2::emcal;
 
-template <typename InputType>
-ClusterFactory<InputType>::ClusterFactory()
-{
-  mGeomPtr = o2::emcal::Geometry::GetInstance();
-}
-
 template <class InputType>
 ClusterFactory<InputType>::ClusterFactory(gsl::span<const o2::emcal::Cluster> clustersContainer, gsl::span<const InputType> inputsContainer, gsl::span<const int> cellsIndices)
 {
-  mGeomPtr = o2::emcal::Geometry::GetInstance();
-
   setClustersContainer(clustersContainer);
   setCellsContainer(inputsContainer);
   setCellsIndicesContainer(cellsIndices);
@@ -57,9 +49,6 @@ o2::emcal::AnalysisCluster ClusterFactory<InputType>::buildCluster(int clusterIn
 {
   if (clusterIndex >= mClustersContainer.size()) {
     throw ClusterRangeException(clusterIndex, mClustersContainer.size());
-  }
-  if (!mGeomPtr) {
-    throw GeometryNotSetException();
   }
 
   o2::emcal::AnalysisCluster clusterAnalysis;
@@ -475,6 +464,8 @@ void ClusterFactory<InputType>::evalCoreEnergy(gsl::span<const int> inputsIndice
 template <class InputType>
 void ClusterFactory<InputType>::evalElipsAxis(gsl::span<const int> inputsIndices, AnalysisCluster& clusterAnalysis) const
 {
+  TString gn(mGeomPtr->GetName());
+
   double wtot = 0.;
   double x = 0.;
   double z = 0.;

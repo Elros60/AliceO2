@@ -29,10 +29,7 @@ namespace dataformats
 // problems with fwd.declaration
 struct IRFrame : public o2::math_utils::detail::Bracket<o2::InteractionRecord> {
   using o2::math_utils::detail::Bracket<o2::InteractionRecord>::Bracket;
-
-  uint64_t info = 0;
-
-  ClassDefNV(IRFrame, 2);
+  ClassDefNV(IRFrame, 1);
 };
 
 } // namespace dataformats

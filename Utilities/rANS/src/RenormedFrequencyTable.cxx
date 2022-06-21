@@ -37,7 +37,7 @@ RenormedFrequencyTable renorm(FrequencyTable frequencyTable, size_t newPrecision
     newPrecision = computeRenormingPrecision(frequencyTable);
   }
 
-  size_t nSamples = frequencyTable.getNumSamples();
+  count_t nSamples = frequencyTable.getNumSamples();
   count_t nIncompressible = frequencyTable.getIncompressibleSymbolFrequency();
   count_t nUsedAlphabetSymbols = frequencyTable.getNUsedAlphabetSymbols();
   const symbol_t offset = frequencyTable.getMinSymbol();
@@ -52,14 +52,11 @@ RenormedFrequencyTable renorm(FrequencyTable frequencyTable, size_t newPrecision
   histogram_t frequencies = std::move(frequencyTable).release();
   frequencies.push_back(nIncompressible);
 
-  std::vector<uint64_t> cumulativeFrequencies(frequencies.size() + 1);
+  histogram_t cumulativeFrequencies(frequencies.size() + 1);
   cumulativeFrequencies[0] = 0;
-  std::inclusive_scan(frequencies.begin(), frequencies.end(), ++cumulativeFrequencies.begin(), std::plus<>(), 0ull);
+  std::inclusive_scan(frequencies.begin(), frequencies.end(), ++cumulativeFrequencies.begin());
 
-  auto getFrequency = [&cumulativeFrequencies](count_t i) {
-    assert(cumulativeFrequencies[i + 1] >= cumulativeFrequencies[i]);
-    return cumulativeFrequencies[i + 1] - cumulativeFrequencies[i];
-  };
+  auto getFrequency = [&cumulativeFrequencies](count_t i) { return cumulativeFrequencies[i + 1] - cumulativeFrequencies[i]; };
 
   const auto sortIdx = [&]() {
     std::vector<size_t> indices;

@@ -11,7 +11,6 @@
 
 o2_add_library(TRDQC
                SOURCES src/Tracking.cxx
-                       src/StatusHelper.cxx
                PUBLIC_LINK_LIBRARIES O2::TRDBase
                                      O2::DataFormatsTRD
                                      O2::DataFormatsGlobalTracking
@@ -20,5 +19,4 @@ o2_add_library(TRDQC
                                      O2::GPUTracking)
 
  o2_target_root_dictionary(TRDQC
-                           HEADERS include/TRDQC/Tracking.h
-                                   include/TRDQC/StatusHelper.h)
+                           HEADERS include/TRDQC/Tracking.h)

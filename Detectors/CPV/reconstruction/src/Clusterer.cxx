@@ -20,8 +20,7 @@
 #include "DataFormatsCPV/Digit.h"
 #include "CCDB/CcdbApi.h"
 #include "CPVBase/CPVSimParams.h"
-#include "CPVBase/CPVCalibParams.h"
-#include <bitset>
+
 #include "FairLogger.h" // for LOG
 
 using namespace o2::cpv;
@@ -39,12 +38,10 @@ void Clusterer::initialize()
 void Clusterer::process(gsl::span<const Digit> digits, gsl::span<const TriggerRecord> dtr,
                         const o2::dataformats::MCTruthContainer<o2::MCCompLabel>* dmc,
                         std::vector<Cluster>* clusters, std::vector<TriggerRecord>* trigRec,
-                        o2::dataformats::MCTruthContainer<o2::MCCompLabel>* cluMC,
-                        std::vector<Digit>* calibDigits)
+                        o2::dataformats::MCTruthContainer<o2::MCCompLabel>* cluMC)
 {
   clusters->clear(); // final out list of clusters
   trigRec->clear();
-  calibDigits->clear();
   if (mRunMC) {
     cluMC->clear();
   }
@@ -61,15 +58,11 @@ void Clusterer::process(gsl::span<const Digit> digits, gsl::span<const TriggerRe
     // Collect digits to clusters
     makeClusters(digits);
 
-    // Unfold overlapped clusters
-    // Split clusters with several local maxima if necessary
-    if (o2::cpv::CPVSimParams::Instance().mUnfoldClusters) {
-      // calibdigits will be prepared in this routine
-      makeUnfoldingsAndCalibDigits(digits, calibDigits);
-    } else {
-      // otherwise prepare calibdigits only
-      makeCalibDigits(calibDigits);
-    }
+    // // Unfold overlapped clusters
+    // // Split clusters with several local maxima if necessary
+    // if (o2::cpv::CPVSimParams::Instance().mUnfoldClusters) {
+    //   makeUnfoldings(digits);
+    // }
 
     // Calculate properties of collected clusters (Local position, energy, disp etc.)
     evalCluProperties(digits, clusters, dmc, cluMC);
@@ -151,22 +144,7 @@ void Clusterer::makeClusters(gsl::span<const Digit> digits)
   }   // energy theshold
 }
 //__________________________________________________________________________
-void Clusterer::makeCalibDigits(std::vector<Digit>* calibDigits)
-{
-  std::array<int, NLMMax> maxAt; // NLMMax:Maximal number of local maxima
-  for (auto& clu : mClusters) {
-    if (clu.getNumberOfLocalMax(maxAt) == 1) { // cluster with only one local maximum
-                                               // and appropriate size
-      if ((o2::cpv::CPVCalibParams::Instance().gainMinClusterMultForCalib <= clu.getMultiplicity()) &&
-          (o2::cpv::CPVCalibParams::Instance().gainMaxClusterMultForCalib >= clu.getMultiplicity())) {
-        const FullCluster::CluElement& maxElement = clu.getElementList()->at(maxAt[0]);
-        calibDigits->emplace_back(maxElement.absId, maxElement.energy, maxElement.label);
-      }
-    }
-  }
-}
-//__________________________________________________________________________
-void Clusterer::makeUnfoldingsAndCalibDigits(gsl::span<const Digit> digits, std::vector<Digit>* calibDigits)
+void Clusterer::makeUnfoldings(gsl::span<const Digit> digits)
 {
   // Split cluster if several local maxima are found
 
@@ -186,12 +164,6 @@ void Clusterer::makeUnfoldingsAndCalibDigits(gsl::span<const Digit> digits, std:
       clu.setEnergy(0); // will be skipped later
     } else {
       clu.setNExMax(nMax); // Only one local maximum
-      // make calib digits from cluster with only one local maximum and appropriate size
-      if ((o2::cpv::CPVCalibParams::Instance().gainMinClusterMultForCalib <= clu.getMultiplicity()) &&
-          (o2::cpv::CPVCalibParams::Instance().gainMaxClusterMultForCalib >= clu.getMultiplicity())) {
-        const FullCluster::CluElement& maxElement = clu.getElementList()->at(maxAt[0]);
-        calibDigits->emplace_back(maxElement.absId, maxElement.energy, maxElement.label);
-      }
     }
   }
 }

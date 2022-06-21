@@ -13,7 +13,6 @@
 #include "DataFormatsEMCAL/Cell.h"
 #include <iostream>
 #include <bitset>
-#include <cmath>
 
 using namespace o2::emcal;
 
@@ -47,7 +46,7 @@ void Cell::setTimeStamp(float timestamp)
   } else if (timestamp > TIME_MAX) {
     timestamp = TIME_MAX;
   }
-  getDataRepresentation()->mTime = static_cast<uint16_t>(std::round((timestamp + TIME_SHIFT) / TIME_RESOLUTION));
+  getDataRepresentation()->mTime = static_cast<uint16_t>((timestamp + TIME_SHIFT) / TIME_RESOLUTION);
 }
 
 float Cell::getTimeStamp() const
@@ -63,7 +62,7 @@ void Cell::setEnergy(float energy)
   } else if (truncatedEnergy > ENERGY_TRUNCATION) {
     truncatedEnergy = ENERGY_TRUNCATION;
   }
-  getDataRepresentation()->mEnergy = static_cast<int16_t>(std::round(truncatedEnergy / ENERGY_RESOLUTION));
+  getDataRepresentation()->mEnergy = static_cast<int16_t>(truncatedEnergy / ENERGY_RESOLUTION);
 }
 
 float Cell::getEnergy() const

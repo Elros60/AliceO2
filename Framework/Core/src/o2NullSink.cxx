@@ -26,8 +26,7 @@ using namespace o2::framework;
 
 void customize(std::vector<ConfigParamSpec>& options)
 {
-  options.push_back(o2::framework::ConfigParamSpec{"name", VariantType::String, "null", {"name for the dataprocessor"}});
-  options.push_back(o2::framework::ConfigParamSpec{"dataspec", VariantType::String, "", {"inputs for the dataprocessor"}});
+  options.push_back(o2::framework::ConfigParamSpec{"inputs", VariantType::String, "", {"inputs for the dataprocessor"}});
 };
 
 #include "Framework/runDataProcessing.h"
@@ -42,12 +41,11 @@ WorkflowSpec defineDataProcessing(ConfigContext const& context)
   // passed to the parallel statement will be applied to each one of the
   // instances in order to modify it. Parallel will also make sure the name of
   // the instance is amended from "some-producer" to "some-producer-<index>".
-  auto name = context.options().get<std::string>("name");
-  auto inputsDesc = context.options().get<std::string>("dataspec");
+  auto inputsDesc = context.options().get<std::string>("inputs");
   auto inputs = DataDescriptorQueryBuilder::parse(inputsDesc.c_str());
 
   workflow.push_back(DataProcessorSpec{
-    name,
+    "null",
     inputs,
     {},
     AlgorithmSpec{[](ProcessingContext& ctx) {}}});

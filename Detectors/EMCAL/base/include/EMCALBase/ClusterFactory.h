@@ -109,21 +109,6 @@ class ClusterFactory
     std::string mErrorMessage; ///< Error message
   };
 
-  /// \class GeometryNoSetException
-  /// \brief Exception thrown when the geometry is not set
-  class GeometryNotSetException final : public std::exception
-  {
-   public:
-    /// \brief Constructor
-    GeometryNotSetException() = default;
-    /// \brief Destructor
-    ~GeometryNotSetException() noexcept final = default;
-
-    /// \brief Provide error message
-    /// \return Error message connected to this exception
-    const char* what() const noexcept final { return "Geometry not set"; }
-  };
-
   class ClusterIterator
   {
    public:
@@ -187,7 +172,7 @@ class ClusterFactory
 
   ///
   /// Dummy constructor
-  ClusterFactory();
+  ClusterFactory() = default;
 
   ///
   /// \brief Constructor initializing the ClusterFactory
@@ -276,11 +261,11 @@ class ClusterFactory
 
   // searches for the local maxima
   // energy above relative level
-  // int getNumberOfLocalMax(int nInputMult,
+  //int getNumberOfLocalMax(int nInputMult,
   //                        float locMaxCut, gsl::span<InputType> inputs) const;
 
-  // int getNumberOfLocalMax(std::vector<InputType>& maxAt, std::vector<float>& maxAtEnergy,
-  //                         float locMaxCut, gsl::span<InputType> inputs) const;
+  //int getNumberOfLocalMax(std::vector<InputType>& maxAt, std::vector<float>& maxAtEnergy,
+  //                        float locMaxCut, gsl::span<InputType> inputs) const;
 
   bool sharedCluster() const { return mSharedCluster; }
   void setSharedCluster(bool s) { mSharedCluster = s; }
@@ -312,10 +297,6 @@ class ClusterFactory
   {
     return mClustersContainer.size();
   }
-
-  /// \brief Initialize Cluster Factory with geometry
-  /// \param geometry EMCAL geometry
-  void setGeometry(o2::emcal::Geometry* geometry) { mGeomPtr = geometry; }
 
  protected:
   ///
@@ -350,7 +331,7 @@ class ClusterFactory
   float etaToTheta(float arg) const;
 
  private:
-  o2::emcal::Geometry* mGeomPtr = nullptr;
+  o2::emcal::Geometry* mGeomPtr = Geometry::GetInstanceFromRunNumber(223409); //!<! Pointer to geometry for utilities
 
   float mCoreRadius = 10; ///<  The radius in which the core energy is evaluated
 
@@ -371,4 +352,4 @@ class ClusterFactory
 
 } // namespace emcal
 } // namespace o2
-#endif // ALICEO2_EMCAL_CLUSTERFACTORY_H_
+#endif //ALICEO2_EMCAL_CLUSTERFACTORY_H_

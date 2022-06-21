@@ -382,10 +382,10 @@ void Clusterer::unfoldOneCluster(Cluster& iniClu, char nMax, std::vector<Cluster
           // insuficientAccuracy|=fabs(meMax[iclu]-eOld)> meMax[iclu]*o2::phos::PHOSSimParams::Instance().mUnfogingEAccuracy ;
         }
       } else {
-        LOG(warning) << "Failed to decompose matrix of size " << int(nMax);
+        LOG(warning) << "Failed to decompose matrix of size " << nMax;
       }
     } else {
-      LOG(warning) << "Failed to decompose matrix of size " << int(nMax);
+      LOG(warning) << "Failed to decompose matrix of size " << nMax;
     }
     insuficientAccuracy &= (chi2 > o2::phos::PHOSSimParams::Instance().mUnfogingChi2Accuracy * nMax);
     nIterations++;
@@ -397,6 +397,7 @@ void Clusterer::unfoldOneCluster(Cluster& iniClu, char nMax, std::vector<Cluster
     int start = cluelements.size();
     int nce = 0;
     for (uint32_t idig = firstCE; idig < lastCE; idig++) {
+      float eDigit = eInClusters[idig - firstCE][iclu];
       CluElement& el = cluelements[idig];
       float ei = el.energy * mProp[(idig - firstCE) * nMax + iclu];
       if (ei > o2::phos::PHOSSimParams::Instance().mDigitMinEnergy) {
@@ -621,22 +622,13 @@ void Clusterer::evalAll(Cluster& clu, std::vector<CluElement>& cluel) const
 
   for (auto& trd : mTrigger) {
     char trurelid[3];
-    short trtype = trd.is2x2Tile() ? 0 : 1;
-    Geometry::truAbsToRelNumbering(trd.getAbsId(), trtype, trurelid);
+    Geometry::truAbsToRelNumbering(trd.getAbsId(), trurelid);
 
-    // Trigger tile coordinates of lower left corner (smallest x,z)
     int dx = relId[1] - trurelid[1];
     int dz = relId[2] - trurelid[2];
-    if (trtype == 0) { // 2x2
-      if (dx >= 0 && dx < 2 && dz >= 0 && dz < 2) {
-        clu.setFiredTrigger(trd.isHighGain());
-        break;
-      }
-    } else { // 4x4
-      if (dx >= 0 && dx < 4 && dz >= 0 && dz < 4) {
-        clu.setFiredTrigger(trd.isHighGain());
-        break;
-      }
+    if (dx > -2 && dx < 3 && dz > -2 && dz < 3) {
+      clu.setFiredTrigger(trd.isHighGain());
+      break;
     }
   }
 }
@@ -686,10 +678,7 @@ char Clusterer::getNumberOfLocalMax(Cluster& clu, std::vector<CluElement>& cluel
       mMaxAt[iDigitN] = i + iFirst;
       iDigitN++;
       if (iDigitN >= NLOCMAX) { // Note that size of output arrays is limited:
-        static int nAlarms = 0;
-        if (nAlarms++ < 5) {
-          LOG(alarm) << "Too many local maxima, cluster multiplicity " << mIsLocalMax.size();
-        }
+        LOG(error) << "Too many local maxima, cluster multiplicity " << mIsLocalMax.size();
         return -2;
       }
     }

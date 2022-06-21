@@ -14,7 +14,6 @@
 #include "CCDB/CCDBTimeStampUtils.h"
 #include <map>
 #include "TFile.h"
-#include "TTree.h"
 #include "TClass.h"
 #include "TKey.h"
 #include <iostream>
@@ -151,14 +150,9 @@ int main(int argc, char* argv[])
   if (key) {
     // get type of key
     auto classname = key->GetClassName();
-    auto tcl = TClass::GetClass(classname);
     auto object = f.Get<void>(keyname.c_str());
-    if (tcl->InheritsFrom("TTree")) {
-      auto tree = static_cast<TTree*>(object);
-      tree->LoadBaskets(0x1L << 32); // make tree memory based
-      tree->SetDirectory(nullptr);
-    }
     // convert classname to typeinfo
+    auto tcl = TClass::GetClass(classname);
     // typeinfo
     auto ti = tcl->GetTypeInfo();
 

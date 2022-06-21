@@ -14,7 +14,7 @@
 #include "CommonUtils/MemFileHelper.h"
 #include "DetectorsCalibration/Utils.h"
 #include "CPVBase/Geometry.h"
-#include "CPVBase/CPVCalibParams.h"
+#include "CPVBase/CPVSimParams.h"
 #include "CCDB/CcdbApi.h"
 #include "CCDB/CCDBTimeStampUtils.h"
 
@@ -24,11 +24,12 @@ namespace cpv
 {
 //=======================PedestalSpectrum============================
 //___________________________________________________________________
-PedestalSpectrum::PedestalSpectrum(uint16_t toleratedGapWidth, float nSigmasZS, float suspiciousPedestalRMS)
+PedestalSpectrum::PedestalSpectrum()
 {
-  mToleratedGapWidth = toleratedGapWidth;
-  mZSnSigmas = nSigmasZS;
-  mSuspiciousPedestalRMS = suspiciousPedestalRMS;
+  auto& cpvParams = o2::cpv::CPVSimParams::Instance();
+  mToleratedGapWidth = cpvParams.mPedClbToleratedGapWidth;
+  mZSnSigmas = cpvParams.mZSnSigmas;
+  mSuspiciousPedestalRMS = cpvParams.mPedClbSuspiciousPedestalRMS;
 }
 //___________________________________________________________________
 PedestalSpectrum& PedestalSpectrum::operator+=(const PedestalSpectrum& rhs)
@@ -190,10 +191,10 @@ float PedestalSpectrum::getPedestalRMS()
 
 //========================PedestalCalibData==========================
 //___________________________________________________________________
-PedestalCalibData::PedestalCalibData(uint16_t toleratedGapWidth, float nSigmasZS, float suspiciousPedestalRMS)
+PedestalCalibData::PedestalCalibData()
 {
   for (int i = 0; i < Geometry::kNCHANNELS; i++) {
-    mPedestalSpectra.emplace_back(toleratedGapWidth, nSigmasZS, suspiciousPedestalRMS);
+    mPedestalSpectra.emplace_back();
   }
 }
 //___________________________________________________________________
@@ -223,23 +224,9 @@ void PedestalCalibData::print()
 //___________________________________________________________________
 PedestalCalibrator::PedestalCalibrator()
 {
-  LOG(info) << "PedestalCalibrator::PedestalCalibrator() : pedestal calibrator created!";
-}
-//___________________________________________________________________
-void PedestalCalibrator::configParameters()
-{
-  auto& cpvParams = o2::cpv::CPVCalibParams::Instance();
-  mMinEvents = cpvParams.pedMinEvents;
-  mZSnSigmas = cpvParams.pedZSnSigmas;
-  mToleratedGapWidth = cpvParams.pedToleratedGapWidth;
-  mZSnSigmas = cpvParams.pedZSnSigmas;
-  mSuspiciousPedestalRMS = cpvParams.pedSuspiciousPedestalRMS;
-  LOG(info) << "PedestalCalibrator::configParameters() : following parameters configured:";
-  LOG(info) << "mMinEvents = " << mMinEvents;
-  LOG(info) << "mZSnSigmas = " << mZSnSigmas;
-  LOG(info) << "mToleratedGapWidth = " << mToleratedGapWidth;
-  LOG(info) << "mZSnSigmas = " << mZSnSigmas;
-  LOG(info) << "mSuspiciousPedestalRMS = " << mSuspiciousPedestalRMS;
+  auto& cpvParams = o2::cpv::CPVSimParams::Instance();
+  mMinEvents = cpvParams.mPedClbMinEvents;
+  mZSnSigmas = cpvParams.mZSnSigmas;
 }
 //___________________________________________________________________
 void PedestalCalibrator::initOutput()
@@ -287,7 +274,7 @@ void PedestalCalibrator::finalizeSlot(PedestalTimeSlot& slot)
     peds->setPedSigma(i, sigma);
 
     // efficiencies
-    efficiency = 1. * calibData->mPedestalSpectra[i].getNEntries() / calibData->mNEvents;
+    float efficiency = 1. * calibData->mPedestalSpectra[i].getNEntries() / calibData->mNEvents;
     efficiencies.push_back(efficiency);
 
     // dead channels

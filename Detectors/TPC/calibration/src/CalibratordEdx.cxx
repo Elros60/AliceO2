@@ -27,8 +27,7 @@ using namespace o2::tpc;
 void CalibratordEdx::initOutput()
 {
   // Here we initialize the vector of our output objects
-  mTFIntervals.clear();
-  mTimeIntervals.clear();
+  mIntervals.clear();
   mCalibs.clear();
 }
 
@@ -44,20 +43,14 @@ void CalibratordEdx::finalizeSlot(Slot& slot)
 
   TFType startTF = slot.getTFStart();
   TFType endTF = slot.getTFEnd();
-  auto startTime = slot.getStartTimeMS();
-  auto endTime = slot.getEndTimeMS();
-
-  mTFIntervals.emplace_back(startTF, endTF);
-  mTimeIntervals.emplace_back(startTime, endTime);
+  mIntervals.emplace_back(startTF, endTF);
 
   if (mDebugOutputStreamer) {
     LOGP(info, "Dumping time slot data to file");
     auto calibCopy = container->getCalib();
     *mDebugOutputStreamer << "CalibdEdx"
-                          << "startTF=" << startTF      // Initial time frame ID of time slot
-                          << "endTF=" << endTF          // Final time frame ID of time slot
-                          << "startTime=" << startTime  // Initial time frame time of time slot
-                          << "endTime=" << endTime      // Final time frame time of time slot
+                          << "startTF=" << startTF      // Initial time frame of time slot
+                          << "endTF=" << endTF          // Final time frame of time slot
                           << "correction=" << calibCopy // dE/dx corretion
                           << "\n";
   }

@@ -27,10 +27,7 @@ GPUdii() void GPUTRDTrackerKernels::Thread(int nBlocks, int nThreads, int iBlock
 {
   auto* trdTracker = &processors.getTRDTracker<I>();
 #ifndef GPUCA_GPUCODE_DEVICE
-#if defined(__cplusplus) && __cplusplus >= 201703L
-  if constexpr (std::is_same_v<decltype(trdTracker), decltype(externalInstance)>)
-#endif
-  {
+  if constexpr (std::is_same_v<decltype(trdTracker), decltype(externalInstance)>) {
     if (externalInstance) {
       trdTracker = externalInstance;
     }

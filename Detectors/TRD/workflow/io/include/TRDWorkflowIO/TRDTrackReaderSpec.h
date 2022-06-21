@@ -51,8 +51,8 @@ class TRDTrackReader : public Task
  private:
   void connectTree(const std::string& filename);
   bool mUseMC = false;
-  Mode mMode;
   bool mSubSpecStrict = false;
+  Mode mMode;
   std::unique_ptr<TFile> mFile;
   std::unique_ptr<TTree> mTree;
   std::string mFileName = "";

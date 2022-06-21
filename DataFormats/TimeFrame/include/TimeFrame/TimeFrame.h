@@ -38,10 +38,10 @@ class TimeFrame
 {
  public:
   TimeFrame() : mParts() {} // in principle just for ROOT IO
-  // constructor taking fair::mq::Parts
+  // constructor taking FairMQParts
   // might offer another constructor not depending on FairMQ ... directly taking buffers?
   // FIXME: take care of ownership later
-  TimeFrame(fair::mq::Parts& parts) : mParts()
+  TimeFrame(FairMQParts& parts) : mParts()
   {
     for (int i = 0; i < parts.Size(); ++i) {
       mParts.emplace_back(parts[i].GetSize(), (char*)parts[i].GetData());

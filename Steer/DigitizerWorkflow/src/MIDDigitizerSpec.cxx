@@ -91,7 +91,9 @@ class MIDDPLDigitizerTask : public o2::base::BaseDPLDigitizer
         labelsAccum.mergeAtBack(labels);
       }
       auto nEntries = digitsAccum.size() - firstEntry;
-      rofRecords.emplace_back(irecords[collID], EventType::Standard, firstEntry, nEntries);
+      if (nEntries > 0) {
+        rofRecords.emplace_back(irecords[collID], EventType::Standard, firstEntry, nEntries);
+      }
     }
 
     mDigitsMerger.process(digitsAccum, labelsAccum, rofRecords);

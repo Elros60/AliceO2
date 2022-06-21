@@ -15,7 +15,6 @@
 #include "ZDCBase/Constants.h"
 #include <Rtypes.h>
 #include <array>
-#include <limits>
 
 /// \file TDCCalibConfig.h
 /// \brief Configuration of ZDC TDC calibration procedure

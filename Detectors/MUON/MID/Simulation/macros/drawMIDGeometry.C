@@ -4,7 +4,6 @@
 #include "TSystem.h"
 
 #include "FairRunSim.h"
-#include <FairRootFileSink.h>
 #include "DetectorsPassive/Cave.h"
 #include "MIDSimulation/Detector.h"
 
@@ -23,7 +22,7 @@ void drawMIDGeometry()
 
   // Create simulation run
   FairRunSim* run = new FairRunSim();
-  run->SetSink(new FairRootFileSink("foo.root")); // Output file
+  run->SetOutputFile("foo.root"); // Output file
   run->SetName("TGeant3");        // Transport engine
   // Create media
   run->SetMaterials("media.geo"); // Materials

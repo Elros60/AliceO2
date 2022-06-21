@@ -16,31 +16,6 @@
 namespace o2::framework
 {
 
-ServiceRegistry::ServiceRegistry(ServiceRegistry const& other)
-{
-  for (size_t i = 0; i < MAX_SERVICES; ++i) {
-    mServicesKey[i].store(other.mServicesKey[i].load());
-  }
-  mServicesValue = other.mServicesValue;
-  mServicesMeta = other.mServicesMeta;
-  for (size_t i = 0; i < other.mServicesBooked.size(); ++i) {
-    this->mServicesBooked[i] = other.mServicesBooked[i].load();
-  }
-}
-
-ServiceRegistry& ServiceRegistry::operator=(ServiceRegistry const& other)
-{
-  for (size_t i = 0; i < MAX_SERVICES; ++i) {
-    mServicesKey[i].store(other.mServicesKey[i].load());
-  }
-  mServicesValue = other.mServicesValue;
-  mServicesMeta = other.mServicesMeta;
-  for (size_t i = 0; i < other.mServicesBooked.size(); ++i) {
-    this->mServicesBooked[i] = other.mServicesBooked[i].load();
-  }
-  return *this;
-}
-
 ServiceRegistry::ServiceRegistry()
 {
   for (size_t i = 0; i < MAX_SERVICES; ++i) {
@@ -125,9 +100,6 @@ void ServiceRegistry::bindService(ServiceSpec const& spec, void* service)
   if (spec.postDispatching) {
     mPostDispatchingHandles.push_back(ServiceDispatchingHandle{spec, spec.postDispatching, service});
   }
-  if (spec.postForwarding) {
-    mPostForwardingHandles.push_back(ServiceForwardingHandle{spec, spec.postForwarding, service});
-  }
   if (spec.start) {
     mPreStartHandles.push_back(ServiceStartHandle{spec, spec.start, service});
   }
@@ -136,9 +108,6 @@ void ServiceRegistry::bindService(ServiceSpec const& spec, void* service)
   }
   if (spec.exit) {
     mPreExitHandles.push_back(ServiceExitHandle{spec, spec.exit, service});
-  }
-  if (spec.domainInfoUpdated) {
-    mDomainInfoHandles.push_back(ServiceDomainInfoHandle{spec, spec.domainInfoUpdated, service});
   }
 }
 
@@ -197,15 +166,7 @@ void ServiceRegistry::postDispatchingCallbacks(ProcessingContext& processContext
   }
 }
 
-/// Invoke callbacks to be executed after every data Dispatching
-void ServiceRegistry::postForwardingCallbacks(ProcessingContext& processContext)
-{
-  for (auto& forwardingHandle : mPostForwardingHandles) {
-    forwardingHandle.callback(processContext, forwardingHandle.service);
-  }
-}
-
-/// Callbacks to be called in fair::mq::Device::PreRun()
+/// Callbacks to be called in FairMQDevice::PreRun()
 void ServiceRegistry::preStartCallbacks()
 {
   // FIXME: we need to call the callback only once for the global services
@@ -231,13 +192,6 @@ void ServiceRegistry::preExitCallbacks()
   /// I guess...
   for (auto exitHandle = mPreExitHandles.rbegin(); exitHandle != mPreExitHandles.rend(); ++exitHandle) {
     exitHandle->callback(*this, exitHandle->service);
-  }
-}
-
-void ServiceRegistry::domainInfoUpdatedCallback(ServiceRegistry& registry, size_t oldestPossibleTimeslice, ChannelIndex channelIndex)
-{
-  for (auto& handle : mDomainInfoHandles) {
-    handle.callback(*this, oldestPossibleTimeslice, channelIndex);
   }
 }
 

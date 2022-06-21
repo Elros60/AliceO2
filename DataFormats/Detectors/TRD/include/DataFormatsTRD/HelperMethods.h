@@ -13,7 +13,6 @@
 #define ALICEO2_TRD_HELPERMETHODS_HH
 
 #include "DataFormatsTRD/Constants.h"
-#include <iostream>
 
 namespace o2
 {
@@ -89,7 +88,7 @@ struct HelperMethods {
     return det % constants::NLAYER;
   }
 
-  static int getDetector(int sector, int stack, int layer)
+  static int getDetector(int layer, int stack, int sector)
   {
     return (layer + stack * constants::NLAYER + sector * constants::NLAYER * constants::NSTACK);
   }

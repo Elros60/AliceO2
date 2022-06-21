@@ -35,7 +35,6 @@ o2_add_library(Framework
                        src/ConfigContext.cxx
                        src/ControlService.cxx
                        src/ControlServiceHelpers.cxx
-                       src/ControlWebSocketHandler.cxx
                        src/CCDBHelpers.cxx
                        src/DispatchPolicy.cxx
                        src/DataSender.cxx
@@ -286,7 +285,6 @@ foreach(b
         WorkflowHelpers
         ASoA
         ASoAHelpers
-        EventMixing
         HistogramRegistry
         TableToTree
         TreeToTable

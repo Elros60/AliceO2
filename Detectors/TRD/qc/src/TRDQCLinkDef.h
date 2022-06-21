@@ -18,6 +18,5 @@
 #pragma link C++ class o2::trd::Tracking + ;
 #pragma link C++ class o2::trd::TrackQC + ;
 #pragma link C++ class std::vector < o2::trd::TrackQC> + ;
-#pragma link C++ class o2::trd::HalfChamberStatusQC + ;
 
 #endif

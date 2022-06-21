@@ -104,7 +104,6 @@ class EMCALCalibExtractor
   /// \param hist -- 2d boost histogram: cell-time vs. cell-ID
   /// \param minTime -- min. time considered for fit
   /// \param maxTime -- max. time considered for fit
-  /// \param restrictFitRangeToMax -- restrict the fit range to the maximum entry in the histogram in the range +-restrictFitRangeToMax (default: 25ns)
   template <typename... axes>
   o2::emcal::TimeCalibrationParams calibrateTime(boost::histogram::histogram<axes...>& hist, double minTime = 0, double maxTime = 1000, double restrictFitRangeToMax = 25)
   {
@@ -128,11 +127,9 @@ class EMCALCalibExtractor
 
     for (unsigned int i = 0; i < mNcells; ++i) {
       // project boost histogram to 1d just for 1 cell
-      const int indexLow = histReduced.axis(1).index(i);
-      const int indexHigh = histReduced.axis(1).index(i + 1);
-      auto boostHist1d = o2::utils::ProjectBoostHistoXFast(histReduced, indexLow, indexHigh);
+      auto boostHist1d = o2::utils::ProjectBoostHistoXFast(histReduced, i, i + 1);
 
-      LOG(debug) << "calibrate cell time " << i << " of " << mNcells;
+      LOG(debug) << "calibrate cell " << i;
       // Restrict fit range to maximum +- restrictFitRangeToMax
       if (restrictFitRangeToMax > 0) {
         int maxElementIndex = std::max_element(boostHist1d.begin(), boostHist1d.end()) - boostHist1d.begin() - 1;

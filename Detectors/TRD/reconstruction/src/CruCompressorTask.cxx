@@ -26,8 +26,7 @@
 #include "TRDReconstruction/CruCompressorTask.h"
 #include "TRDReconstruction/CruRawReader.h"
 
-#include <fairmq/Device.h>
-#include <fairmq/Parts.h>
+#include <fairmq/FairMQDevice.h>
 #include <iostream>
 
 using namespace o2::framework;
@@ -127,7 +126,7 @@ void CruCompressorTask::run(ProcessingContext& pc)
     }
     //LOG(info) << "iit.mInputs  " << iit.mInputs.
     /* prepare output parts */
-    fair::mq::Parts parts;
+    FairMQParts parts;
 
     /* loop over input parts */
     for (auto const& ref : iit) {

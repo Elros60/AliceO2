@@ -11,7 +11,7 @@
 
 #include "B.h"
 #include <iostream>
-#include <fairmq/Device.h>
+#include "fairmq/FairMQDevice.h"
 
 B::B()
 {

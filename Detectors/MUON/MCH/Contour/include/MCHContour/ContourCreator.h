@@ -15,7 +15,6 @@
 #ifndef O2_MCH_CONTOUR_CONTOURCREATOR_H
 #define O2_MCH_CONTOUR_CONTOURCREATOR_H
 
-#include <memory>
 #include "ContourCreator.inl"
 
 namespace o2

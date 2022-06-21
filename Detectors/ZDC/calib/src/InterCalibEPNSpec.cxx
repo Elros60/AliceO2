@@ -59,7 +59,6 @@ InterCalibEPNSpec::InterCalibEPNSpec(const int verbosity) : mVerbosity(verbosity
 void InterCalibEPNSpec::init(o2::framework::InitContext& ic)
 {
   mVerbosity = ic.options().get<int>("verbosity-level");
-  mWorker.setVerbosity(mVerbosity);
 }
 
 void InterCalibEPNSpec::updateTimeDependentParams(ProcessingContext& pc)
@@ -75,22 +74,28 @@ void InterCalibEPNSpec::run(ProcessingContext& pc)
     mInitialized = true;
     std::string loadedConfFiles = "Loaded ZDC configuration files:";
     // InterCalib configuration
-    auto config = pc.inputs().get<o2::zdc::InterCalibConfig*>("intercalibconfig");
-    loadedConfFiles += " InterCalibConfig";
-    if (mVerbosity > DbgZero) {
-      LOG(info) << "Loaded InterCalib configuration object";
-      config->print();
+    auto interConfig = pc.inputs().get<o2::zdc::InterCalibConfig*>("intercalibconfig");
+    if (!interConfig) {
+      LOG(fatal) << "Missing InterCalibConfig calibration InterCalibConfig";
+      return;
+    } else {
+      loadedConfFiles += " InterCalibConfig";
+      if (mVerbosity > DbgZero) {
+        LOG(info) << "Loaded InterCalib configuration object";
+        interConfig->print();
+      }
     }
-    mWorker.setInterCalibConfig(config.get());
+
+    mInterCalibEPN.setInterCalibConfig(interConfig.get());
+
     LOG(info) << loadedConfFiles;
-    mTimer.Stop();
-    mTimer.Reset();
+    mTimer.CpuTime();
     mTimer.Start(false);
   }
 
   const auto ref = pc.inputs().getFirstValid(true);
   auto creationTime = DataRefUtils::getHeader<DataProcessingHeader*>(ref)->creation; // approximate time in ms
-  mWorker.getData().setCreationTime(creationTime);
+  mInterCalibEPN.getData().setCreationTime(creationTime);
 
   auto bcrec = pc.inputs().get<gsl::span<o2::zdc::BCRecData>>("bcrec");
   auto energy = pc.inputs().get<gsl::span<o2::zdc::ZDCEnergy>>("energy");
@@ -98,27 +103,27 @@ void InterCalibEPNSpec::run(ProcessingContext& pc)
   auto info = pc.inputs().get<gsl::span<uint16_t>>("info");
 
   // Process reconstructed data
-  mWorker.process(bcrec, energy, tdc, info);
+  mInterCalibEPN.process(bcrec, energy, tdc, info);
 
   // Send intermediate calibration data and debug histograms
   o2::framework::Output output("ZDC", "INTERCALIBDATA", 0, Lifetime::Timeframe);
-  pc.outputs().snapshot(output, mWorker.mData);
+  pc.outputs().snapshot(output, mInterCalibEPN.mData);
   char outputd[o2::header::gSizeDataDescriptionString];
   for (int ih = 0; ih < (2 * InterCalibData::NH); ih++) {
     snprintf(outputd, o2::header::gSizeDataDescriptionString, "INTER_1DH%d", ih);
     o2::framework::Output output("ZDC", outputd, 0, Lifetime::Timeframe);
-    pc.outputs().snapshot(output, mWorker.mH[ih]->getBase());
+    pc.outputs().snapshot(output, mInterCalibEPN.mH[ih]->getBase());
   }
   for (int ih = 0; ih < InterCalibData::NH; ih++) {
     snprintf(outputd, o2::header::gSizeDataDescriptionString, "INTER_2DH%d", ih);
     o2::framework::Output output("ZDC", outputd, 0, Lifetime::Timeframe);
-    pc.outputs().snapshot(output, mWorker.mC[ih]->getBase());
+    pc.outputs().snapshot(output, mInterCalibEPN.mC[ih]->getBase());
   }
 }
 
 void InterCalibEPNSpec::endOfStream(EndOfStreamContext& ec)
 {
-  mWorker.endOfRun();
+  mInterCalibEPN.endOfRun();
   mTimer.Stop();
   LOGF(info, "ZDC EPN Intercalibration total timing: Cpu: %.3e Real: %.3e s in %d slots", mTimer.CpuTime(), mTimer.RealTime(), mTimer.Counter() - 1);
 }

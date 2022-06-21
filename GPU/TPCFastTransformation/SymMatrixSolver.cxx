@@ -25,9 +25,7 @@
 using namespace std;
 using namespace GPUCA_NAMESPACE::gpu;
 
-#ifndef GPUCA_ALIROOT_LIB
 ClassImp(GPUCA_NAMESPACE::gpu::SymMatrixSolver);
-#endif
 
 void SymMatrixSolver::solve()
 {
@@ -35,7 +33,7 @@ void SymMatrixSolver::solve()
   for (int i = 0; i < mN; i++) {
     double* rowI = &mA[i * mShift];
     double* rowIb = &mA[i * mShift + mN];
-    double c = (fabs(rowI[i]) > 1.e-10) ? 1. / rowI[i] : 0.;
+    double c = 1. / rowI[i];
     double* rowJ = rowI + mShift;
     for (int j = i + 1; j < mN; j++, rowJ += mShift) { // row j
       if (rowI[j] != 0.) {

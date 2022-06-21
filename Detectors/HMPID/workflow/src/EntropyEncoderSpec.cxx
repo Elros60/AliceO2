@@ -70,10 +70,10 @@ void EntropyEncoderSpec::run(ProcessingContext& pc)
   auto digits = pc.inputs().get<gsl::span<Digit>>("digits");
 
   auto& buffer = pc.outputs().make<std::vector<o2::ctf::BufferType>>(Output{"HMP", "CTFDATA", 0, Lifetime::Timeframe});
-  auto iosize = mCTFCoder.encode(buffer, triggers, digits);
-  pc.outputs().snapshot({"ctfrep", 0}, iosize);
+  mCTFCoder.encode(buffer, triggers, digits);
+  auto sz = mCTFCoder.finaliseCTFOutput<CTF>(buffer);
   mTimer.Stop();
-  LOG(info) << iosize.asString() << " in " << mTimer.CpuTime() - cput << " s";
+  LOG(info) << "Created encoded data of size " << sz << " for HMPID in " << mTimer.CpuTime() - cput << " s";
 }
 
 void EntropyEncoderSpec::endOfStream(EndOfStreamContext& ec)
@@ -92,8 +92,7 @@ DataProcessorSpec getEntropyEncoderSpec()
   return DataProcessorSpec{
     "hmpid-entropy-encoder",
     inputs,
-    Outputs{{"HMP", "CTFDATA", 0, Lifetime::Timeframe},
-            {{"ctfrep"}, "HMP", "CTFENCREP", 0, Lifetime::Timeframe}},
+    Outputs{{"HMP", "CTFDATA", 0, Lifetime::Timeframe}},
     AlgorithmSpec{adaptFromTask<EntropyEncoderSpec>()},
     Options{{"ctf-dict", VariantType::String, "ccdb", {"CTF dictionary: empty or ccdb=CCDB, none=no external dictionary otherwise: local filename"}},
             {"mem-factor", VariantType::Float, 1.f, {"Memory allocation margin factor"}}}};

@@ -26,10 +26,4 @@
 #pragma link C++ class o2::calibration::TimeSlotCalibration < o2::cpv::Digit, o2::cpv::NoiseCalibData> + ;
 #pragma link C++ class o2::cpv::NoiseCalibrator + ;
 
-#pragma link C++ class o2::cpv::AmplitudeSpectrum + ;
-#pragma link C++ class o2::cpv::GainCalibData + ;
-#pragma link C++ class o2::calibration::TimeSlot < o2::cpv::GainCalibData> + ;
-#pragma link C++ class o2::calibration::TimeSlotCalibration < o2::cpv::Digit, o2::cpv::GainCalibData> + ;
-#pragma link C++ class o2::cpv::GainCalibrator + ;
-
 #endif

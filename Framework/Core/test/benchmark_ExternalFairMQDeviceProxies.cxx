@@ -25,10 +25,7 @@ using namespace o2::framework;
 #include "Framework/Logger.h"
 #include "Framework/InputRecordWalker.h"
 #include "Headers/DataHeader.h"
-#include <fairmq/Channel.h>
-#include <fairmq/Device.h>
-#include <fairmq/Message.h>
-#include <fairmq/Parts.h>
+#include "fairmq/FairMQDevice.h"
 #include <chrono>
 #include <sstream>
 
@@ -282,29 +279,29 @@ std::vector<DataProcessorSpec> defineDataProcessing(ConfigContext const& config)
       auto& state = *pState;
       ActiveGuard g(state);
 
-      fair::mq::Device& device = *(rds.device());
+      FairMQDevice& device = *(rds.device());
       auto transport = device.GetChannel(attributes->channelName, 0).Transport();
       auto channelAlloc = o2::pmr::getTransportAllocator(transport);
 
       DataProcessingHeader dph{attributes->iteration, 0};
-      fair::mq::Parts messages;
+      FairMQParts messages;
       size_t nHeaders = 0;
       size_t totalPayload = 0;
       size_t allocatedSize = 0;
-      auto createMessage = [&transport, &allocatedSize](size_t size) -> fair::mq::MessagePtr {
+      auto createMessage = [&transport, &allocatedSize](size_t size) -> FairMQMessagePtr {
         auto msg = transport->CreateMessage(size);
         allocatedSize += size;
         return msg;
       };
       auto insertHeader = [&dph, &createMessage, &messages, &nHeaders](DataHeader const& dh) -> void {
         Stack stack{dh, dph};
-        fair::mq::MessagePtr header = createMessage(stack.size());
+        FairMQMessagePtr header = createMessage(stack.size());
         memcpy(header->GetData(), stack.data(), stack.size());
         messages.AddPart(std::move(header));
         ++nHeaders;
       };
       auto insertPayload = [&createMessage, &messages, &totalPayload](size_t size) -> void {
-        fair::mq::MessagePtr payload = createMessage(size);
+        FairMQMessagePtr payload = createMessage(size);
         messages.AddPart(std::move(payload));
         totalPayload += size;
       };
@@ -374,7 +371,7 @@ std::vector<DataProcessorSpec> defineDataProcessing(ConfigContext const& config)
           SourceInfoHeader sih;
           sih.state = InputChannelState::Completed;
           auto headerMessage = o2::pmr::getMessage(o2::header::Stack{channelAlloc, dph, sih});
-          fair::mq::Parts out;
+          FairMQParts out;
           out.AddPart(std::move(headerMessage));
           // add empty payload message
           out.AddPart(std::move(device.NewMessageFor(attributes->channelName, 0, 0)));
@@ -410,7 +407,7 @@ std::vector<DataProcessorSpec> defineDataProcessing(ConfigContext const& config)
   for (unsigned int i = 0; i < nChannels; i++) {
     sinkInputs.emplace_back(InputSpec{{"external"}, "TST", "DATA", i, Lifetime::Timeframe});
   }
-  auto channelSelector = [](InputSpec const&, const std::unordered_map<std::string, std::vector<fair::mq::Channel>>&) -> std::string {
+  auto channelSelector = [](InputSpec const&, const std::unordered_map<std::string, std::vector<FairMQChannel>>&) -> std::string {
     return "downstream";
   };
   if (bypassProxies == ProxyBypass::None) {
@@ -469,7 +466,7 @@ std::vector<DataProcessorSpec> defineDataProcessing(ConfigContext const& config)
   // reads the messages from the output proxy via the out-of-band channel
 
   // converter callback for the external FairMQ device proxy ProcessorSpec generator
-  auto converter = [](TimingInfo&, fair::mq::Device& device, fair::mq::Parts& inputs, ChannelRetriever channelRetriever) {
+  auto converter = [](TimingInfo&, FairMQDevice& device, FairMQParts& inputs, ChannelRetriever channelRetriever) {
     ASSERT_ERROR(inputs.Size() >= 2);
     if (inputs.Size() < 2) {
       return;
@@ -505,7 +502,7 @@ std::vector<DataProcessorSpec> defineDataProcessing(ConfigContext const& config)
     // should depend on const'ness of the buffer
     auto odh = const_cast<o2::header::DataHeader*>(o2::header::get<o2::header::DataHeader*>(outHeaderMessage->GetData()));
     odh->dataOrigin = o2::header::DataOrigin("PRX");
-    fair::mq::Parts output;
+    FairMQParts output;
     output.AddPart(std::move(outHeaderMessage));
     output.AddPart(std::move(inputs.At(msgidx + 1)));
     LOG(debug) << "sending " << DataSpecUtils::describe(OutputSpec{odh->dataOrigin, odh->dataDescription, odh->subSpecification});

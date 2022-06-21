@@ -17,9 +17,8 @@
 #include "DataFormatsZDC/BCRecData.h"
 #include "DataFormatsZDC/ZDCEnergy.h"
 #include "DataFormatsZDC/ZDCTDCData.h"
-#include "DataFormatsZDC/ZDCWaveform.h"
-#include "ZDCWorkflow/ZDCRecoWriterDPLSpec.h"
 
+#include "ZDCWorkflow/ZDCRecoWriterDPLSpec.h"
 using namespace o2::framework;
 
 namespace o2
@@ -43,8 +42,7 @@ DataProcessorSpec getZDCRecoWriterDPLSpec()
                                 BranchDefinition<std::vector<o2::zdc::BCRecData>>{InputSpec{"bcrec", "ZDC", "BCREC"}, "ZDCRecBC"},
                                 BranchDefinition<std::vector<o2::zdc::ZDCEnergy>>{InputSpec{"energy", "ZDC", "ENERGY"}, "ZDCRecE"},
                                 BranchDefinition<std::vector<o2::zdc::ZDCTDCData>>{InputSpec{"tdcdata", "ZDC", "TDCDATA"}, "ZDCRecTDC"},
-                                BranchDefinition<std::vector<uint16_t>>{InputSpec{"info", "ZDC", "INFO"}, "ZDCRecInfo"},
-                                BranchDefinition<std::vector<o2::zdc::ZDCWaveform>>{InputSpec{"wave", "ZDC", "WAVE"}, "ZDCWaveform"})();
+                                BranchDefinition<std::vector<uint16_t>>{InputSpec{"info", "ZDC", "INFO"}, "ZDCRecInfo"})();
 }
 
 } // namespace zdc

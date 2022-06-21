@@ -238,17 +238,19 @@ void GPUDisplayFrontendGlfw::cursorPos_callback(GLFWwindow* window, double x, do
 
 void GPUDisplayFrontendGlfw::resize_callback(GLFWwindow* window, int width, int height) { me->ResizeScene(width, height); }
 
-#ifdef GPUCA_O2_LIB
 void GPUDisplayFrontendGlfw::DisplayLoop()
 {
+#ifdef GPUCA_O2_LIB
   ImGui::SetNextWindowPos(ImVec2(0, 0));
   ImGui::SetNextWindowSize(ImVec2(me->mDisplayWidth, me->mDisplayHeight));
   ImGui::SetNextWindowBgAlpha(0.f);
   ImGui::Begin("Console", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
-  me->DrawGLScene();
-  ImGui::End();
-}
 #endif
+  me->DrawGLScene();
+#ifdef GPUCA_O2_LIB
+  ImGui::End();
+#endif
+}
 
 int GPUDisplayFrontendGlfw::FrontendMain()
 {
@@ -269,9 +271,6 @@ int GPUDisplayFrontendGlfw::FrontendMain()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, GL_MIN_VERSION_MINOR);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, 0);
     glfwWindowHint(GLFW_OPENGL_PROFILE, mBackend->CoreProfile() ? GLFW_OPENGL_CORE_PROFILE : GLFW_OPENGL_COMPAT_PROFILE);
-#ifdef GPUCA_O2_LIB
-    mUseIMGui = true;
-#endif
   }
   mWindow = glfwCreateWindow(INIT_WIDTH, INIT_HEIGHT, DISPLAY_WINDOW_NAME, nullptr, nullptr);
   if (!mWindow) {
@@ -289,9 +288,7 @@ int GPUDisplayFrontendGlfw::FrontendMain()
   glfwSetScrollCallback(mWindow, scroll_callback);
   glfwSetCursorPosCallback(mWindow, cursorPos_callback);
   glfwSetWindowSizeCallback(mWindow, resize_callback);
-  if (backend()->backendType() == GPUDisplayBackend::TYPE_OPENGL) {
-    glfwSwapInterval(1);
-  }
+  glfwSwapInterval(1);
 
   pthread_mutex_lock(&mSemLockExit);
   mGlfwRunning = true;
@@ -303,18 +300,16 @@ int GPUDisplayFrontendGlfw::FrontendMain()
   }
 
 #if defined(GPUCA_O2_LIB) && !defined(GPUCA_DISPLAY_GL3W)
-  if (mUseIMGui && gl3wInit()) {
+  if (gl3wInit()) {
     fprintf(stderr, "Error initializing gl3w (2)\n");
     return (-1); // Hack: We have to initialize gl3w as well, as the DebugGUI uses it.
   }
 #endif
 
 #ifdef GPUCA_O2_LIB
-  if (mUseIMGui) {
-    mCanDrawText = 2;
-    if (drawTextFontSize() == 0) {
-      drawTextFontSize() = 12;
-    }
+  mCanDrawText = 2;
+  if (drawTextFontSize() == 0) {
+    drawTextFontSize() = 12;
   }
 #endif
 
@@ -324,33 +319,28 @@ int GPUDisplayFrontendGlfw::FrontendMain()
   }
 
 #ifdef GPUCA_O2_LIB
-  if (mUseIMGui) {
-    ImGui_ImplGlfwGL3_Init(mWindow, false);
-    while (o2::framework::pollGUI(mWindow, DisplayLoop)) {
-    }
-  } else
-#endif
-  {
-    while (!glfwWindowShouldClose(mWindow)) {
-      HandleSendKey();
-      if (DrawGLScene()) {
-        fprintf(stderr, "Error drawing GL scene\n");
-        return (1);
-      }
-      if (backend()->backendType() == GPUDisplayBackend::TYPE_OPENGL) {
-        glfwSwapBuffers(mWindow);
-      }
-      glfwPollEvents();
-    }
+  ImGui_ImplGlfwGL3_Init(mWindow, false);
+  while (o2::framework::pollGUI(mWindow, DisplayLoop)) {
   }
+#else
+  while (!glfwWindowShouldClose(mWindow)) {
+    HandleSendKey();
+    if (DrawGLScene()) {
+      fprintf(stderr, "Error drawing GL scene\n");
+      return (1);
+    }
+    if (backend()->backendType() == GPUDisplayBackend::TYPE_OPENGL) {
+      glfwSwapBuffers(mWindow);
+    }
+    glfwPollEvents();
+  }
+#endif
 
   ExitDisplay();
   mDisplayControl = 2;
   pthread_mutex_lock(&mSemLockExit);
 #ifdef GPUCA_O2_LIB
-  if (mUseIMGui) {
-    ImGui_ImplGlfwGL3_Shutdown();
-  }
+  ImGui_ImplGlfwGL3_Shutdown();
 #endif
   glfwDestroyWindow(mWindow);
   glfwTerminate();
@@ -375,14 +365,12 @@ void GPUDisplayFrontendGlfw::DisplayExit()
 void GPUDisplayFrontendGlfw::OpenGLPrint(const char* s, float x, float y, float r, float g, float b, float a, bool fromBotton)
 {
 #ifdef GPUCA_O2_LIB
-  if (mUseIMGui) {
-    if (fromBotton) {
-      y = ImGui::GetWindowHeight() - y;
-    }
-    y -= 20;
-    ImGui::SetCursorPos(ImVec2(x, y));
-    ImGui::TextColored(ImVec4(r, g, b, a), "%s", s);
+  if (fromBotton) {
+    y = ImGui::GetWindowHeight() - y;
   }
+  y -= 20;
+  ImGui::SetCursorPos(ImVec2(x, y));
+  ImGui::TextColored(ImVec4(r, g, b, a), "%s", s);
 #endif
 }
 

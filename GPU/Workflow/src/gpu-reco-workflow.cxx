@@ -32,7 +32,6 @@
 
 using namespace o2::framework;
 using namespace o2::dataformats;
-using namespace o2::gpu;
 using CompletionPolicyData = std::vector<InputSpec>;
 CompletionPolicyData gPolicyData;
 static constexpr unsigned long gTpcSectorMask = 0xFFFFFFFFF;
@@ -129,7 +128,7 @@ WorkflowSpec defineDataProcessing(ConfigContext const& cfgc)
     return std::find(list.begin(), list.end(), type) != list.end();
   };
 
-  GPURecoWorkflowSpec::Config cfg;
+  o2::gpu::gpuworkflow::Config cfg;
   cfg.decompressTPC = isEnabled(inputTypes, ioType::CompClustCTF);
   cfg.decompressTPCFromROOT = isEnabled(inputTypes, ioType::CompClustROOT);
   cfg.zsDecoder = isEnabled(inputTypes, ioType::ZSRaw);
@@ -146,13 +145,7 @@ WorkflowSpec defineDataProcessing(ConfigContext const& cfgc)
   cfg.askDISTSTF = !cfgc.options().get<bool>("ignore-dist-stf");
   cfg.readTRDtracklets = isEnabled(inputTypes, ioType::TRDTracklets);
   cfg.runTRDTracking = isEnabled(outputTypes, ioType::TRDTracks);
-
-  std::shared_ptr<GPURecoWorkflowSpec> task = std::make_shared<GPURecoWorkflowSpec>(&gPolicyData, cfg, tpcSectors, gTpcSectorMask);
-  specs.emplace_back(DataProcessorSpec{
-    "gpu-reconstruction",
-    task->inputs(),
-    task->outputs(),
-    AlgorithmSpec{adoptTask<GPURecoWorkflowSpec>(task)}});
+  specs.emplace_back(o2::gpu::getGPURecoWorkflowSpec(&gPolicyData, cfg, tpcSectors, gTpcSectorMask, "gpu-reconstruction"));
 
   if (!cfgc.options().get<bool>("ignore-dist-stf")) {
     GlobalTrackID::mask_t srcTrk = GlobalTrackID::getSourcesMask("none");

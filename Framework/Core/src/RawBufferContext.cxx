@@ -16,7 +16,7 @@
 namespace o2::framework
 {
 
-void RawBufferContext::addRawBuffer(std::unique_ptr<fair::mq::Message> header,
+void RawBufferContext::addRawBuffer(std::unique_ptr<FairMQMessage> header,
                                     char* payload,
                                     RouteIndex routeIndex,
                                     std::function<std::ostringstream()> serialize,

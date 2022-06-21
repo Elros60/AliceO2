@@ -33,9 +33,11 @@ class AlignableSensorHMPID : public AlignableSensor
 {
  public:
   AlignableSensorHMPID(const char* name = 0, int vid = 0, int iid = 0, int isec = 0);
-  ~AlignableSensorHMPID() final;
+  virtual ~AlignableSensorHMPID();
   //
-  void prepareMatrixT2L() final;
+  virtual AlignmentPoint* TrackPoint2AlgPoint(int pntId, const AliTrackPointArray* trpArr, const AliESDtrack* t);
+  //  virtual void   setTrackingFrame();
+  virtual void prepareMatrixT2L();
   //
  protected:
   //

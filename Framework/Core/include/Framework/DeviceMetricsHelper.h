@@ -94,7 +94,7 @@ struct DeviceMetricsHelper {
     };
   }
 
-  static size_t bookMetricInfo(DeviceMetricsInfo& metrics, char const* name, MetricType type);
+  static size_t bookMetricInfo(DeviceMetricsInfo& metrics, char const* name);
 
   /// @return helper to insert a given value in the metrics
   template <typename T>
@@ -104,8 +104,11 @@ struct DeviceMetricsHelper {
                       NewMetricCallback newMetricsCallback = nullptr)
   {
     static_assert(std::is_same_v<T, int> || std::is_same_v<T, uint64_t> || std::is_same_v<T, float>, "Unsupported metric type");
-    size_t metricIndex = bookMetricInfo(metrics, name, getMetricType<T>());
+    size_t metricIndex = bookMetricInfo(metrics, name);
     auto& metricInfo = metrics.metrics[metricIndex];
+    metricInfo.type = getMetricType<T>();
+    metricInfo.storeIdx = getMetricsStore<T>(metrics).size();
+    getMetricsStore<T>(metrics).emplace_back(std::array<T, 1024>{});
     if (newMetricsCallback != nullptr) {
       newMetricsCallback(name, metricInfo, 0, metricIndex);
     }

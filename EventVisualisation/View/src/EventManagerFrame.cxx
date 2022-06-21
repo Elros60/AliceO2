@@ -15,7 +15,6 @@
 /// \author p.nowakowski@cern.ch
 
 #include <TGButton.h>
-#include <TGButtonGroup.h>
 #include <TGNumberEntry.h>
 #include <TGLabel.h>
 #include <TTimer.h>
@@ -91,12 +90,10 @@ EventManagerFrame::EventManagerFrame(o2::event_visualisation::EventManager& even
     b->Connect("Clicked()", cls, this, "DoScreenshot()");
     b = EventManagerFrame::makeButton(f, "Save", 2 * width, "Save current event");
     b->Connect("Clicked()", cls, this, "DoSave()");
-    TGHButtonGroup* g = new TGHButtonGroup(f);
-    b = EventManagerFrame::makeRadioButton(g, "Online", 2 * width, "Change data source to online events", Options::Instance()->online());
+    b = EventManagerFrame::makeButton(f, "Online", 2 * width, "Change data source to online events");
     b->Connect("Clicked()", cls, this, "DoOnlineMode()");
-    b = EventManagerFrame::makeRadioButton(g, "Saved", 2 * width, "Change data source to saved events", !Options::Instance()->online());
+    b = EventManagerFrame::makeButton(f, "Saved", 2 * width, "Change data source to saved events");
     b->Connect("Clicked()", cls, this, "DoSavedMode()");
-    f->AddFrame(g, new TGLayoutHints(kLHintsNormal, 0, 0, 0, 0));
 
     f->AddFrame(infoLabel, new TGLayoutHints(kLHintsNormal, 5, 10, 4, 0));
     this->mTimeFrameSlider = EventManagerFrame::makeSlider(f, "Time", 8 * width);
@@ -125,25 +122,6 @@ TGTextButton* EventManagerFrame::makeButton(TGCompositeFrame* p, const char* txt
   }
 
   p->AddFrame(b, new TGLayoutHints(kLHintsNormal, lo, ro, to, bo));
-  return b;
-}
-
-TGRadioButton* EventManagerFrame::makeRadioButton(TGButtonGroup* g, const char* txt,
-                                                  Int_t width, const char* txttooltip, bool checked, Int_t lo, Int_t ro, Int_t to, Int_t bo)
-{
-  TGRadioButton* b = new TGRadioButton(g, txt);
-
-  if (width > 0) {
-    b->SetWidth(width);
-    b->ChangeOptions(b->GetOptions() | kFixedWidth);
-  }
-
-  if (txttooltip != nullptr) {
-    b->SetToolTipText(txttooltip);
-  }
-
-  b->SetOn(checked);
-
   return b;
 }
 
@@ -272,16 +250,10 @@ void EventManagerFrame::DoScreenshot()
   TASImage image(width, height);
   image.FillRectangle(backgroundColor, 0, 0, width, height);
 
-  const auto annotationStateTop = MultiView::getInstance()->getAnnotationTop()->GetState();
-  const auto annotationStateBottom = MultiView::getInstance()->getAnnotationBottom()->GetState();
-  MultiView::getInstance()->getAnnotationTop()->SetState(TGLOverlayElement::kInvisible);
-  MultiView::getInstance()->getAnnotationBottom()->SetState(TGLOverlayElement::kInvisible);
-
+  auto annotationState = MultiView::getInstance()->getAnnotation()->GetState();
+  MultiView::getInstance()->getAnnotation()->SetState(TGLOverlayElement::kInvisible);
   TImage* view3dImage = MultiView::getInstance()->getView(MultiView::EViews::View3d)->GetGLViewer()->GetPictureUsingBB();
-
-  MultiView::getInstance()->getAnnotationTop()->SetState(annotationStateTop);
-  MultiView::getInstance()->getAnnotationBottom()->SetState(annotationStateBottom);
-
+  MultiView::getInstance()->getAnnotation()->SetState(annotationState);
   scaledImage = ScaleImage((TASImage*)view3dImage, width * 0.65, height * 0.95);
   if (scaledImage) {
     CopyImage(&image, scaledImage, width * 0.015, height * 0.025, 0, 0, scaledImage->GetWidth(), scaledImage->GetHeight());
@@ -305,7 +277,7 @@ void EventManagerFrame::DoScreenshot()
   bool logo = true;
   if (logo) {
     TASImage* aliceLogo = new TASImage("Alice.png");
-    if (aliceLogo->IsValid()) {
+    if (aliceLogo) {
       double ratio = 1434. / 1939.;
       aliceLogo->Scale(0.08 * width, 0.08 * width / ratio);
       image.Merge(aliceLogo, "alphablend", 20, 20);
@@ -320,8 +292,8 @@ void EventManagerFrame::DoScreenshot()
 
   if (logo) {
     TASImage* o2Logo = new TASImage("o2.png");
-    if (o2Logo->IsValid()) {
-      double ratio = (double)(o2Logo->GetWidth()) / (double)(o2Logo->GetHeight());
+    if (o2Logo) {
+      double ratio = o2Logo->GetWidth() / o2Logo->GetHeight();
       int o2LogoX = 0.01 * width;
       int o2LogoY = 0.01 * width;
       int o2LogoSize = 0.04 * width;
@@ -330,14 +302,8 @@ void EventManagerFrame::DoScreenshot()
       textX = o2LogoX + o2LogoSize + o2LogoX;
       textY = height - o2LogoSize / ratio - o2LogoY;
       delete o2Logo;
-    } else {
-      textX = 229;
-      textY = 1926;
     }
   }
-
-  o2::dataformats::GlobalTrackID::mask_t detectorsMask;
-  auto detectorsString = detectors::DetID::getNames(this->mEventManager->getDataSource()->getDetectorsMask());
 
   std::vector<std::string> lines;
   std::ifstream input("screenshot.txt");
@@ -347,14 +313,17 @@ void EventManagerFrame::DoScreenshot()
     }
   }
 
-  if (!this->mEventManager->getDataSource()->getCollisionTime().empty()) {
-    lines.push_back((std::string)TString::Format("Run number: %d", this->mEventManager->getDataSource()->getRunNumber()));
-    lines.push_back((std::string)TString::Format("First TF orbit: %d", this->mEventManager->getDataSource()->getFirstTForbit()));
-    lines.push_back((std::string)TString::Format("Date: %s", this->mEventManager->getDataSource()->getCollisionTime().c_str()));
-    lines.push_back((std::string)TString::Format("Detectors: %s", detectorsString.c_str()));
-  }
-
   image.BeginPaint();
+  for (int i = 0; i < 4; i++) {
+    lines.push_back(""); // make sure that at least 4 lines are exising
+  }
+  if (!this->mEventManager->getDataSource()->getCollisionTime().empty()) {
+    char buff[100];
+    snprintf(buff, sizeof(buff), "Run number: %d", (int)this->mEventManager->getDataSource()->getRunNumber());
+    lines[0] = buff;
+    snprintf(buff, sizeof(buff), "Date: %s", this->mEventManager->getDataSource()->getCollisionTime().c_str());
+    lines[1] = buff;
+  }
 
   for (int i = 0; i < 4; i++) {
     image.DrawText(textX, textY + i * textLineHeight, lines[i].c_str(), fontSize, "#BBBBBB", "FreeSansBold.otf");

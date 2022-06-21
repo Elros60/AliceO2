@@ -43,12 +43,14 @@ Hit& Hit::operator+=(const Hit& rhs)
   return *this;
 }
 
-Hit operator+(const Hit& lhs, const Hit& rhs)
+Hit Hit::operator+(const Hit& rhs) const
 {
-  // Hit::Hit(int trackID, int detID, const math_utils::Point3D<float>& pos, double tof, double qLoss)
-  return Hit(lhs.GetTrackID(), lhs.GetDetectorID(), lhs.GetPos(),
-             lhs.GetEnergyLoss() > rhs.GetEnergyLoss() ? lhs.GetTime() : rhs.GetTime(),
-             lhs.GetEnergyLoss() + rhs.GetEnergyLoss());
+  Hit result(*this);
+  if (rhs.GetEnergyLoss() > result.GetEnergyLoss()) {
+    result.SetTime(rhs.GetTime());
+  }
+  result.SetEnergyLoss(result.GetEnergyLoss() + rhs.GetEnergyLoss());
+  return result;
 }
 
 std::ostream& operator<<(std::ostream& stream, const Hit& p)

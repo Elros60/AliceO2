@@ -41,11 +41,11 @@ class CTFCoder : public o2::ctf::CTFCoderBase
 
   /// entropy-encode data to buffer with CTF
   template <typename VEC>
-  o2::ctf::CTFIOSize encode(VEC& buff, const gsl::span<const CTPDigit>& data);
+  void encode(VEC& buff, const gsl::span<const CTPDigit>& data);
 
   /// entropy decode data from buffer with CTF
   template <typename VTRG>
-  o2::ctf::CTFIOSize decode(const CTF::base& ec, VTRG& data);
+  void decode(const CTF::base& ec, VTRG& data);
 
   void createCoders(const std::vector<char>& bufVec, o2::ctf::CTFCoderBase::OpType op) final;
 
@@ -56,7 +56,7 @@ class CTFCoder : public o2::ctf::CTFCoderBase
 
 /// entropy-encode clusters to buffer with CTF
 template <typename VEC>
-o2::ctf::CTFIOSize CTFCoder::encode(VEC& buff, const gsl::span<const CTPDigit>& data)
+void CTFCoder::encode(VEC& buff, const gsl::span<const CTPDigit>& data)
 {
   using MD = o2::ctf::Metadata::OptStore;
   // what to do which each field: see o2::ctd::Metadata explanation
@@ -81,23 +81,21 @@ o2::ctf::CTFIOSize CTFCoder::encode(VEC& buff, const gsl::span<const CTPDigit>& 
   ec->getANSHeader().majorVersion = 0;
   ec->getANSHeader().minorVersion = 1;
   // at every encoding the buffer might be autoexpanded, so we don't work with fixed pointer ec
-  o2::ctf::CTFIOSize iosize;
 #define ENCODECTP(beg, end, slot, bits) CTF::get(buff.data())->encode(beg, end, int(slot), bits, optField[int(slot)], &buff, mCoders[int(slot)].get(), getMemMarginFactor());
   // clang-format off
-  iosize += ENCODECTP(helper.begin_bcIncTrig(),    helper.end_bcIncTrig(),     CTF::BLC_bcIncTrig,    0);
-  iosize += ENCODECTP(helper.begin_orbitIncTrig(), helper.end_orbitIncTrig(),  CTF::BLC_orbitIncTrig, 0);
-  iosize += ENCODECTP(helper.begin_bytesInput(),  helper.end_bytesInput(),     CTF::BLC_bytesInput,   0);
-  iosize += ENCODECTP(helper.begin_bytesClass(),  helper.end_bytesClass(),     CTF::BLC_bytesClass,   0);
+  ENCODECTP(helper.begin_bcIncTrig(),    helper.end_bcIncTrig(),     CTF::BLC_bcIncTrig,    0);
+  ENCODECTP(helper.begin_orbitIncTrig(), helper.end_orbitIncTrig(),  CTF::BLC_orbitIncTrig, 0);
+
+  ENCODECTP(helper.begin_bytesInput(),  helper.end_bytesInput(),     CTF::BLC_bytesInput,   0);
+  ENCODECTP(helper.begin_bytesClass(),  helper.end_bytesClass(),     CTF::BLC_bytesClass,   0);
+
   // clang-format on
   CTF::get(buff.data())->print(getPrefix(), mVerbosity);
-  finaliseCTFOutput<CTF>(buff);
-  iosize.rawIn = data.size() * sizeof(CTPDigit);
-  return iosize;
 }
 
 /// decode entropy-encoded digits
 template <typename VTRG>
-o2::ctf::CTFIOSize CTFCoder::decode(const CTF::base& ec, VTRG& data)
+void CTFCoder::decode(const CTF::base& ec, VTRG& data)
 {
   auto header = ec.getHeader();
   checkDictVersion(static_cast<const o2::ctf::CTFDictHeader&>(header));
@@ -106,13 +104,12 @@ o2::ctf::CTFIOSize CTFCoder::decode(const CTF::base& ec, VTRG& data)
   std::vector<uint32_t> orbitInc;
   std::vector<uint8_t> bytesInput, bytesClass;
 
-  o2::ctf::CTFIOSize iosize;
 #define DECODECTP(part, slot) ec.decode(part, int(slot), mCoders[int(slot)].get())
   // clang-format off
-  iosize += DECODECTP(bcInc,       CTF::BLC_bcIncTrig);
-  iosize += DECODECTP(orbitInc,    CTF::BLC_orbitIncTrig);
-  iosize += DECODECTP(bytesInput,  CTF::BLC_bytesInput);
-  iosize += DECODECTP(bytesClass,  CTF::BLC_bytesClass);
+  DECODECTP(bcInc,       CTF::BLC_bcIncTrig);
+  DECODECTP(orbitInc,    CTF::BLC_orbitIncTrig);
+  DECODECTP(bytesInput,  CTF::BLC_bytesInput);
+  DECODECTP(bytesClass,  CTF::BLC_bytesClass);
   // clang-format on
   //
   data.clear();
@@ -141,8 +138,6 @@ o2::ctf::CTFIOSize CTFCoder::decode(const CTF::base& ec, VTRG& data)
   }
   assert(itInp == bytesInput.end());
   assert(itCls == bytesClass.end());
-  iosize.rawIn = data.size() * sizeof(CTPDigit);
-  return iosize;
 }
 
 } // namespace ctp

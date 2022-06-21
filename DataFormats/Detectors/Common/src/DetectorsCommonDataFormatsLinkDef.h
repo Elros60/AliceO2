@@ -36,6 +36,5 @@
 #pragma link C++ class o2::ctf::Block < uint8_t> + ;
 #pragma link C++ class o2::ctf::Metadata + ;
 #pragma link C++ class o2::ctf::ANSHeader + ;
-#pragma link C++ class o2::ctf::CTFIOSize + ;
 
 #endif

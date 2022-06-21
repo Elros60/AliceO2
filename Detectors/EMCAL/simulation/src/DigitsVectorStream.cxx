@@ -36,15 +36,14 @@ void DigitsVectorStream::init()
 void DigitsVectorStream::addNoiseDigits(LabeledDigit& d1)
 {
   double amplitude = d1.getAmplitude();
-  double sigmaHG = mSimParam->getPinNoise();
-  double sigmaLG = mSimParam->getPinNoiseLG();
+  double sigma = mSimParam->getPinNoise();
+  if (amplitude > constants::EMCAL_HGLGTRANSITION * constants::EMCAL_ADCENERGY) {
+    sigma = mSimParam->getPinNoiseLG();
+  }
 
-  uint16_t noiseHG = std::floor(std::abs(mRandomGenerator->Gaus(0, sigmaHG) / constants::EMCAL_ADCENERGY));                                 // ADC
-  uint16_t noiseLG = std::floor(std::abs(mRandomGenerator->Gaus(0, sigmaLG) / (constants::EMCAL_ADCENERGY * constants::EMCAL_HGLGFACTOR))); // ADC
-
+  double noise = std::abs(mRandomGenerator->Gaus(0, sigma));
   MCLabel label(true, 1.0);
-  LabeledDigit d(d1.getTower(), noiseLG, noiseHG, d1.getTimeStamp(), label);
-
+  LabeledDigit d(d1.getTower(), noise, d1.getTimeStamp(), label);
   d1 += d;
 }
 
@@ -62,23 +61,24 @@ void DigitsVectorStream::fill(std::deque<o2::emcal::DigitTimebin>& digitlist, o2
       }
       digitsList.sort();
 
-      int digIndex = 0;
       for (auto& ld : digitsList) {
 
         // Loop over all digits in the time sample and sum the digits that belongs to the same tower and falls in one time bin
-        int digIndex1 = 0;
         for (auto ld1 = digitsList.begin(); ld1 != digitsList.end(); ++ld1) {
 
-          if (digIndex == digIndex1) {
-            digIndex1++;
+          if (ld == *ld1) {
             continue;
           }
 
+          std::vector<decltype(digitsList.begin())> toDelete;
+
           if (ld.canAdd(*ld1)) {
             ld += *ld1;
-            digitsList.erase(ld1--);
+            toDelete.push_back(ld1);
           }
-          digIndex1++;
+          for (auto del : toDelete) {
+            digitsList.erase(del);
+          }
         }
 
         if (mSimulateNoiseDigits) {
@@ -96,7 +96,6 @@ void DigitsVectorStream::fill(std::deque<o2::emcal::DigitTimebin>& digitlist, o2
         }
 
         outputList[tower].push_back(ld);
-        digIndex++;
       }
     }
   }

@@ -85,7 +85,6 @@ class AODProducerWorkflowDPL : public Task
   ~AODProducerWorkflowDPL() override = default;
   void init(InitContext& ic) final;
   void run(ProcessingContext& pc) final;
-  void finaliseCCDB(ConcreteDataMatcher& matcher, void* obj) final;
   void endOfStream(framework::EndOfStreamContext& ec) final;
 
  private:

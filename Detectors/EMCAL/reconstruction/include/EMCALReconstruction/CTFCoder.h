@@ -41,11 +41,11 @@ class CTFCoder : public o2::ctf::CTFCoderBase
 
   /// entropy-encode data to buffer with CTF
   template <typename VEC>
-  o2::ctf::CTFIOSize encode(VEC& buff, const gsl::span<const TriggerRecord>& trigData, const gsl::span<const Cell>& cellData);
+  void encode(VEC& buff, const gsl::span<const TriggerRecord>& trigData, const gsl::span<const Cell>& cellData);
 
   /// entropy decode data from buffer with CTF
   template <typename VTRG, typename VCELL>
-  o2::ctf::CTFIOSize decode(const CTF::base& ec, VTRG& trigVec, VCELL& cellVec);
+  void decode(const CTF::base& ec, VTRG& trigVec, VCELL& cellVec);
 
   void createCoders(const std::vector<char>& bufVec, o2::ctf::CTFCoderBase::OpType op) final;
 
@@ -56,7 +56,7 @@ class CTFCoder : public o2::ctf::CTFCoderBase
 
 /// entropy-encode clusters to buffer with CTF
 template <typename VEC>
-o2::ctf::CTFIOSize CTFCoder::encode(VEC& buff, const gsl::span<const TriggerRecord>& trigData, const gsl::span<const Cell>& cellData)
+void CTFCoder::encode(VEC& buff, const gsl::span<const TriggerRecord>& trigData, const gsl::span<const Cell>& cellData)
 {
   using MD = o2::ctf::Metadata::OptStore;
   // what to do which each field: see o2::ctd::Metadata explanation
@@ -86,29 +86,25 @@ o2::ctf::CTFIOSize CTFCoder::encode(VEC& buff, const gsl::span<const TriggerReco
   ec->getANSHeader().majorVersion = 0;
   ec->getANSHeader().minorVersion = 1;
   // at every encoding the buffer might be autoexpanded, so we don't work with fixed pointer ec
-  o2::ctf::CTFIOSize iosize;
 #define ENCODEEMC(beg, end, slot, bits) CTF::get(buff.data())->encode(beg, end, int(slot), bits, optField[int(slot)], &buff, mCoders[int(slot)].get(), getMemMarginFactor());
   // clang-format off
-  iosize += ENCODEEMC(helper.begin_bcIncTrig(),    helper.end_bcIncTrig(),     CTF::BLC_bcIncTrig,    0);
-  iosize += ENCODEEMC(helper.begin_orbitIncTrig(), helper.end_orbitIncTrig(),  CTF::BLC_orbitIncTrig, 0);
-  iosize += ENCODEEMC(helper.begin_entriesTrig(),  helper.end_entriesTrig(),   CTF::BLC_entriesTrig,  0);
+  ENCODEEMC(helper.begin_bcIncTrig(),    helper.end_bcIncTrig(),     CTF::BLC_bcIncTrig,    0);
+  ENCODEEMC(helper.begin_orbitIncTrig(), helper.end_orbitIncTrig(),  CTF::BLC_orbitIncTrig, 0);
+  ENCODEEMC(helper.begin_entriesTrig(),  helper.end_entriesTrig(),   CTF::BLC_entriesTrig,  0);
 
-  iosize += ENCODEEMC(helper.begin_towerID(),     helper.end_towerID(),      CTF::BLC_towerID,     0);
-  iosize += ENCODEEMC(helper.begin_time(),        helper.end_time(),         CTF::BLC_time,        0);
-  iosize += ENCODEEMC(helper.begin_energy(),      helper.end_energy(),       CTF::BLC_energy,      0);
-  iosize += ENCODEEMC(helper.begin_status(),      helper.end_status(),       CTF::BLC_status,      0);
+  ENCODEEMC(helper.begin_towerID(),     helper.end_towerID(),      CTF::BLC_towerID,     0);
+  ENCODEEMC(helper.begin_time(),        helper.end_time(),         CTF::BLC_time,        0);
+  ENCODEEMC(helper.begin_energy(),      helper.end_energy(),       CTF::BLC_energy,      0);
+  ENCODEEMC(helper.begin_status(),      helper.end_status(),       CTF::BLC_status,      0);
   // extra slot was added in the end
-  iosize += ENCODEEMC(helper.begin_trigger(),  helper.end_trigger(),         CTF::BLC_trigger,     0);
+  ENCODEEMC(helper.begin_trigger(),  helper.end_trigger(),         CTF::BLC_trigger,     0);
   // clang-format on
   CTF::get(buff.data())->print(getPrefix(), mVerbosity);
-  finaliseCTFOutput<CTF>(buff);
-  iosize.rawIn = sizeof(TriggerRecord) * trigData.size() + sizeof(Cell) * cellData.size();
-  return iosize;
 }
 
 /// decode entropy-encoded clusters to standard compact clusters
 template <typename VTRG, typename VCELL>
-o2::ctf::CTFIOSize CTFCoder::decode(const CTF::base& ec, VTRG& trigVec, VCELL& cellVec)
+void CTFCoder::decode(const CTF::base& ec, VTRG& trigVec, VCELL& cellVec)
 {
   const auto& header = ec.getHeader();
   checkDictVersion(static_cast<const o2::ctf::CTFDictHeader&>(header));
@@ -117,19 +113,18 @@ o2::ctf::CTFIOSize CTFCoder::decode(const CTF::base& ec, VTRG& trigVec, VCELL& c
   std::vector<uint32_t> orbitInc;
   std::vector<uint8_t> status;
 
-  o2::ctf::CTFIOSize iosize;
 #define DECODEEMCAL(part, slot) ec.decode(part, int(slot), mCoders[int(slot)].get())
   // clang-format off
-  iosize += DECODEEMCAL(bcInc,       CTF::BLC_bcIncTrig);
-  iosize += DECODEEMCAL(orbitInc,    CTF::BLC_orbitIncTrig);
-  iosize += DECODEEMCAL(entries,     CTF::BLC_entriesTrig);
-  iosize += DECODEEMCAL(tower,       CTF::BLC_towerID);
+  DECODEEMCAL(bcInc,       CTF::BLC_bcIncTrig);
+  DECODEEMCAL(orbitInc,    CTF::BLC_orbitIncTrig);
+  DECODEEMCAL(entries,     CTF::BLC_entriesTrig);
+  DECODEEMCAL(tower,       CTF::BLC_towerID);
 
-  iosize += DECODEEMCAL(cellTime,    CTF::BLC_time);
-  iosize += DECODEEMCAL(energy,      CTF::BLC_energy);
-  iosize += DECODEEMCAL(status,      CTF::BLC_status);
+  DECODEEMCAL(cellTime,    CTF::BLC_time);
+  DECODEEMCAL(energy,      CTF::BLC_energy);
+  DECODEEMCAL(status,      CTF::BLC_status);
   // extra slot was added in the end
-  iosize += DECODEEMCAL(trigger,     CTF::BLC_trigger);
+  DECODEEMCAL(trigger,     CTF::BLC_trigger);
   // triggers were added later, in old data they are absent:
   if (trigger.empty()) {
     trigger.resize(header.nTriggers);
@@ -168,8 +163,6 @@ o2::ctf::CTFIOSize CTFCoder::decode(const CTF::base& ec, VTRG& trigVec, VCELL& c
     trigVec.emplace_back(trg);
   }
   assert(cellCount == header.nCells);
-  iosize.rawIn = sizeof(TriggerRecord) * trigVec.size() + sizeof(Cell) * cellVec.size();
-  return iosize;
 }
 
 } // namespace emcal

@@ -197,8 +197,9 @@ int TPCFastTransformGeo::test(int slice, int row, float ly, float lz) const
     error = -6;
   }
 
-  float pad = convUtoPad(row, u);
-  u1 = convPadToU(row, pad);
+  float pad = 0.f;
+  convUtoPad(row, u, pad);
+  convPadToU(row, pad, u1);
 
   if (fabs(u1 - u) > 1.e-5) {
     LOG(info) << "Error U<->Pad: u " << u << " pad " << pad << " du " << u1 - u;

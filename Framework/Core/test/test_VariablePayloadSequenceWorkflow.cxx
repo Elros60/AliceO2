@@ -25,7 +25,7 @@
 #include "Headers/DataHeader.h"
 #include "Headers/Stack.h"
 #include "MemoryResources/MemoryResources.h"
-#include <fairmq/Device.h>
+#include "fairmq/FairMQDevice.h"
 #include <memory>
 #include <random>
 
@@ -117,14 +117,14 @@ std::vector<DataProcessorSpec> defineDataProcessing(ConfigContext const& config)
       }
       ASSERT_ERROR(channelName.length() > 0);
     }
-    fair::mq::Device& device = *(rds.device());
+    FairMQDevice& device = *(rds.device());
     auto transport = device.GetChannel(channelName, 0).Transport();
     auto channelAlloc = o2::pmr::getTransportAllocator(transport);
 
     auto const* dph = DataRefUtils::getHeader<DataProcessingHeader*>(inputs.get("timer"));
     test::SequenceDesc sd{counter, 0, 0};
 
-    fair::mq::Parts messages;
+    FairMQParts messages;
     auto createSequence = [&dph, &sd, &attributes, &transport, &channelAlloc, &messages](size_t nPayloads, DataHeader dh) -> void {
       // one header with index set to the number of split parts indicates sequence
       // of payloads without additional headers
@@ -134,11 +134,11 @@ std::vector<DataProcessorSpec> defineDataProcessing(ConfigContext const& config)
       dh.splitPayloadParts = nPayloads;
       sd.nPayloads = nPayloads;
       sd.initialValue = attributes->distrib(attributes->gen);
-      fair::mq::MessagePtr header = o2::pmr::getMessage(Stack{channelAlloc, dh, *dph, sd});
+      FairMQMessagePtr header = o2::pmr::getMessage(Stack{channelAlloc, dh, *dph, sd});
       messages.AddPart(std::move(header));
 
       for (size_t i = 0; i < nPayloads; ++i) {
-        fair::mq::MessagePtr payload = transport->CreateMessage(dh.payloadSize);
+        FairMQMessagePtr payload = transport->CreateMessage(dh.payloadSize);
         *(reinterpret_cast<size_t*>(payload->GetData())) = sd.initialValue + i;
         messages.AddPart(std::move(payload));
       }
@@ -153,9 +153,9 @@ std::vector<DataProcessorSpec> defineDataProcessing(ConfigContext const& config)
       dh.splitPayloadParts = nPayloads;
       for (size_t i = 0; i < nPayloads; ++i) {
         dh.splitPayloadIndex = i;
-        fair::mq::MessagePtr header = o2::pmr::getMessage(Stack{channelAlloc, dh, *dph});
+        FairMQMessagePtr header = o2::pmr::getMessage(Stack{channelAlloc, dh, *dph});
         messages.AddPart(std::move(header));
-        fair::mq::MessagePtr payload = transport->CreateMessage(dh.payloadSize);
+        FairMQMessagePtr payload = transport->CreateMessage(dh.payloadSize);
         *(reinterpret_cast<size_t*>(payload->GetData())) = i;
         messages.AddPart(std::move(payload));
       }

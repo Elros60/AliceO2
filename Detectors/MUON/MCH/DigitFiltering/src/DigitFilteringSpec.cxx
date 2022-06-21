@@ -45,10 +45,6 @@ class DigitFilteringTask
     mSanityCheck = DigitFilterParam::Instance().sanityCheck;
     int minADC = DigitFilterParam::Instance().minADC;
     bool rejectBackground = DigitFilterParam::Instance().rejectBackground;
-    if (mUseMC) {
-      rejectBackground = false;
-      LOGP(warn, "background rejection not tuned for MC so far : disabling it");
-    }
     mIsGoodDigit = createDigitFilter(minADC, rejectBackground, false);
     // at digit filtering stage it is important to keep the 3rd parameter
     // to false in the call above : the idea is to not cut too much
@@ -56,21 +52,6 @@ class DigitFilteringTask
     // resolution will suffer.
     // That's why we only apply the "reject background" filter, which
     // is a loose background cut that does not penalize the signal
-
-    mTimeCalib = DigitFilterParam::Instance().timeOffset;
-  }
-
-  void shiftDigitsTime(gsl::span<ROFRecord> rofs, gsl::span<Digit> digits)
-  {
-    for (auto i = 0; i < rofs.size(); i++) {
-      ROFRecord& rof = rofs[i];
-      rof.getBCData() += mTimeCalib;
-    }
-
-    for (auto i = 0; i < digits.size(); i++) {
-      Digit& d = digits[i];
-      d.setTime(d.getTime() + mTimeCalib);
-    }
   }
 
   void run(ProcessingContext& pc)
@@ -135,10 +116,6 @@ class DigitFilteringTask
          oDigits.size(), iDigits.size(),
          labelMsg);
 
-    if (mTimeCalib != 0) {
-      shiftDigitsTime(oRofs, oDigits);
-    }
-
     if (abort) {
       LOGP(error, "Sanity check failed");
     }
@@ -148,7 +125,6 @@ class DigitFilteringTask
   bool mSanityCheck;
   bool mUseMC;
   DigitFilter mIsGoodDigit;
-  int32_t mTimeCalib{0};
 };
 
 framework::DataProcessorSpec

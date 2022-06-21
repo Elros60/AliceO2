@@ -20,7 +20,7 @@
 #include "Framework/ServiceRegistry.h"
 #include "Framework/Tracing.h"
 
-#include <fairmq/ProgOptions.h>
+#include <options/FairMQProgOptions.h>
 
 namespace o2::framework
 {

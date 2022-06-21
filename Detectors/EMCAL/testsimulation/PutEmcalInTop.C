@@ -8,7 +8,6 @@
 #include "EMCALSimulation/Detector.h"
 #include "FairLogger.h"
 #include "FairRunSim.h"
-#include <FairRootFileSink.h>
 #endif
 
 void PutEmcalInTop()
@@ -25,7 +24,7 @@ void PutEmcalInTop()
 
   // Create simulation run
   FairRunSim* run = new FairRunSim();
-  run->SetSink(new FairRootFileSink("foo.root")); // Output file
+  run->SetOutputFile("foo.root"); // Output file
   run->SetName("TGeant3");        // Transport engine
   // Create media
   run->SetMaterials("media.geo"); // Materials

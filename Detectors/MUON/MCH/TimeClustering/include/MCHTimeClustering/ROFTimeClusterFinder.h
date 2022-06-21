@@ -24,7 +24,6 @@
 
 #include "DataFormatsMCH/Digit.h"
 #include "DataFormatsMCH/ROFRecord.h"
-#include "MCHDigitFiltering/DigitFilter.h"
 
 namespace o2
 {
@@ -36,7 +35,7 @@ class ROFTimeClusterFinder
  public:
   using ROFVector = std::vector<o2::mch::ROFRecord>;
 
-  ROFTimeClusterFinder(gsl::span<const o2::mch::ROFRecord> rofs, gsl::span<const o2::mch::Digit> digits, uint32_t timeClusterSize, uint32_t nBins, bool improvePeakSearch, bool debug);
+  ROFTimeClusterFinder(gsl::span<const o2::mch::ROFRecord> rof, uint32_t timeClusterSize, uint32_t nBins, int debug);
   ~ROFTimeClusterFinder() = default;
 
   /// process the digit ROFs and create the time clusters
@@ -59,16 +58,15 @@ class ROFTimeClusterFinder
     int32_t mLastIdx{-1};  ///< index of the last digit ROF in the bin
     uint32_t mSize{0};     ///< number of digit ROFs in the bin
     uint32_t mNDigits{0};  ///< number of digits in the bin
-    uint32_t mNDigitsPS{0}; ///< number of digits in the bin for the peak search step
 
     TimeBin() = default;
 
     bool empty() { return mNDigits == 0; }
 
-    bool operator<(const TimeBin& other) { return (mNDigitsPS < other.mNDigitsPS); }
-    bool operator>(const TimeBin& other) { return (mNDigitsPS > other.mNDigitsPS); }
-    bool operator<=(const TimeBin& other) { return (mNDigitsPS <= other.mNDigitsPS); }
-    bool operator>=(const TimeBin& other) { return (mNDigitsPS >= other.mNDigitsPS); }
+    bool operator<(const TimeBin& other) { return (mNDigits < other.mNDigits); }
+    bool operator>(const TimeBin& other) { return (mNDigits > other.mNDigits); }
+    bool operator<=(const TimeBin& other) { return (mNDigits <= other.mNDigits); }
+    bool operator>=(const TimeBin& other) { return (mNDigits >= other.mNDigits); }
   };
 
   // peak search parameters
@@ -80,8 +78,6 @@ class ROFTimeClusterFinder
   uint32_t mNbinsInOneWindow; ///< number of time bins considered for the peak search
   double mBinWidth;           ///< width of one time bin in the peak search algorithm, in bunch crossings
   uint32_t mNbinsInOneTF;     ///< maximum number of peak search bins in one time frame
-  DigitFilter mIsGoodDigit;   ///< function to select only digits that are likely signal
-  bool mImprovePeakSearch;    ///< whether to only use signal-like digits in the peak search
 
   /// fill the time histogram for the peak search algorithm
   void initTimeBins();
@@ -94,9 +90,9 @@ class ROFTimeClusterFinder
   int32_t mLastSavedTimeBin;      ///< index of the last bin that has been stored in the output ROFs
 
   gsl::span<const o2::mch::ROFRecord> mInputROFs; ///< input digit ROFs
-  gsl::span<const o2::mch::Digit> mDigits;        ///< input digits
   ROFVector mOutputROFs{};                        ///< output time cluster ROFs
-  bool mDebug{false};                             ///< be more verbose
+  //o2::InteractionRecord mTFstart;                 ///< beginning of the time frame being processed
+  int mDebug{true};
 };
 
 } // namespace mch

@@ -145,21 +145,20 @@ class ExampleAlphabet
   /// get the range of indices aka number of indices
   constexpr unsigned getIndexRange();
 
+  template <typename ValueT>
+  using _iterator_base = std::iterator<std::forward_iterator_tag, ValueT>;
 
   /// a forward iterator to access the list of elements
   template <typename ValueT>
-  class Iterator
+  class Iterator : public _iterator_base<ValueT>
   {
    public:
     Iterator();
     ~Iterator();
 
     using self_type = Iterator;
-    using value_type = ValueT;
-    using reference = ValueT&;
-    using pointer = ValueT*;
-    using difference_type = std::ptrdiff_t;
-    using iterator_category = std::forward_iterator_tag;
+    using reference = typename _iterator_base<ValueT>::reference;
+    using pointer = typename _iterator_base<ValueT>::pointer;
 
     // prefix increment
     self_type& operator++();

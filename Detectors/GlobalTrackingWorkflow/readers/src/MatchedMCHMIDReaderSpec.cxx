@@ -65,10 +65,7 @@ void MatchMCHMIDReader::run(ProcessingContext& pc)
   mTree->GetEntry(ent);
   LOG(info) << "Pushing " << mTracks.size() << " MCHMID matches at entry " << ent;
 
-  pc.outputs().snapshot(OutputRef{"muontracks"}, mTracks);
-  if (mUseMC) {
-    pc.outputs().snapshot(OutputRef{"muontracklabels"}, mLabels);
-  }
+  pc.outputs().snapshot(Output{"GLO", "MTC_MCHMID", 0, Lifetime::Timeframe}, mTracks);
 
   if (mTree->GetReadEntry() + 1 >= mTree->GetEntries()) {
     pc.services().get<ControlService>().endOfStream();
@@ -84,19 +81,13 @@ void MatchMCHMIDReader::connectTree(const std::string& filename)
   mTree.reset((TTree*)mFile->Get("o2sim"));
   assert(mTree);
   mTree->SetBranchAddress("tracks", &mTracksPtr);
-  if (mUseMC) {
-    mTree->SetBranchAddress("tracklabels", &mLabelsPtr);
-  }
   LOG(info) << "Loaded tree from " << filename << " with " << mTree->GetEntries() << " entries";
 }
 
 DataProcessorSpec getMCHMIDMatchedReaderSpec(bool useMC)
 {
   std::vector<OutputSpec> outputs;
-  outputs.emplace_back(OutputSpec{{"muontracks"}, "GLO", "MTC_MCHMID", 0, Lifetime::Timeframe});
-  if (useMC) {
-    outputs.emplace_back(OutputSpec{{"muontracklabels"}, "GLO", "MCMTC_MCHMID", 0, Lifetime::Timeframe});
-  }
+  outputs.emplace_back("GLO", "MTC_MCHMID", 0, Lifetime::Timeframe);
 
   return DataProcessorSpec{
     "mchmid-matches-reader",

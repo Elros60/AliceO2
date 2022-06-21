@@ -26,12 +26,14 @@ namespace event_visualisation
 class FileProducer
 {
  private:
+  static std::deque<std::string> load(const std::string& path);
+
   size_t mFilesInFolder;
   std::string mPath;
   std::string mName;
 
  public:
-  explicit FileProducer(const std::string& path, int filesInFolder = -1,
+  explicit FileProducer(const std::string& path, int filesInFolder = 10,
                         const std::string& name = "tracks_{hostname}_{pid}_{timestamp}.json");
 
   [[nodiscard]] std::string newFileName() const;

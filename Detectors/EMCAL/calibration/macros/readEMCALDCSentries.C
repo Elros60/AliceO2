@@ -17,7 +17,6 @@
 #include "DetectorsDCS/DataPointIdentifier.h"
 #include "EMCALCalib/ElmbData.h"
 #include "EMCALCalibration/EMCDCSProcessor.h"
-#include "EMCALCalib/CalibDB.h"
 
 //#include <string>
 //#include <unordered_map>
@@ -27,10 +26,9 @@
 
 using namespace o2::emcal;
 
-typedef std::tuple<int, float, float, float, float> Sensor_t; //{Npoints, mean, rms, min, max}
 void printElmbData(std::vector<Sensor_t> data);
 
-void readEMCALDCSentries(long ts = 9999999999990, const char* ccdb = "http://ccdb-test.cern.ch:8080")
+void readEMCALDCSentries(long ts = 9999999999000, const char* ccdb = "http://ccdb-test.cern.ch:8080")
 {
 
   o2::ccdb::CcdbApi api;
@@ -41,7 +39,7 @@ void readEMCALDCSentries(long ts = 9999999999990, const char* ccdb = "http://ccd
   }
 
   FeeDCS* feeDCS(nullptr);
-  feeDCS = api.retrieveFromTFileAny<FeeDCS>(o2::emcal::CalibDB::getCDBPathFeeDCS(), metadata, ts);
+  feeDCS = api.retrieveFromTFileAny<FeeDCS>("EMC/FeeDCS", metadata, ts);
   if (!feeDCS) {
     std::cerr << "No FeeDCS object received from CCDB" << std::endl;
   } else {
@@ -49,7 +47,7 @@ void readEMCALDCSentries(long ts = 9999999999990, const char* ccdb = "http://ccd
   }
 
   ElmbData* mELMBdata(nullptr);
-  mELMBdata = api.retrieveFromTFileAny<ElmbData>(o2::emcal::CalibDB::getCDBPathTemperatureSensor(), metadata, ts);
+  mELMBdata = api.retrieveFromTFileAny<ElmbData>("EMC/Temperature", metadata, ts);
   if (!mELMBdata) {
     std::cerr << "No Temperature object received from CCDB" << std::endl;
   } else {

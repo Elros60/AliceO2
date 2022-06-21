@@ -68,7 +68,7 @@ CaloRawFitter::CaloRawFitter(const char* name, const char* nameshort) : mMinTime
                                                                         mMaxTimeIndex(-1),
                                                                         mAmpCut(4),
                                                                         mNsamplePed(3),
-                                                                        mIsZerosupressed(true),
+                                                                        mIsZerosupressed(false),
                                                                         mName(name),
                                                                         mNameShort(nameshort),
                                                                         mAlgo(FitAlgorithm::NONE),

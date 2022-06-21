@@ -89,7 +89,6 @@ AddOptionRTC(chi2SeparationCut, float, 2.5f, "", 0, "Minimum difference between 
 AddOptionRTC(nSigmaTerrITSTPC, float, 4.f, "", 0, "Number of sigmas for ITS-TPC track time error estimate")
 AddOptionRTC(extraRoadY, float, 2.f, "", 0, "Addition to search road around track prolongation along Y in cm")
 AddOptionRTC(extraRoadZ, float, 0.f, "", 0, "Addition to search road around track prolongation along Z in cm")
-AddOptionRTC(trkltResRPhiIdeal, float, 0.04f, "", 0, "Optimal tracklet rphi resolution in cm (in case phi of track = lorentz angle)")
 AddOptionRTC(applyDeflectionCut, unsigned char, 0, "", 0, "Set to 1 to enable tracklet selection based on deflection")
 AddOptionRTC(stopTrkAfterNMissLy, unsigned char, 6, "", 0, "Abandon track following after N layers without a TRD match")
 AddOptionRTC(useExternalO2DefaultPropagator, unsigned char, 0, "", 0, "Use the default instance of the o2::Propagator, instead of the GPU Reconstruciton one with GPU B field")
@@ -167,7 +166,6 @@ AddOption(doublePipelineClusterizer, bool, true, "", 0, "Include the input data 
 AddOption(prefetchTPCpageScan, char, 0, "", 0, "Prefetch Data for TPC page scan in CPU cache")
 AddOption(runMC, bool, false, "", 0, "Process MC labels")
 AddOption(runQA, int, 0, "qa", 'q', "Enable tracking QA (negative number to provide bitmask for QA tasks)", message("Running QA: %s"), def(1))
-AddOption(qcRunFraction, float, 100.f, "", 0, "Percentage of events to process with QC")
 AddOption(outputSharedClusterMap, bool, false, "", 0, "Ship optional shared cluster map as output for further use")
 AddOption(disableTPCNoisyPadFilter, bool, false, "", 0, "Disables all TPC noisy pad filters (Not the normal noise filter!)")
 AddOption(createO2Output, char, 2, "", 0, "Create Track output in O2 format (2 = skip non-O2 output in GPU track format (reverts to =1 if QA is requested))")
@@ -434,7 +432,6 @@ AddOption(gpuDisplayfilterMacro, std::string, "", "", 0, "File name of ROOT macr
 AddOption(benchmarkMemoryRegistration, bool, false, "", 0, "Time-benchmark for memory registration")
 AddOption(registerSelectedSegmentIds, int, -1, "", 0, "Register only a specific managed shm segment id (-1 = all)")
 AddOption(disableCalibUpdates, bool, false, "", 0, "Disable all calibration updates")
-AddOption(partialOutputForNonFatalErrors, bool, false, "", 0, "In case of a non-fatal error that is ignored (ignoreNonFatalGPUErrors=true), forward the partial output that was created instead of shipping an empty TF")
 EndConfig()
 #endif // GPUCA_O2_LIB
 #endif // !GPUCA_GPUCODE_DEVICE

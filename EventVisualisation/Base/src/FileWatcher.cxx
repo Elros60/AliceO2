@@ -14,19 +14,34 @@
 /// \author julian.myrcha@cern.ch
 
 #include "EventVisualisationBase/FileWatcher.h"
-#include "EventVisualisationBase/DirectoryLoader.h"
 #include "FairLogger.h"
 
 #include <list>
 #include <filesystem>
 #include <algorithm>
 #include <sys/stat.h>
-
 using namespace std;
-using namespace o2::event_visualisation;
+
+namespace o2
+{
+namespace event_visualisation
+{
 
 const char* FileWatcher::mLowGuard = " 0"; /// start guard
 const char* FileWatcher::mEndGuard = "~0"; /// stop guard
+
+deque<string> FileWatcher::load(string path)
+{
+  //LOG(info) << "FileWatcher::load(" << path << ")";
+  deque<string> result;
+  for (const auto& entry : std::filesystem::directory_iterator(path)) {
+    if (entry.path().extension() == ".json") {
+      result.push_back(entry.path().filename());
+    }
+  }
+  //LOG(info) << result.size();
+  return result;
+}
 
 FileWatcher::FileWatcher(const string& path)
 {
@@ -119,7 +134,8 @@ bool FileWatcher::refresh()
   LOG(info) << "previous:" << previous;
   LOG(info) << "currentFile:" << this->mCurrentFile;
 
-  this->mFiles = DirectoryLoader::load(this->mDataFolder, "_"); // already sorted according part staring with marker
+  this->mFiles = load(this->mDataFolder);
+  std::sort(this->mFiles.begin(), this->mFiles.end());
   if (this->mCurrentFile != mEndGuard) {
     if (this->mFiles.empty()) {
       this->mCurrentFile = mEndGuard; // list empty - stick to last element
@@ -177,3 +193,6 @@ void FileWatcher::saveCurrentFileToFolder(const string& destinationFolder)
     std::filesystem::copy_file(source, destination);
   }
 }
+
+} // namespace event_visualisation
+} // namespace o2

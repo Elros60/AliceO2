@@ -408,6 +408,7 @@ void FeeParam::unpackORI(int link, int side, int& stack, int& layer, int& halfch
 
 int FeeParam::getORI(int detector, int readoutboard)
 {
+  int supermodule = detector / NCHAMBERPERSEC;
   ///  LOG(info) << "getORI : " << detector << " :: " << readoutboard << " -- " << getORIinSM(detector, readoutboard) << "   " << getORIinSM(detector, readoutboard) + NCHAMBERPERSEC * 2 * detector;
   return getORIinSuperModule(detector, readoutboard) + NCHAMBER * 2 * detector; // 60 ORI per supermodule
 }

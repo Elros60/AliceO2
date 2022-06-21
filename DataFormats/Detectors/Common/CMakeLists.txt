@@ -15,7 +15,6 @@ o2_add_library(DetectorsCommonDataFormats
                        src/EncodedBlocks.cxx
                        src/CTFHeader.cxx
                        src/CTFDictHeader.cxx
-                       src/CTFIOSize.cxx
          src/FileMetaData.cxx
                PUBLIC_LINK_LIBRARIES
                ROOT::Core
@@ -26,7 +25,6 @@ o2_add_library(DetectorsCommonDataFormats
                O2::FrameworkLogger
                O2::Headers
                O2::rANS
-               O2::Framework
                O2::CommonUtils)
 
 o2_target_root_dictionary(
@@ -38,7 +36,6 @@ o2_target_root_dictionary(
           include/DetectorsCommonDataFormats/EncodedBlocks.h
           include/DetectorsCommonDataFormats/CTFHeader.h
           include/DetectorsCommonDataFormats/CTFDictHeader.h
-          include/DetectorsCommonDataFormats/CTFIOSize.h
           include/DetectorsCommonDataFormats/DetMatrixCache.h)
 
 configure_file(UpgradesStatus.h.in

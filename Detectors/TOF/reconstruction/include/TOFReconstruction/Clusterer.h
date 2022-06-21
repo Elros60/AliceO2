@@ -76,9 +76,6 @@ class Clusterer
     mDiagnosticFrequency.clear();
   }
 
-  bool areCalibStored() const { return mAreCalibStored; }
-  void setCalibStored(bool val = true) { mAreCalibStored = val; }
-
  private:
   void calibrateStrip();
   void processStrip(std::vector<Cluster>& clusters, MCLabelContainer const* digitMCTruth);
@@ -102,8 +99,6 @@ class Clusterer
   bool mIsNoisy[Geo::NCHANNELS];     //! noisy channel map
 
   std::vector<o2::tof::CalibInfoCluster> mCalibInfosFromCluster;
-
-  bool mAreCalibStored = false;
 };
 
 } // namespace tof

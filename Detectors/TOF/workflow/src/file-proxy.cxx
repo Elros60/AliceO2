@@ -23,8 +23,7 @@
 #include "Framework/ConcreteDataMatcher.h"
 #include "Framework/RawDeviceService.h"
 #include "Framework/DeviceSpec.h"
-#include <fairmq/Device.h>
-#include <fairmq/Parts.h>
+#include <fairmq/FairMQDevice.h>
 
 #include "Headers/RAWDataHeader.h"
 #include "DataFormatsTOF/RawDataFormat.h"
@@ -221,7 +220,7 @@ void FileProxyTask::run(ProcessingContext& pc)
   std::memcpy(headerMessage->GetData(), headerStack.data(), headerStack.size());
 
   /** send **/
-  fair::mq::Parts parts;
+  FairMQParts parts;
   parts.AddPart(std::move(headerMessage));
   parts.AddPart(std::move(payloadMessage));
   device->Send(parts, fairMQChannel);

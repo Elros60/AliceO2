@@ -44,18 +44,15 @@ framework::WorkflowSpec getWorkflow(bool useMC, bool useCAtracker, const std::st
   }
   if (!disableRootOutput) {
     specs.emplace_back(o2::its::getClusterWriterSpec(useMC));
+    specs.emplace_back(o2::its::getTrackWriterSpec(useMC));
+    specs.emplace_back(o2::globaltracking::getIRFrameWriterSpec("irfr:ITS/IRFRAMES/0", "o2_its_irframe.root", "irframe-writer-its"));
   }
-  if (!trmode.empty()) {
-    if (useCAtracker) {
-      specs.emplace_back(o2::its::getTrackerSpec(useMC, trmode, dtype));
-    } else {
-      specs.emplace_back(o2::its::getCookedTrackerSpec(useMC, trmode));
-    }
-    if (!disableRootOutput) {
-      specs.emplace_back(o2::its::getTrackWriterSpec(useMC));
-      specs.emplace_back(o2::globaltracking::getIRFrameWriterSpec("irfr:ITS/IRFRAMES/0", "o2_its_irframe.root", "irframe-writer-its"));
-    }
+  if (useCAtracker) {
+    specs.emplace_back(o2::its::getTrackerSpec(useMC, trmode, dtype));
+  } else {
+    specs.emplace_back(o2::its::getCookedTrackerSpec(useMC, trmode));
   }
+
   if (eencode) {
     specs.emplace_back(o2::itsmft::getEntropyEncoderSpec("ITS"));
   }

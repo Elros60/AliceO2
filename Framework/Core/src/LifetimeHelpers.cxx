@@ -34,10 +34,9 @@
 #include <TMemFile.h>
 #include <curl/curl.h>
 
-#include <fairmq/Device.h>
+#include <fairmq/FairMQDevice.h>
 
 #include <cstdlib>
-#include <random>
 
 using namespace o2::header;
 using namespace fair;
@@ -99,26 +98,14 @@ ExpirationHandler::Creator LifetimeHelpers::enumDrivenCreation(size_t start, siz
 
 ExpirationHandler::Creator LifetimeHelpers::timeDrivenCreation(std::chrono::microseconds period)
 {
-  std::random_device r;
-  std::default_random_engine e1(r());
-  std::uniform_int_distribution<uint64_t> dist(0, period.count() * 0.9);
-
-  // We start with a random offset to avoid all the devices
-  // send their first message at the same time, bring down
-  // the QC machine.
-  // We reduce the first interval rather than increasing it
-  // to avoid having a triggered timer which appears to be in
-  // the future.
-  size_t start = getCurrentTime() - dist(e1) - period.count() * 0.1;
+  auto start = getCurrentTime();
   auto last = std::make_shared<decltype(start)>(start);
   // FIXME: should create timeslices when period expires....
-  return [last, period](ChannelIndex channelIndex, TimesliceIndex& index) -> TimesliceSlot {
+  return [last, period](ChannelIndex, TimesliceIndex& index) -> TimesliceSlot {
     // Nothing to do if the time has not expired yet.
     auto current = getCurrentTime();
     auto delta = current - *last;
     if (delta < period.count()) {
-      auto newOldest = index.setOldestPossibleInput({*last}, channelIndex);
-      index.updateOldestPossibleOutput();
       return TimesliceSlot{TimesliceSlot::INVALID};
     }
     // We first check if the current time is not already present
@@ -131,8 +118,6 @@ ExpirationHandler::Creator LifetimeHelpers::timeDrivenCreation(std::chrono::micr
       }
       auto& variables = index.getVariablesForSlot(slot);
       if (VariableContextHelpers::getTimeslice(variables).value == current) {
-        auto newOldest = index.setOldestPossibleInput({*last}, channelIndex);
-        index.updateOldestPossibleOutput();
         return TimesliceSlot{TimesliceSlot::INVALID};
       }
     }
@@ -153,9 +138,6 @@ ExpirationHandler::Creator LifetimeHelpers::timeDrivenCreation(std::chrono::micr
       case TimesliceIndex::ActionTaken::Wait:
         break;
     }
-
-    auto newOldest = index.setOldestPossibleInput({*last}, channelIndex);
-    index.updateOldestPossibleOutput();
     return slot;
   };
 }
@@ -453,7 +435,7 @@ ExpirationHandler::Handler
     // Receive parts and put them in the PartRef
     // we know this is not blocking because we were polled
     // on the channel.
-    fair::mq::Parts parts;
+    FairMQParts parts;
     device->Receive(parts, channelName, 0);
     ref.header = std::move(parts.At(0));
     ref.payload = std::move(parts.At(1));
@@ -511,7 +493,6 @@ ExpirationHandler::Handler LifetimeHelpers::enumerate(ConcreteDataMatcher const&
 
     variables.put({data_matcher::FIRSTTFORBIT_POS, dh.firstTForbit});
     variables.put({data_matcher::TFCOUNTER_POS, dh.tfCounter});
-    variables.put({data_matcher::RUNNUMBER_POS, dh.runNumber});
     variables.put({data_matcher::STARTTIME_POS, dph.startTime});
     variables.put({data_matcher::CREATIONTIME_POS, dph.creation});
 

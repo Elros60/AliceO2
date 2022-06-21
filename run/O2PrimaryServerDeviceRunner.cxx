@@ -11,7 +11,7 @@
 
 /// @author Sandro Wenzel
 
-#include <fairmq/runDevice.h>
+#include "runFairMQDevice.h"
 #include "O2PrimaryServerDevice.h"
 #include <SimConfig/SimConfig.h>
 
@@ -23,7 +23,7 @@ void addCustomOptions(bpo::options_description& options)
   o2::conf::SimConfig::initOptions(options);
 }
 
-std::unique_ptr<fair::mq::Device> getDevice(fair::mq::ProgOptions& config)
+FairMQDevice* getDevice(const FairMQProgOptions& config)
 {
-  return std::make_unique<o2::devices::O2PrimaryServerDevice>();
+  return new o2::devices::O2PrimaryServerDevice();
 }

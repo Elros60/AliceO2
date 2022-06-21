@@ -5,7 +5,7 @@
 MYDIR="$(dirname $(realpath $0))"
 source $MYDIR/setenv.sh
 
-if [[ $EPNSYNCMODE == 0 && $DPL_CONDITION_BACKEND != "http://o2-ccdb.internal" && $DPL_CONDITION_BACKEND != "http://localhost:8084" && $DPL_CONDITION_BACKEND != "http://127.0.0.1:8084" ]]; then
+if [[ $EPNSYNCMODE == 0 ]] && [[ $DPL_CONDITION_BACKEND != "http://o2-ccdb.internal" ]]; then
   alien-token-info >& /dev/null
   if [[ $? != 0 ]]; then
     echo "No alien token present" 1>&2
@@ -19,7 +19,7 @@ if [[ -z $OPTIMIZED_PARALLEL_ASYNC ]]; then OPTIMIZED_PARALLEL_ASYNC=0; fi     #
 if [[ -z $CTF_DIR ]];                  then CTF_DIR=$FILEWORKDIR; fi           # Directory where to store CTFs
 if [[ -z $CTF_DICT ]];                 then CTF_DICT="ctf_dictionary.root"; fi # Local dictionary file name if its creation is request
 if [[ -z $CTF_METAFILES_DIR ]];        then CTF_METAFILES_DIR="/dev/null"; fi  # Directory where to store CTF files metada, /dev/null : skip their writing
-if [[ -z $RECO_NUM_NODES_WORKFLOW ]];  then RECO_NUM_NODES_WORKFLOW=230; fi    # Number of EPNs running this workflow in parallel, to increase multiplicities if necessary, by default assume we are 1 out of 250 servers
+if [[ -z $RECO_NUM_NODES_WORKFLOW ]];  then RECO_NUM_NODES_WORKFLOW=250; fi    # Number of EPNs running this workflow in parallel, to increase multiplicities if necessary, by default assume we are 1 out of 250 servers
 if [[ -z $CTF_MINSIZE ]];              then CTF_MINSIZE="2000000000"; fi        # accumulate CTFs until file size reached
 if [[ -z $CTF_MAX_PER_FILE ]];         then CTF_MAX_PER_FILE="10000"; fi       # but no more than given number of CTFs per file
 
@@ -44,11 +44,6 @@ source $MYDIR/workflow-setup.sh
 if [[ $EPNSYNCMODE == 1 ]] || type numactl >/dev/null 2>&1 && [[ `numactl -H | grep "node . size" | wc -l` -ge 2 ]]; then
   [[ $NUMAGPUIDS != 0 ]] && ARGS_ALL+=" --child-driver 'numactl --membind $NUMAID --cpunodebind $NUMAID'"
 fi
-if [[ -z $TIMEFRAME_RATE_LIMIT ]] && [[ $EXTINPUT == 1 ]]; then
-  TIMEFRAME_RATE_LIMIT=$((12 * 230 / $RECO_NUM_NODES_WORKFLOW * ($NUMAGPUIDS != 0 ? 1 : 2)))
-  [[ $BEAMTYPE != "PbPb" ]] && TIMEFRAME_RATE_LIMIT=$(($TIMEFRAME_RATE_LIMIT * 3))
-  ! has_detector TPC && TIMEFRAME_RATE_LIMIT=$(($TIMEFRAME_RATE_LIMIT * 4))
-fi
 [[ ! -z $TIMEFRAME_RATE_LIMIT ]] && [[ $TIMEFRAME_RATE_LIMIT != 0 ]] && ARGS_ALL+=" --timeframes-rate-limit $TIMEFRAME_RATE_LIMIT --timeframes-rate-limit-ipcid $NUMAID"
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -68,11 +63,11 @@ CPV_INPUT=raw
 EVE_CONFIG=" --jsons-folder $EDJSONS_DIR"
 MIDDEC_CONFIG=
 EMCRAW2C_CONFIG=
-PHS_CONFIG=
 
 if [[ -z $ALPIDE_ERR_DUMPS ]]; then
   [[ $EPNSYNCMODE == 1 ]] && ALPIDE_ERR_DUMPS="1" || ALPIDE_ERR_DUMPS="0"
 fi
+
 
 if [[ $SYNCMODE == 1 ]]; then
   if [[ $BEAMTYPE == "PbPb" ]]; then
@@ -112,13 +107,6 @@ fi
 
 has_processing_step ENTROPY_ENCODER && has_detector_ctf TPC && GPU_OUTPUT+=",compressed-clusters-ctf"
 
-if workflow_has_parameter QC && has_detector_qc TPC; then
-  GPU_OUTPUT+=",qa"
-  [[ -z $TPC_TRACKING_QC_RUN_FRACTION ]] && TPC_TRACKING_QC_RUN_FRACTION=1
-  GPU_CONFIG_KEY+="GPU_QA.clusterRejectionHistograms=1;GPU_proc.qcRunFraction=$TPC_TRACKING_QC_RUN_FRACTION;"
-  [[ $HOSTMEMSIZE == "0" && $TPC_TRACKING_QC_RUN_FRACTION == "100" ]] && HOSTMEMSIZE=$(( 5 << 30 ))
-fi
-
 if [[ -z $DISABLE_ROOT_OUTPUT ]]; then
   # enable only if root output is written, because it slows down the processing
   GPU_OUTPUT+=",send-clusters-per-sector"
@@ -134,14 +122,6 @@ if [[ $EPNSYNCMODE == 1 ]]; then
   # Options for decoding current TRD real raw data (not needed for data converted from MC)
   if [[ -z $TRD_DECODER_OPTIONS ]]; then TRD_DECODER_OPTIONS=" --tracklethcheader 2 "; fi
   if [[ $EXTINPUT == 1 ]] && [[ $GPUTYPE != "CPU" ]] && [[ -z "$GPU_NUM_MEM_REG_CALLBACKS" ]]; then GPU_NUM_MEM_REG_CALLBACKS=4; fi
-fi
-
-if [[ $SYNCMODE == 1 && "0$ED_NO_ITS_ROF_FILTER" != "01" && $BEAMTYPE == "PbPb" ]] && has_detector ITS; then
-  EVE_CONFIG+=" --filter-its-rof"
-fi
-
-if [[ $BEAMTYPE == "PbPb" ]]; then
-  EVE_CONFIG+=" --only-nth-event=2"
 fi
 
 if [[ $GPUTYPE != "CPU" && $NUMAGPUIDS != 0 ]]; then
@@ -170,7 +150,9 @@ fi
 
 if [[ $GPUTYPE != "CPU" ]]; then
   GPU_CONFIG_KEY+="GPU_proc.forceMemoryPoolSize=$GPUMEMSIZE;"
-  [[ $HOSTMEMSIZE == "0" ]] && HOSTMEMSIZE=$(( 1 << 30 ))
+  if [[ $HOSTMEMSIZE == "0" ]]; then
+    HOSTMEMSIZE=$(( 1 << 30 ))
+  fi
 fi
 
 if [[ $HOSTMEMSIZE != "0" ]]; then
@@ -179,10 +161,6 @@ fi
 
 if ! has_detector_reco TOF; then
   TOF_OUTPUT=digits
-fi
-
-if has_detector_calib PHS && workflow_has_parameter CALIB; then
-  PHS_CONFIG+="--fullclu-output"
 fi
 
 [[ $IS_SIMULATED_DATA == "1" ]] && EMCRAW2C_CONFIG+=" --no-mergeHGLG"
@@ -222,11 +200,7 @@ elif [[ $EPNPIPELINES != 0 ]]; then
   # Tuned multiplicities for sync Pb-Pb processing
   N_TPCENT=$(math_max $((3 * $EPNPIPELINES * $NGPUS / 4)) 1)
   N_TPCITS=$(math_max $((3 * $EPNPIPELINES * $NGPUS / 4)) 1)
-  if [[ $BEAMTYPE == "pp" ]]; then
-    N_ITSTRK=$(math_max $((4 * $EPNPIPELINES * $NGPUS / 4)) 1)
-  else
-    N_ITSTRK=$(math_max $((2 * $EPNPIPELINES * $NGPUS / 4)) 1)
-  fi
+  N_ITSTRK=$(math_max $((2 * $EPNPIPELINES * $NGPUS / 4)) 1)
   N_ITSRAWDEC=$(math_max $((3 * $EPNPIPELINES * $NGPUS / 4)) 1)
   N_EMCREC=$(math_max $((3 * $EPNPIPELINES * $NGPUS / 4)) 1)
   N_TRDENT=$(math_max $((3 * $EPNPIPELINES * $NGPUS / 4)) 1)
@@ -324,7 +298,7 @@ fi
 if [[ $CTFINPUT == 0 && $DIGITINPUT == 0 ]]; then
   if has_detector TPC && [[ $EPNSYNCMODE == 1 || "0$TPC_CONVERT_LINKZS_TO_RAW" == "01" ]] && [[ "0$TPC_NO_CONVERT_LINKZS_TO_RAW" != "01" ]]; then
     GPU_INPUT=zsonthefly
-    add_W o2-tpc-raw-to-digits-workflow "--input-spec \"\" --remove-duplicates --pipeline $(get_N tpc-raw-to-digits-0 TPC RAW 1 TPCRAWDEC)"
+    add_W o2-tpc-raw-to-digits-workflow "--input-spec \"A:TPC/RAWDATA;dd:FLP/DISTSUBTIMEFRAME/0\" --remove-duplicates --pipeline $(get_N tpc-raw-to-digits-0 TPC RAW 1 TPCRAWDEC)"
     add_W o2-tpc-reco-workflow "--input-type digitizer --output-type zsraw,disable-writer --pipeline $(get_N tpc-zsEncoder TPC RAW 1 TPCRAWDEC)"
   fi
   has_detector ITS && add_W o2-itsmft-stf-decoder-workflow "--nthreads ${NITSDECTHREADS} --raw-data-dumps $ALPIDE_ERR_DUMPS --pipeline $(get_N its-stf-decoder ITS RAW 1 ITSRAWDEC)" "$ITSMFT_STROBES"
@@ -333,7 +307,7 @@ if [[ $CTFINPUT == 0 && $DIGITINPUT == 0 ]]; then
   has_detector FV0 && ! has_detector_flp_processing FV0 && add_W o2-fv0-flp-dpl-workflow "$DISABLE_ROOT_OUTPUT --pipeline $(get_N fv0-datareader-dpl FV0 RAW 1)"
   has_detector MID && add_W o2-mid-raw-to-digits-workflow "$MIDDEC_CONFIG --pipeline $(get_N MIDRawDecoder MID RAW 1),$(get_N MIDDecodedDataAggregator MID RAW 1)"
   has_detector MCH && add_W o2-mch-raw-to-digits-workflow "--pipeline $(get_N mch-data-decoder MCH RAW 1)"
-  has_detector TOF && ! has_detector_flp_processing TOF && add_W o2-tof-compressor "--pipeline $(get_N tof-compressor-0 TOF RAW 1)"
+  has_detector TOF && ! has_detector_flp_processing TOF && add_W o2-tof-compressor "--pipeline $(get_N tof-compressor TOF RAW 1)"
   has_detector FDD && ! has_detector_flp_processing FDD && add_W o2-fdd-flp-dpl-workflow "$DISABLE_ROOT_OUTPUT --pipeline $(get_N fdd-datareader-dpl FDD RAW 1)"
   has_detector TRD && add_W o2-trd-datareader "$TRD_DECODER_OPTIONS --pipeline $(get_N trd-datareader TRD RAW 1 TRDRAWDEC)" "" 0
   has_detector ZDC && add_W o2-zdc-raw2digits "$DISABLE_ROOT_OUTPUT --pipeline $(get_N zdc-datareader-dpl ZDC RAW 1)"
@@ -364,19 +338,15 @@ has_detector MFT && has_processing_step MFT_RECO && add_W o2-mft-reco-workflow "
 has_detector FDD && has_processing_step FDD_RECO && add_W o2-fdd-reco-workflow "$DISABLE_DIGIT_ROOT_INPUT $DISABLE_ROOT_OUTPUT $DISABLE_MC"
 has_detector FV0 && has_processing_step FV0_RECO && add_W o2-fv0-reco-workflow "$DISABLE_DIGIT_ROOT_INPUT $DISABLE_ROOT_OUTPUT $DISABLE_MC"
 has_detector ZDC && has_processing_step ZDC_RECO && add_W o2-zdc-digits-reco "$DISABLE_DIGIT_ROOT_INPUT $DISABLE_ROOT_OUTPUT $DISABLE_MC"
-has_detector HMP && has_processing_step HMP_RECO && add_W o2-hmpid-digits-to-clusters-workflow
-has_detectors_reco MCH MID && has_detector_matching MCHMID && add_W o2-muon-tracks-matcher-workflow "$DISABLE_DIGIT_ROOT_INPUT $DISABLE_MC $DISABLE_ROOT_OUTPUT --pipeline $(get_N muon-track-matcher MATCH REST 1)"
+has_detectors_reco MCH MID && has_detector_matching MCHMID && add_W o2-muon-tracks-matcher-workflow "$DISABLE_DIGIT_ROOT_INPUT $DISABLE_MC $DISABLE_ROOT_OUTPUT --pipeline $(get_N globalfwd-track-matcher MATCH REST 1)"
 has_detectors_reco MFT MCH && has_detector_matching MFTMCH && add_W o2-globalfwd-matcher-workflow "$DISABLE_DIGIT_ROOT_INPUT $DISABLE_ROOT_OUTPUT $DISABLE_MC --pipeline $(get_N globalfwd-track-matcher MATCH REST 1)"
 
 # ---------------------------------------------------------------------------------------------------------------------
-# Reconstruction workflows needed only in case QC or CALIB was requested
-( has_detector_qc PHS || has_detector_calib PHS ) && ( workflow_has_parameter QC || workflow_has_parameter CALIB ) && add_W o2-phos-reco-workflow "--input-type cells --output-type clusters ${PHS_CONFIG} $DISABLE_DIGIT_ROOT_INPUT $DISABLE_ROOT_OUTPUT $DISABLE_MC --pipeline $(get_N PHOSClusterizerSpec PHS REST 1)"
-
-# always run vertexing if requested and if there are some sources, but in cosmic mode we work in pass-trough mode (create record for non-associated tracks)
-[[ $BEAMTYPE == "cosmic" ]] && PVTXSKIP="--skip" || PVTXSKIP=
-has_detectors_reco ITS && has_detector_matching PRIMVTX && [[ ! -z "$VERTEXING_SOURCES" ]] && add_W o2-primary-vertexing-workflow "$PVTXSKIP $DISABLE_MC $DISABLE_DIGIT_ROOT_INPUT $DISABLE_ROOT_OUTPUT $PVERTEX_CONFIG --pipeline $(get_N primary-vertexing MATCH REST 1)" "${PVERTEXING_CONFIG_KEY}"
+# Reconstruction workflows needed only in case QC was requested
+has_detector_qc PHS && workflow_has_parameter QC && add_W o2-phos-reco-workflow "--input-type cells --output-type clusters $DISABLE_DIGIT_ROOT_INPUT $DISABLE_ROOT_OUTPUT $DISABLE_MC --pipeline $(get_N PHOSClusterizerSpec PHS REST 1)"
 
 if [[ $BEAMTYPE != "cosmic" ]]; then
+  has_detectors_reco ITS && has_detector_matching PRIMVTX && [[ ! -z "$VERTEXING_SOURCES" ]] && add_W o2-primary-vertexing-workflow "$DISABLE_MC $DISABLE_DIGIT_ROOT_INPUT $DISABLE_ROOT_OUTPUT $PVERTEX_CONFIG --pipeline $(get_N primary-vertexing MATCH REST 1)" "${PVERTEXING_CONFIG_KEY}"
   has_detectors_reco ITS && has_detector_matching SECVTX && [[ ! -z "$VERTEXING_SOURCES" ]] && add_W o2-secondary-vertexing-workflow "$DISABLE_DIGIT_ROOT_INPUT $DISABLE_ROOT_OUTPUT --vertexing-sources $VERTEXING_SOURCES --pipeline $(get_N secondary-vertexing MATCH REST 1)"
 fi
 
@@ -408,35 +378,26 @@ if has_processing_step ENTROPY_ENCODER && [[ ! -z "$WORKFLOW_DETECTORS_CTF" ]] &
   if [[ $CREATECTFDICT == 1 ]] && [[ $SAVECTF == 1 ]]; then CTF_OUTPUT_TYPE="both"; fi
   if [[ $CREATECTFDICT == 1 ]] && [[ $SAVECTF == 0 ]]; then CTF_OUTPUT_TYPE="dict"; fi
   if [[ $CREATECTFDICT == 0 ]] && [[ $SAVECTF == 1 ]]; then CTF_OUTPUT_TYPE="ctf"; fi
-  if [[ $EPNSYNCMODE == 1 ]]; then
-    CTF_CONFIG="--report-data-size-interval 250"
-  else
-    CTF_CONFIG="--report-data-size-interval 1"
-  fi
-  CONFIG_CTF="--output-dir \"$CTF_DIR\" $CTF_CONFIG --output-type $CTF_OUTPUT_TYPE --min-file-size ${CTF_MINSIZE} --max-ctf-per-file ${CTF_MAX_PER_FILE} --onlyDet $WORKFLOW_DETECTORS_CTF $CTF_MAXDETEXT --meta-output-dir $CTF_METAFILES_DIR"
+  CONFIG_CTF="--output-dir \"$CTF_DIR\" --output-type $CTF_OUTPUT_TYPE --min-file-size ${CTF_MINSIZE} --max-ctf-per-file ${CTF_MAX_PER_FILE} --onlyDet $WORKFLOW_DETECTORS_CTF --append-det-to-period $CTF_MAXDETEXT --meta-output-dir $CTF_METAFILES_DIR"
   if [[ $CREATECTFDICT == 1 ]] && [[ $EXTINPUT == 1 ]]; then CONFIG_CTF+=" --save-dict-after $SAVE_CTFDICT_NTIMEFRAMES"; fi
   add_W o2-ctf-writer-workflow "$CONFIG_CTF"
 fi
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Calibration workflows
-workflow_has_parameter CALIB && { source ${CALIB_WF:-$MYDIR/calib-workflow.sh}; [[ $? != 0 ]] && exit 1; }
-workflow_has_parameters CALIB CALIB_LOCAL_INTEGRATED_AGGREGATOR && { source ${CALIB_AGGREGATOR_WF:-$MYDIR/aggregator-workflow.sh}; [[ $? != 0 ]] && exit 1; }
+workflow_has_parameter CALIB && { source $MYDIR/calib-workflow.sh; [[ $? != 0 ]] && exit 1; }
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Event display
 # RS this is a temporary setting
 [[ -z "$ED_TRACKS" ]] && ED_TRACKS=$TRACK_SOURCES
 [[ -z "$ED_CLUSTERS" ]] && ED_CLUSTERS=$TRACK_SOURCES
-workflow_has_parameter EVENT_DISPLAY && [[ $NUMAID == 0 ]] && [[ ! -z "$ED_TRACKS" ]] && [[ ! -z "$ED_CLUSTERS" ]] && add_W o2-eve-export-workflow "--display-tracks $ED_TRACKS --display-clusters $ED_CLUSTERS --skipOnEmptyInput $DISABLE_DIGIT_ROOT_INPUT --number-of_tracks 50000 $EVE_CONFIG $DISABLE_MC" "$ITSMFT_STROBES"
-
-workflow_has_parameter GPU_DISPLAY && [[ $NUMAID == 0 ]] && add_W o2-gpu-display "${ED_TRACKS+--display-tracks} $ED_TRACKS ${ED_CLUSTERS+--display-clusters} $ED_CLUSTERS"
+workflow_has_parameter EVENT_DISPLAY && [[ $NUMAID == 0 ]] && [[ ! -z "$ED_TRACKS" ]] && [[ ! -z "$ED_CLUSTERS" ]] && add_W o2-eve-display "--display-tracks $ED_TRACKS --display-clusters $ED_CLUSTERS --skipOnEmptyInput $DISABLE_DIGIT_ROOT_INPUT --number-of_tracks 50000 $EVE_CONFIG $DISABLE_MC" "$ITSMFT_STROBES"
 
 # ---------------------------------------------------------------------------------------------------------------------
 # AOD
 [[ -z "$AOD_INPUT" ]] && AOD_INPUT=$TRACK_SOURCES
-[[ $BEAMTYPE == "cosmic" ]] && AODPROD_OPT+="--disable-secondary-vertices"
-workflow_has_parameter AOD && [[ ! -z "$AOD_INPUT" ]] && add_W o2-aod-producer-workflow "$AODPROD_OPT --info-sources $AOD_INPUT $DISABLE_DIGIT_ROOT_INPUT --aod-writer-keep dangling --aod-writer-resfile "AO2D" --aod-writer-resmode UPDATE $DISABLE_MC"
+workflow_has_parameter AOD && [[ ! -z "$AOD_INPUT" ]] && add_W o2-aod-producer-workflow "--info-sources $AOD_INPUT $DISABLE_DIGIT_ROOT_INPUT --aod-writer-keep dangling --aod-writer-resfile "AO2D" --aod-writer-resmode UPDATE $DISABLE_MC"
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Quality Control

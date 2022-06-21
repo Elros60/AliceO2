@@ -12,7 +12,6 @@
 #include "Framework/DataProcessorSpec.h"
 #include "PedestalCalibratorSpec.h"
 #include "NoiseCalibratorSpec.h"
-#include "GainCalibratorSpec.h"
 
 using namespace o2::framework;
 
@@ -22,8 +21,8 @@ void customize(std::vector<o2::framework::ConfigParamSpec>& workflowOptions)
   // option allowing to set parameters
   workflowOptions.push_back(ConfigParamSpec{"pedestals", o2::framework::VariantType::Bool, false, {"do pedestal calibration"}});
   workflowOptions.push_back(ConfigParamSpec{"noise", o2::framework::VariantType::Bool, false, {"do noise scan calibration"}});
-  workflowOptions.push_back(ConfigParamSpec{"gains", o2::framework::VariantType::Bool, false, {"do gain calibration"}});
-  // workflowOptions.push_back(ConfigParamSpec{"badmap", o2::framework::VariantType::Bool, false, {"do bad map calibration"}});
+  //workflowOptions.push_back(ConfigParamSpec{"gains", o2::framework::VariantType::Bool, false, {"do gain calibration"}});
+  //workflowOptions.push_back(ConfigParamSpec{"badmap", o2::framework::VariantType::Bool, false, {"do bad map calibration"}});
   workflowOptions.push_back(ConfigParamSpec{"configKeyValues", VariantType::String, "", {"Semicolon separated key=value strings"}});
 }
 
@@ -37,19 +36,18 @@ WorkflowSpec defineDataProcessing(ConfigContext const& configcontext)
   o2::conf::ConfigurableParam::updateFromString(configcontext.options().get<std::string>("configKeyValues"));
   auto doPedestals = configcontext.options().get<bool>("pedestals");
   auto doNoise = configcontext.options().get<bool>("noise");
-  auto doGain = configcontext.options().get<bool>("gains");
-  // auto doBadMap = configcontext.options().get<bool>("badmap");
-  int nProcessors = (int)doPedestals + (int)doNoise + (int)doGain;
-  if (nProcessors > 1) {
-    LOG(error) << "Can not run several calibrations simulteneously in one executable";
+  //auto doGain = configcontext.options().get<bool>("gains");
+  //auto doBadMap = configcontext.options().get<bool>("badmap");
+  if (doPedestals && doNoise) {
+    LOG(error) << "Can not run pedestal and noise calibration simulteneously";
     return specs;
   }
-  if (doGain) {
-    specs.emplace_back(getCPVGainCalibratorSpec());
-  }
-  //  if (doBadMap) {
-  //    specs.emplace_back(getCPVBadMapCalibratorSpec());
-  //  }
+  //if (doGain) {
+  //  specs.emplace_back(getCPVGainCalibDeviceSpec());
+  //}
+  //if (doBadMap) {
+  //  specs.emplace_back(getCPVBadMapCalibDeviceSpec());
+  //}
   if (doPedestals) {
     specs.emplace_back(getCPVPedestalCalibratorSpec());
   }

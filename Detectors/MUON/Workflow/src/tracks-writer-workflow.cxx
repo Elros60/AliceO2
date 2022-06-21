@@ -18,24 +18,15 @@
 #include "Framework/CompletionPolicyHelpers.h"
 
 using namespace o2::framework;
-
-void customize(std::vector<CompletionPolicy>& policies)
+void customize(std::vector<o2::framework::CompletionPolicy>& policies)
 {
   // ordered policies for the writers
   policies.push_back(CompletionPolicyHelpers::consumeWhenAllOrdered(".*(?:MUON|muon).*[W,w]riter.*"));
 }
 
-void customize(std::vector<ConfigParamSpec>& workflowOptions)
-{
-  // option allowing to set parameters
-  workflowOptions.emplace_back("disable-mc", VariantType::Bool, false,
-                               ConfigParamSpec::HelpString{"disable MC propagation even if available"});
-}
-
 #include "Framework/runDataProcessing.h"
 
-WorkflowSpec defineDataProcessing(const ConfigContext& configcontext)
+WorkflowSpec defineDataProcessing(const ConfigContext&)
 {
-  auto useMC = !configcontext.options().get<bool>("disable-mc");
-  return WorkflowSpec{o2::muon::getTrackWriterSpec(useMC)};
+  return WorkflowSpec{o2::muon::getTrackWriterSpec()};
 }

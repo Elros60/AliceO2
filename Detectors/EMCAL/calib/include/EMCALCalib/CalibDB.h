@@ -27,8 +27,7 @@ class TempCalibParamSM;
 class TimeCalibrationParams;
 class TimeCalibParamL1Phase;
 class GainCalibrationFactors;
-class FeeDCS;
-class ElmbData;
+class TriggerDCS;
 
 /// \class CalibDB
 /// \brief Interface to calibration data from CCDB for EMCAL
@@ -257,33 +256,19 @@ class CalibDB
   /// \throw TypeMismatchException if object is present but type is different (CCDB corrupted)
   GainCalibrationFactors* readGainCalibFactors(ULong_t timestamp, const std::map<std::string, std::string>& metadata);
 
-  /// \brief Store FEE DCS data in the CCDB
-  /// \param dcs FEE DCS data to be stored
+  /// \brief Store Trigger DCS data in the CCDB
+  /// \param dcs trigger DCS data to be stored
   /// \param metadata Additional metadata that can be used in the query
   /// \param timestart Start of the time range of the validity of the object
   /// \param timeend End of the time range of the validity of the object
-  void storeFeeDCSData(FeeDCS* dcs, const std::map<std::string, std::string>& metadata, ULong_t timestart, ULong_t timeend);
+  void storeTriggerDCSData(TriggerDCS* dcs, const std::map<std::string, std::string>& metadata, ULong_t timestart, ULong_t timeend);
 
-  /// \brief Find FEE DCS data in the CCDB for given timestamp
+  /// \brief Find trigger DCS data in the CCDB for given timestamp
   /// \param timestamp Timestamp used in query
   /// \param metadata Additional metadata to be used in the query
   /// \throw ObjectNotFoundException if object is not found for the given timestamp
   /// \throw TypeMismatchException if object is present but type is different (CCDB corrupted)
-  FeeDCS* readFeeDCSData(ULong_t timestamp, const std::map<std::string, std::string>& metadata);
-
-  /// \brief Store Temperature Sensor data in the CCDB
-  /// \param dcs Temperature Sensor data to be stored
-  /// \param metadata Additional metadata that can be used in the query
-  /// \param timestart Start of the time range of the validity of the object
-  /// \param timeend End of the time range of the validity of the object
-  void storeTemperatureSensorData(ElmbData* dcs, const std::map<std::string, std::string>& metadata, ULong_t timestart, ULong_t timeend);
-
-  /// \brief Find Temperature Sensor data in the CCDB for given timestamp
-  /// \param timestamp Timestamp used in query
-  /// \param metadata Additional metadata to be used in the query
-  /// \throw ObjectNotFoundException if object is not found for the given timestamp
-  /// \throw TypeMismatchException if object is present but type is different (CCDB corrupted)
-  ElmbData* readTemperatureSensorData(ULong_t timestamp, const std::map<std::string, std::string>& metadata);
+  TriggerDCS* readTriggerDCSData(ULong_t timestamp, const std::map<std::string, std::string>& metadata);
 
   /// \brief Set new CCDB server URL
   /// \param server Name of the CCDB server to be used in queries
@@ -321,13 +306,9 @@ class CalibDB
   /// \return Path of the gain calibration in the CCDB
   static const char* getCDBPathGainCalibrationParams() { return "EMC/Calib/GainCalibFactors"; }
 
-  /// \brief Get CDB path for the FEE DCS settings
-  /// \return Path of the FEE DCS settings in the CCDB
-  static const char* getCDBPathFeeDCS() { return "EMC/Calib/FeeDCS"; }
-
-  /// \brief Get CDB path for the Temperature Sensor data
-  /// \return Path of the Temperature Sensor data in the CCDB
-  static const char* getCDBPathTemperatureSensor() { return "EMC/Calib/Temperature"; }
+  /// \brief Get CDB path for the trigger DCS settings
+  /// \return Path of the trigger DCS settings in the CCDB
+  static const char* getCDBPathTriggerDCS() { return "EMC/Calib/TriggerDCS"; }
 
  private:
   /// \brief Initialize CCDB server (when new object is created or the server URL changes)

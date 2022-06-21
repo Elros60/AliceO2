@@ -86,9 +86,9 @@ namespace o2::filtering
 void FilteringSpec::run(ProcessingContext& pc)
 {
   mTimer.Start(false);
+  updateTimeDependentParams(pc);
   o2::globaltracking::RecoContainer recoData;
   recoData.collectData(pc, *mDataRequest);
-  updateTimeDependentParams(pc); // Make sure this is called after recoData.collectData, which may load some conditions
   mStartIR = recoData.startIR;
 
   auto primVer2TRefs = recoData.getPrimaryVertexMatchedTrackRefs();
@@ -143,8 +143,6 @@ void FilteringSpec::finaliseCCDB(ConcreteDataMatcher& matcher, void* obj)
 {
   if (matcher == ConcreteDataMatcher("ITS", "CLUSTERDICT", 0)) {
     LOG(info) << "ITS cluster dictionary updated";
-    mDictITS = (o2::itsmft::TopologyDictionary*)obj;
-    return;
   }
 }
 
@@ -317,10 +315,7 @@ void FilteringSpec::endOfStream(EndOfStreamContext& ec)
 
 void FilteringSpec::updateTimeDependentParams(ProcessingContext& pc)
 {
-  static bool initOnceDone = false;
-  if (!initOnceDone) { // this params need to be queried only once
-    initOnceDone = true;
-  }
+  mDictITS = pc.inputs().get<o2::itsmft::TopologyDictionary*>("itsDict").get();
 }
 
 DataProcessorSpec getDataFilteringSpec(GID::mask_t src, bool enableSV, bool useMC)
@@ -345,6 +340,8 @@ DataProcessorSpec getDataFilteringSpec(GID::mask_t src, bool enableSV, bool useM
   if (src[GID::EMC]) {
     dataRequest->requestEMCALCells(useMC);
   }
+
+  dataRequest->inputs.emplace_back("itsDict", "ITS", "CLUSTERDICT", 0, Lifetime::Condition, ccdbParamSpec("ITS/Calib/ClusterDictionary"));
 
   return DataProcessorSpec{
     "reco-data-filter",

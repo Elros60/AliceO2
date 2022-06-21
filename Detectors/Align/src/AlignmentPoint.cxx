@@ -28,6 +28,24 @@ namespace align
 {
 
 //_____________________________________
+AlignmentPoint::AlignmentPoint()
+  : mMinLocVarID(0), mMaxLocVarID(0), mDetID(-1), mSID(-1), mAlphaSens(0), mXSens(0), mCosDiagErr(0), mSinDiagErr(0), mX2X0(0), mXTimesRho(0), mNGloDOFs(0), mDGloOffs(0), mSensor(nullptr)
+{
+  // def c-tor
+  for (int i = 3; i--;) {
+    mXYZTracking[i] = 0;
+    mErrYZTracking[i] = 0;
+  }
+  memset(mMatCorrExp, 0, 5 * sizeof(float));
+  memset(mMatCorrCov, 0, 5 * sizeof(float));
+  memset(mMatDiag, 0, 5 * 5 * sizeof(float));
+  //
+  memset(mTrParamWSA, 0, 5 * sizeof(double));
+  memset(mTrParamWSB, 0, 5 * sizeof(double));
+  //
+}
+
+//_____________________________________
 void AlignmentPoint::init()
 {
   // compute aux info
@@ -79,9 +97,11 @@ void AlignmentPoint::updatePointByTrackInfo(const trackParam_t* t)
 }
 
 //_____________________________________
-void AlignmentPoint::print(uint16_t opt) const
+void AlignmentPoint::Print(Option_t* opt) const
 {
   // print
+  TString opts = opt;
+  opts.ToLower();
   printf("%cDet%d SID:%4d Alp:%+.3f X:%+9.4f Meas:%s Mat: ", isInvDir() ? '*' : ' ',
          getDetID(), getSID(), getAlphaSens(), getXSens(), containsMeasurement() ? "ON" : "OFF");
   if (!containsMaterial()) {
@@ -90,20 +110,20 @@ void AlignmentPoint::print(uint16_t opt) const
     printf("x2X0: %.4f x*rho: %.4f | pars:[%3d:%3d)\n", getX2X0(), getXTimesRho(), getMinLocVarID(), getMaxLocVarID());
   }
   //
-  if ((opt & kMeasurementBit) && containsMeasurement()) {
+  if (opts.Contains("meas") && containsMeasurement()) {
     printf("  MeasPnt: Xtr: %+9.4f Ytr: %+8.4f Ztr: %+9.4f | ErrYZ: %+e %+e %+e | %d DOFglo\n",
            getXTracking(), getYTracking(), getZTracking(),
            mErrYZTracking[0], mErrYZTracking[1], mErrYZTracking[2], getNGloDOFs());
     printf("  DiagErr: %+e %+e\n", mErrDiag[0], mErrDiag[1]);
   }
   //
-  if ((opt & kMaterialBit) && containsMaterial()) {
+  if (opts.Contains("mat") && containsMaterial()) {
     printf("  MatCorr Exp(ELOSS): %+.4e %+.4e %+.4e %+.4e %+.4e\n",
            mMatCorrExp[0], mMatCorrExp[1], mMatCorrExp[2], mMatCorrExp[3], mMatCorrExp[4]);
     printf("  MatCorr Cov (diag): %+.4e %+.4e %+.4e %+.4e %+.4e\n",
            mMatCorrCov[0], mMatCorrCov[1], mMatCorrCov[2], mMatCorrCov[3], mMatCorrCov[4]);
     //
-    if (opt & kOptUMAT) {
+    if (opts.Contains("umat")) {
       float covUndiag[15];
       memset(covUndiag, 0, 15 * sizeof(float));
       int np = getNMatPar();
@@ -129,7 +149,7 @@ void AlignmentPoint::print(uint16_t opt) const
     }
   }
   //
-  if ((opt & kOptDiag) && containsMaterial()) {
+  if (opts.Contains("diag") && containsMaterial()) {
     printf("  Matrix for Mat.corr.errors diagonalization:\n");
     int npar = getNMatPar();
     for (int i = 0; i < npar; i++) {
@@ -140,14 +160,14 @@ void AlignmentPoint::print(uint16_t opt) const
     }
   }
   //
-  if (opt & kOptWSA) { // printf track state at this point stored during residuals calculation
+  if (opts.Contains("wsa")) { // printf track state at this point stored during residuals calculation
     printf("  Local Track (A): ");
     for (int i = 0; i < 5; i++) {
       printf("%+.3e ", mTrParamWSA[i]);
     }
     printf("\n");
   }
-  if (opt & kOptWSB) { // printf track state at this point stored during residuals calculation
+  if (opts.Contains("wsb")) { // printf track state at this point stored during residuals calculation
     printf("  Local Track (B): ");
     for (int i = 0; i < 5; i++) {
       printf("%+.3e ", mTrParamWSB[i]);
@@ -196,36 +216,36 @@ void AlignmentPoint::dumpCoordinates() const
 }
 
 //_____________________________________
-void AlignmentPoint::clear()
+void AlignmentPoint::Clear(Option_t*)
 {
   // reset the point
-  mBits = 0;
+  ResetBit(0xfffffff);
   mMaxLocVarID = -1;
   mDetID = -1;
   mSID = -1;
   mNGloDOFs = 0;
   mDGloOffs = 0;
   mSensor = nullptr;
-  setXYZTracking(0., 0., 0.);
 }
 
 //__________________________________________________________________
-bool AlignmentPoint::isAfter(const AlignmentPoint& pnt) const
+int AlignmentPoint::Compare(const TObject* b) const
 {
   // sort points in direction opposite to track propagation, i.e.
   // 1) for tracks from collision: range in decreasing tracking X
   // 2) for cosmic tracks: upper leg (pnt->isInvDir()==true) ranged in increasing X
   //                       lower leg - in decreasing X
+  AlignmentPoint* pnt = (AlignmentPoint*)b;
   double x = getXPoint();
-  double xp = pnt.getXPoint();
+  double xp = pnt->getXPoint();
   if (!isInvDir()) {        // track propagates from low to large X via this point
-    if (!pnt.isInvDir()) {  // via this one also
+    if (!pnt->isInvDir()) { // via this one also
       return x > xp ? -1 : 1;
     } else {
-      return true;         // any point on the lower leg has higher priority than on the upper leg
+      return -1;
     }                      // range points of lower leg 1st
   } else {                 // this point is from upper cosmic leg: track propagates from large to low X
-    if (pnt.isInvDir()) {  // this one also
+    if (pnt->isInvDir()) { // this one also
       return x > xp ? 1 : -1;
     } else {
       return 1;

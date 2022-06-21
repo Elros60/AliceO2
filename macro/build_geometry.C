@@ -41,8 +41,7 @@
 #include <DetectorsPassive/Cave.h>
 #include <DetectorsPassive/FrameStructure.h>
 #include <SimConfig/SimConfig.h>
-#include <FairRunSim.h>
-#include <FairRootFileSink.h>
+#include "FairRunSim.h"
 #include <FairLogger.h>
 #include <algorithm>
 #include "DetectorsCommonDataFormats/UpgradesStatus.h"
@@ -53,7 +52,6 @@
 #include <ITS3Simulation/Detector.h>
 #include <TRKSimulation/Detector.h>
 #include <FT3Simulation/Detector.h>
-#include <FCTSimulation/Detector.h>
 #include <Alice3DetectorsPassive/Pipe.h>
 #endif
 
@@ -99,7 +97,7 @@ void build_geometry(FairRunSim* run = nullptr)
   // Create simulation run if it does not exist
   if (run == nullptr) {
     run = new FairRunSim();
-    run->SetSink(new FairRootFileSink("foo.root")); // Output file
+    run->SetOutputFile("foo.root"); // Output file
     run->SetName("TGeant3");        // Transport engine
   }
   // Create media
@@ -205,11 +203,6 @@ void build_geometry(FairRunSim* run = nullptr)
   if (isActivated("FT3")) {
     // ALICE 3 FT3
     run->AddModule(new o2::ft3::Detector(isReadout("FT3")));
-  }
-
-  if (isActivated("FCT")) {
-    // ALICE 3 FCT
-    run->AddModule(new o2::fct::Detector(isReadout("FCT")));
   }
 #endif
 

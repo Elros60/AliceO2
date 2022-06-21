@@ -34,16 +34,16 @@ class TrackLabeler
   void process(gsl::span<const Cluster> clusters, gsl::span<const Track> tracks, const o2::dataformats::MCTruthContainer<MCClusterLabel>& inMCContainer);
 
   /// Returns the tracks labels
-  const std::vector<MCCompLabel>& getTracksLabels() { return mMCTracksLabels; }
+  const o2::dataformats::MCTruthContainer<MCCompLabel>& getTracksLabels() { return mMCTracksLabels; }
 
   /// Returns the cluster labels
   const o2::dataformats::MCTruthContainer<MCClusterLabel>& getTrackClustersLabels() { return mMCTrackClustersLabels; }
 
  private:
   bool areBothSidesFired(const gsl::span<const MCClusterLabel>& labels) const;
-  MCCompLabel makeTrackLabel(const Track& track, const o2::dataformats::MCTruthContainer<MCClusterLabel>& inMCContainer) const;
+  std::vector<MCCompLabel> findLabels(const Track& track, const o2::dataformats::MCTruthContainer<MCClusterLabel>& inMCContainer) const;
 
-  std::vector<MCCompLabel> mMCTracksLabels;                                 ///< Track labels
+  o2::dataformats::MCTruthContainer<MCCompLabel> mMCTracksLabels;           ///< Track labels
   o2::dataformats::MCTruthContainer<MCClusterLabel> mMCTrackClustersLabels; ///< Cluster labels
 };
 } // namespace mid

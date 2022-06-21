@@ -46,7 +46,7 @@ void customize(std::vector<ConfigParamSpec>& options)
 #include <TH1F.h>
 #include <memory>
 #include <random>
-#include "Framework/Logger.h"
+#include <fairmq/FairMQLogger.h>
 #include "Mergers/MergerInfrastructureBuilder.h"
 
 using namespace std::chrono;

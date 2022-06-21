@@ -9,15 +9,14 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 #include "Framework/TimesliceIndex.h"
-#include "Framework/Logger.h"
 
 namespace o2::framework
 {
 
-TimesliceIndex::TimesliceIndex(size_t maxLanes, std::vector<InputChannelInfo>& channels)
-  : mMaxLanes{maxLanes},
-    mChannels{channels}
+TimesliceIndex::TimesliceIndex(size_t maxLanes, size_t maxChannels)
+  : mMaxLanes{maxLanes}
 {
+  mOldestPossibleTimeslices.resize(maxChannels);
 }
 
 void TimesliceIndex::resize(size_t s)
@@ -105,21 +104,16 @@ std::tuple<TimesliceIndex::ActionTaken, TimesliceSlot> TimesliceIndex::replaceLR
 TimesliceIndex::OldestInputInfo TimesliceIndex::setOldestPossibleInput(TimesliceId timestamp, ChannelIndex channel)
 {
   // Each channel oldest possible input must be monotoically increasing.
-  assert(mChannels[channel.value].oldestForChannel.value <= timestamp.value);
-  mChannels[channel.value].oldestForChannel = timestamp;
+  assert(mOldestPossibleTimeslices[channel.value].value <= timestamp.value);
+  mOldestPossibleTimeslices[channel.value] = timestamp;
   OldestInputInfo result{timestamp, channel};
-  bool changed = false;
-  for (int ci = 0; ci < mChannels.size(); ci++) {
-    auto& a = mChannels[ci].oldestForChannel;
+  for (int ci = 0; ci < mOldestPossibleTimeslices.size(); ci++) {
+    auto& a = mOldestPossibleTimeslices[ci];
     if (a.value < result.timeslice.value) {
-      changed = true;
       result = {a, ChannelIndex{ci}};
     }
   }
   mOldestPossibleInput = result;
-  if (changed) {
-    LOG(debug) << "Success: Oldest possible input is " << mOldestPossibleInput.timeslice.value << " due to channel " << mOldestPossibleInput.channel.value;
-  }
   return mOldestPossibleInput;
 }
 
@@ -142,7 +136,6 @@ TimesliceIndex::OldestOutputInfo TimesliceIndex::updateOldestPossibleOutput()
   auto oldestInput = getOldestPossibleInput();
   OldestOutputInfo result{oldestInput.timeslice, oldestInput.channel};
 
-  bool changed = false;
   for (size_t i = 0; i < mVariables.size(); i++) {
     // We do not check invalid slots.
     if (isValid(TimesliceSlot{i}) == false) {
@@ -150,25 +143,13 @@ TimesliceIndex::OldestOutputInfo TimesliceIndex::updateOldestPossibleOutput()
     }
     auto timestamp = std::get_if<uint64_t>(&mVariables[i].get(0));
     if (timestamp != nullptr && *timestamp < result.timeslice.value) {
-      changed = true;
       result.timeslice = TimesliceId{*timestamp};
       result.slot = {i};
       result.channel = {(int)-1};
     }
   }
   mOldestPossibleOutput = result;
-  if (changed) {
-    LOGP(debug, "Oldest possible output {} due to {} {}",
-         mOldestPossibleOutput.timeslice.value,
-         result.channel.value == -1 ? "slot" : "channel",
-         result.channel.value == -1 ? mOldestPossibleOutput.slot.index : mOldestPossibleOutput.channel.value);
-  }
   return result;
-}
-
-InputChannelInfo const& TimesliceIndex::getChannelInfo(ChannelIndex channel) const
-{
-  return mChannels[channel.value];
 }
 
 } // namespace o2::framework

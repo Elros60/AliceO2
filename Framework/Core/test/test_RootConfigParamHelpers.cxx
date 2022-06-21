@@ -13,7 +13,7 @@
 #define BOOST_TEST_DYN_LINK
 
 #include <boost/test/unit_test.hpp>
-#include <fairmq/ProgOptions.h>
+#include <fairmq/options/FairMQProgOptions.h>
 #include "Framework/FairOptionsRetriever.h"
 #include "Framework/RootConfigParamHelpers.h"
 #include "Framework/ConfigParamRegistry.h"
@@ -30,7 +30,7 @@ BOOST_AUTO_TEST_CASE(TestConfigParamRegistry)
     ("foo.x", bpo::value<int>()->default_value(2))      //
     ("foo.y", bpo::value<float>()->default_value(3.f)); //
 
-  fair::mq::ProgOptions* options = new fair::mq::ProgOptions();
+  FairMQProgOptions* options = new FairMQProgOptions();
   options->AddToCmdLineOptions(testOptions);
   options->ParseAll({"cmd",
                      "--foo.x", "1",

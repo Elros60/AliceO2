@@ -116,9 +116,7 @@ int main(int argc, const char** argv)
   // Loop over all entries in the tree, where each tree entry corresponds to a time frame
   // First version of for loop causes fault Optimizer???
   //  for (auto evnt = treereader->begin(); evnt != treereader->end(); ++evnt) {
-  // for (auto evnt : *treereader) {
-  while (treereader->Next()) {
-    // (void*)evnt;
+  for (auto evnt : *treereader) {
     rawwriter.digitsToRaw(*digitbranch, *triggerbranch);
   }
   rawwriter.getWriter().writeConfFile("CPV", "RAWDATA", o2::utils::Str::concat_string(outputdir, "/CPVraw.cfg"));

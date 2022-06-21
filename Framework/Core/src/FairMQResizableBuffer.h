@@ -83,14 +83,14 @@ class FairMQOutputStream : public OutputStream
   uint8_t* mutable_data_;
 };
 
-/// An arrow::ResizableBuffer implemented on top of a fair::mq::Message
+/// An arrow::ResizableBuffer implemented on top of a FairMQMessage
 /// FIXME: this is an initial attempt to integrate arrow and FairMQ
 /// a proper solution probably involves writing a `arrow::MemoryPool`
-/// using a `fair::mq::UnmanagedRegion`. This will come at a later stage.
+/// using a `FairMQUnmanagedRegion`. This will come at a later stage.
 class FairMQResizableBuffer : public ::arrow::ResizableBuffer
 {
  public:
-  using Creator = std::function<std::unique_ptr<fair::mq::Message>(size_t)>;
+  using Creator = std::function<std::unique_ptr<FairMQMessage>(size_t)>;
 
   FairMQResizableBuffer(Creator);
   ~FairMQResizableBuffer() override;
@@ -100,7 +100,7 @@ class FairMQResizableBuffer : public ::arrow::ResizableBuffer
   /// * If new size is larger than the backing message size, a new message
   ///   will be created.
   /// * If new size is smaller than the backing message. We will use
-  ///   fair::mq::Message::SetUsedSize() accordingly when finalising the message.
+  ///   FairMQMessage::SetUsedSize() accordingly when finalising the message.
   arrow::Status Resize(const int64_t new_size, bool shrink_to_fit) override;
   /// Reserve behaves as std::vector<T>::reserve()
   ///
@@ -111,10 +111,10 @@ class FairMQResizableBuffer : public ::arrow::ResizableBuffer
   /// @return the message to be sent. This will make the buffer lose ownership
   /// of the backing store, so you will have to either create a new one or
   /// in order to use it again.
-  std::unique_ptr<fair::mq::Message> Finalise();
+  std::unique_ptr<FairMQMessage> Finalise();
 
  private:
-  std::unique_ptr<fair::mq::Message> mMessage;
+  std::unique_ptr<FairMQMessage> mMessage;
   int64_t mSize;
   Creator mCreator;
 };

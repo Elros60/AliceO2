@@ -24,7 +24,6 @@
 #include "Framework/Task.h"
 #include "Framework/Logger.h"
 #include "Framework/DataSpecUtils.h"
-#include <TStopwatch.h>
 
 using namespace o2::framework;
 namespace o2h = o2::header;
@@ -41,12 +40,11 @@ class DCSConsumer : public o2::framework::Task
  public:
   void init(o2::framework::InitContext& ic) final
   {
-    mReportTiming = ic.options().get<bool>("report-timing");
   }
 
   void run(o2::framework::ProcessingContext& pc) final
   {
-    TStopwatch sw;
+
     uint64_t tfid;
     for (auto& input : pc.inputs()) {
       tfid = header::get<o2::framework::DataProcessingHeader*>(input.header)->startTime;
@@ -58,10 +56,6 @@ class DCSConsumer : public o2::framework::Task
     mTFs++;
     auto vect = pc.inputs().get<gsl::span<DPCOM>>("COMMONDPs");
     LOG(info) << "vector has " << vect.size() << " Data Points inside";
-    sw.Stop();
-    if (mReportTiming) {
-      LOGP(info, "Timing CPU:{:.3e} Real:{:.3e} at slice {}", sw.CpuTime(), sw.RealTime(), pc.services().get<o2::framework::TimingInfo>().timeslice);
-    }
   }
 
   void endOfStream(o2::framework::EndOfStreamContext& ec) final
@@ -72,7 +66,6 @@ class DCSConsumer : public o2::framework::Task
 
  private:
   uint64_t mTFs = 0;
-  bool mReportTiming = false;
 };
 
 } // namespace dcs
@@ -87,7 +80,7 @@ DataProcessorSpec getDCSConsumerSpec()
     Inputs{{"COMMONDPs", "DCS", "COMMON", 0, Lifetime::Timeframe}},
     Outputs{},
     AlgorithmSpec{adaptFromTask<o2::dcs::DCSConsumer>()},
-    Options{{"report-timing", VariantType::Bool, false, {"Report timing for every slice"}}}};
+    Options{}};
 }
 
 } // namespace framework

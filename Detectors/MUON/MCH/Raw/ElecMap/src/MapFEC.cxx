@@ -37,8 +37,6 @@ MapFEC::MapFEC(std::string_view content)
       mDsMap.at(ix) = {de, ds_id[i], 0};
     }
   }
-
-  mSize = size();
 }
 
 int MapFEC::index(uint32_t linkId, uint32_t dsAddr) const
@@ -64,7 +62,7 @@ std::optional<o2::mch::raw::DsDetId> MapFEC::operator()(const o2::mch::raw::DsEl
   auto link_id = dsElecId.solarId();
   auto ds_addr = dsElecId.elinkId();
 
-  if (!mSize) {
+  if (!size()) {
     return std::nullopt;
   }
 

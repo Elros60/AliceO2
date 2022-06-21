@@ -26,11 +26,10 @@
 
 // root includes
 #include "TFile.h"
-#include <random>
 
 using namespace o2::tpc;
 
-void CalibPadGainTracks::processTracks(const int nMaxTracks)
+void CalibPadGainTracks::processTracks()
 {
   if (!mPropagateTrack && !mFastTransform) {
     mFastTransform = TPCFastTransformHelperO2::instance()->create(0);
@@ -44,21 +43,8 @@ void CalibPadGainTracks::processTracks(const int nMaxTracks)
     refit = std::make_unique<o2::gpu::GPUO2InterfaceRefit>(mClusterIndex, mFastTransform.get(), mField, mTPCTrackClIdxVecInput->data(), mClusterShMapTPC);
   }
 
-  const size_t loopEnd = (nMaxTracks < 0) ? mTracks->size() : ((nMaxTracks > mTracks->size()) ? mTracks->size() : size_t(nMaxTracks));
-
-  if (loopEnd < mTracks->size()) {
-    // draw random tracks
-    std::vector<size_t> ind(mTracks->size());
-    std::iota(ind.begin(), ind.end(), 0);
-    std::minstd_rand rng(std::time(nullptr));
-    std::shuffle(ind.begin(), ind.end(), rng);
-    for (size_t i = 0; i < loopEnd; ++i) {
-      processTrack((*mTracks)[ind[i]], refit.get());
-    }
-  } else {
-    for (const auto& trk : *mTracks) {
-      processTrack(trk, refit.get());
-    }
+  for (const auto& trk : *mTracks) {
+    processTrack(trk, refit.get());
   }
 }
 
@@ -179,7 +165,7 @@ void CalibPadGainTracks::processTrack(o2::tpc::TrackTPC track, o2::gpu::GPUO2Int
   }
 
   if (mMode == dedxTrack) {
-    getTruncMean();
+    const auto dedx = getTruncMean(mDEdxBuffer);
 
     // set the dEdx
     for (auto& x : mClTrk) {
@@ -187,7 +173,7 @@ void CalibPadGainTracks::processTrack(o2::tpc::TrackTPC track, o2::gpu::GPUO2Int
       const int region = Mapper::REGION[globRow];
       const int indexBuffer = getdEdxBufferIndex(region);
 
-      const float dedxTmp = mDedxTmp[indexBuffer];
+      const float dedxTmp = dedx[indexBuffer];
       if (dedxTmp <= 0) {
         continue;
       }
@@ -207,15 +193,15 @@ void CalibPadGainTracks::processTrack(o2::tpc::TrackTPC track, o2::gpu::GPUO2Int
   }
 }
 
-void CalibPadGainTracks::getTruncMean(float low, float high)
+std::vector<float> CalibPadGainTracks::getTruncMean(std::vector<std::vector<float>>& vCharge, float low, float high) const
 {
-  mDedxTmp.clear();
-  mDedxTmp.reserve(mDEdxBuffer.size());
+  std::vector<float> dedx;
+  dedx.reserve(vCharge.size());
   // returns the truncated mean for input vector
-  for (auto& charge : mDEdxBuffer) {
+  for (auto& charge : vCharge) {
     const int nClustersUsed = static_cast<int>(charge.size());
     if (nClustersUsed < mMinClusters) {
-      mDedxTmp.emplace_back(-1);
+      dedx.emplace_back(-1);
       continue;
     }
 
@@ -225,14 +211,15 @@ void CalibPadGainTracks::getTruncMean(float low, float high)
     const int endInd = static_cast<int>(high * nClustersUsed);
 
     if (endInd <= startInd) {
-      mDedxTmp.emplace_back(-1);
+      dedx.emplace_back(-1);
       continue;
     }
 
     const float dEdx = std::accumulate(charge.begin() + startInd, charge.begin() + endInd, 0.f);
     const int nClustersTrunc = endInd - startInd; // count number of clusters
-    mDedxTmp.emplace_back(dEdx / nClustersTrunc);
+    dedx.emplace_back(dEdx / nClustersTrunc);
   }
+  return dedx;
 }
 
 float CalibPadGainTracks::getTrackTopologyCorrection(const o2::tpc::TrackTPC& track, const unsigned int region) const

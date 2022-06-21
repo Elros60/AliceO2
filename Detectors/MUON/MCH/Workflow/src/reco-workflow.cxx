@@ -9,6 +9,7 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
+#include "ClusterTransformerSpec.h"
 #include "CommonUtils/ConfigurableParam.h"
 #include "DetectorsRaw/HBFUtilsInitializer.h"
 #include "DigitReaderSpec.h"
@@ -20,12 +21,10 @@
 #include "Framework/Variant.h"
 #include "Framework/WorkflowSpec.h"
 #include "MCHDigitFiltering/DigitFilteringSpec.h"
-#include "MCHGeometryTransformer/ClusterTransformerSpec.h"
-#include "MCHTimeClustering/TimeClusterFinderSpec.h"
 #include "MCHWorkflow/ClusterFinderOriginalSpec.h"
 #include "MCHWorkflow/PreClusterFinderSpec.h"
 #include "MCHWorkflow/TrackWriterSpec.h"
-#include "MCHWorkflow/ClusterWriterSpec.h"
+#include "TimeClusterFinderSpec.h"
 #include "TrackFinderSpec.h"
 #include "TrackFitterSpec.h"
 #include "TrackMCLabelFinderSpec.h"
@@ -96,7 +95,7 @@ WorkflowSpec defineDataProcessing(ConfigContext const& configcontext)
                                                       triggered ? "E-F-DIGITROFS" : (useMC ? "F-DIGITROFS" : "TC-F-DIGITROFS")));
 
   specs.emplace_back(o2::mch::getClusterFinderOriginalSpec("mch-cluster-finder"));
-  specs.emplace_back(o2::mch::getClusterTransformerSpec("mch-cluster-transformer", false));
+  specs.emplace_back(o2::mch::getClusterTransformerSpec());
   specs.emplace_back(o2::mch::getTrackFinderSpec("mch-track-finder", digits));
   if (useMC) {
     specs.emplace_back(o2::mch::getTrackMCLabelFinderSpec("mch-track-mc-label-finder",
@@ -106,7 +105,6 @@ WorkflowSpec defineDataProcessing(ConfigContext const& configcontext)
 
   if (!disableRootOutput) {
     specs.emplace_back(o2::mch::getTrackWriterSpec(useMC, "mch-track-writer", "mchtracks.root", digits));
-    specs.emplace_back(o2::mch::getClusterWriterSpec(false, "mch-global-cluster-writer", true, digits)); // RS cannot find who produces MCH/CLUSTERLABELS/0
   }
 
   // configure dpl timer to inject correct firstTFOrbit: start from the 1st orbit of TF containing 1st sampled orbit

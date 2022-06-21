@@ -144,17 +144,11 @@ void MultiView::setupMultiview()
   mViews[ViewZrho]->AddScene(mScenes[SceneZrhoGeom]);
   mViews[ViewZrho]->AddScene(mScenes[SceneZrhoEvent]);
 
-  mAnnotationTop = std::make_unique<TGLAnnotation>(mViews[View3d]->GetGLViewer(), "", 0, 1.0);
-  mAnnotationTop->SetState(TGLOverlayElement::kDisabled); // make the annotation non-interactive
-  mAnnotationTop->SetUseColorSet(false);                  // make the colors individually changeable
-  mAnnotationTop->SetTextColor(0);                        // default color white
-  mAnnotationTop->SetTextSize(0.05f);
-
-  mAnnotationBottom = std::make_unique<TGLAnnotation>(mViews[View3d]->GetGLViewer(), "", 0, 0.07);
-  mAnnotationBottom->SetState(TGLOverlayElement::kDisabled);
-  mAnnotationBottom->SetUseColorSet(false);
-  mAnnotationBottom->SetTextColor(0);
-  mAnnotationBottom->SetTextSize(0.03f);
+  mAnnotation = std::make_unique<TGLAnnotation>(mViews[View3d]->GetGLViewer(), "", 0, 1.0);
+  mAnnotation->SetState(TGLOverlayElement::kDisabled); // make the annotation non-interactive
+  mAnnotation->SetUseColorSet(false);                  // make the colors individually changeable
+  mAnnotation->SetTextColor(0);                        // default color white
+  mAnnotation->SetTextSize(0.06f);
 }
 
 MultiView::EScenes MultiView::getSceneOfProjection(EProjections projection)
@@ -192,6 +186,8 @@ void MultiView::registerGeometry(TEveGeoShape* geom, bool threeD, bool rPhi, boo
     LOG(error) << "MultiView::registerGeometry -- geometry is NULL!";
     exit(-1);
   }
+  // mGeomVector.push_back(geom);
+
   TEveProjectionManager* projection;
 
   if (threeD) {
@@ -231,6 +227,8 @@ void MultiView::registerElement(TEveElement* event)
   gEve->GetCurrentEvent()->AddElement(event);
   getProjection(ProjectionRphi)->ImportElements(event, getScene(SceneRphiEvent));
   getProjection(ProjectionZrho)->ImportElements(event, getScene(SceneZrhoEvent));
+
+  gEve->Redraw3D();
 }
 
 void MultiView::destroyAllEvents()

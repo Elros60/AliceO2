@@ -27,7 +27,6 @@
 #include "CommonUtils/StringUtils.h"
 #include "Framework/Logger.h"
 #include "DetectorsCommonDataFormats/CTFDictHeader.h"
-#include "DetectorsCommonDataFormats/CTFIOSize.h"
 
 namespace o2
 {
@@ -122,8 +121,6 @@ struct Metadata {
   int nDataWords = 0;
   int nLiteralWords = 0;
 
-  size_t getUncompressedSize() const { return messageLength * messageWordSize; }
-  size_t getCompressedSize() const { return (nDictWords + nDataWords + nLiteralWords) * streamSize; }
   void clear()
   {
     min = max = 0;
@@ -435,22 +432,22 @@ class EncodedBlocks
 
   /// encode vector src to bloc at provided slot
   template <typename VE, typename buffer_T>
-  inline o2::ctf::CTFIOSize encode(const VE& src, int slot, uint8_t symbolTablePrecision, Metadata::OptStore opt, buffer_T* buffer = nullptr, const void* encoderExt = nullptr, float memfc = 1.f)
+  inline void encode(const VE& src, int slot, uint8_t symbolTablePrecision, Metadata::OptStore opt, buffer_T* buffer = nullptr, const void* encoderExt = nullptr, float memfc = 1.f)
   {
-    return encode(std::begin(src), std::end(src), slot, symbolTablePrecision, opt, buffer, encoderExt, memfc);
+    encode(std::begin(src), std::end(src), slot, symbolTablePrecision, opt, buffer, encoderExt, memfc);
   }
 
   /// encode vector src to bloc at provided slot
   template <typename input_IT, typename buffer_T>
-  o2::ctf::CTFIOSize encode(const input_IT srcBegin, const input_IT srcEnd, int slot, uint8_t symbolTablePrecision, Metadata::OptStore opt, buffer_T* buffer = nullptr, const void* encoderExt = nullptr, float memfc = 1.f);
+  void encode(const input_IT srcBegin, const input_IT srcEnd, int slot, uint8_t symbolTablePrecision, Metadata::OptStore opt, buffer_T* buffer = nullptr, const void* encoderExt = nullptr, float memfc = 1.f);
 
   /// decode block at provided slot to destination vector (will be resized as needed)
   template <class container_T, class container_IT = typename container_T::iterator>
-  o2::ctf::CTFIOSize decode(container_T& dest, int slot, const void* decoderExt = nullptr) const;
+  void decode(container_T& dest, int slot, const void* decoderExt = nullptr) const;
 
   /// decode block at provided slot to destination pointer, the needed space assumed to be available
   template <typename D_IT, std::enable_if_t<detail::is_iterator_v<D_IT>, bool> = true>
-  o2::ctf::CTFIOSize decode(D_IT dest, int slot, const void* decoderExt = nullptr) const;
+  void decode(D_IT dest, int slot, const void* decoderExt = nullptr) const;
 
   /// create a special EncodedBlocks containing only dictionaries made from provided vector of frequency tables
   static std::vector<char> createDictionaryBlocks(const std::vector<o2::rans::FrequencyTable>& vfreq, const std::vector<Metadata>& prbits);
@@ -756,20 +753,20 @@ void EncodedBlocks<H, N, W>::print(const std::string& prefix, int verbosity) con
 ///_____________________________________________________________________________
 template <typename H, int N, typename W>
 template <class container_T, class container_IT>
-inline o2::ctf::CTFIOSize EncodedBlocks<H, N, W>::decode(container_T& dest,            // destination container
-                                                         int slot,                     // slot of the block to decode
-                                                         const void* decoderExt) const // optional externally provided decoder
+inline void EncodedBlocks<H, N, W>::decode(container_T& dest,            // destination container
+                                           int slot,                     // slot of the block to decode
+                                           const void* decoderExt) const // optional externally provided decoder
 {
   dest.resize(mMetadata[slot].messageLength); // allocate output buffer
-  return decode(std::begin(dest), slot, decoderExt);
+  decode(std::begin(dest), slot, decoderExt);
 }
 
 ///_____________________________________________________________________________
 template <typename H, int N, typename W>
 template <typename D_IT, std::enable_if_t<detail::is_iterator_v<D_IT>, bool>>
-o2::ctf::CTFIOSize EncodedBlocks<H, N, W>::decode(D_IT dest,                    // iterator to destination
-                                                  int slot,                     // slot of the block to decode
-                                                  const void* decoderExt) const // optional externally provided decoder
+void EncodedBlocks<H, N, W>::decode(D_IT dest,                    // iterator to destination
+                                    int slot,                     // slot of the block to decode
+                                    const void* decoderExt) const // optional externally provided decoder
 {
   // get references to the right data
   const auto& block = mBlocks[slot];
@@ -813,20 +810,19 @@ o2::ctf::CTFIOSize EncodedBlocks<H, N, W>::decode(D_IT dest,                    
       // std::memcpy(dest, block.payload, md.messageLength * sizeof(dest_t));
     }
   }
-  return {0, md.getUncompressedSize(), md.getCompressedSize()};
 }
 
 ///_____________________________________________________________________________
 template <typename H, int N, typename W>
 template <typename input_IT, typename buffer_T>
-o2::ctf::CTFIOSize EncodedBlocks<H, N, W>::encode(const input_IT srcBegin,      // iterator begin of source message
-                                                  const input_IT srcEnd,        // iterator end of source message
-                                                  int slot,                     // slot in encoded data to fill
-                                                  uint8_t symbolTablePrecision, // encoding into
-                                                  Metadata::OptStore opt,       // option for data compression
-                                                  buffer_T* buffer,             // optional buffer (vector) providing memory for encoded blocks
-                                                  const void* encoderExt,       // optional external encoder
-                                                  float memfc)                  // memory allocation margin factor
+void EncodedBlocks<H, N, W>::encode(const input_IT srcBegin,      // iterator begin of source message
+                                    const input_IT srcEnd,        // iterator end of source message
+                                    int slot,                     // slot in encoded data to fill
+                                    uint8_t symbolTablePrecision, // encoding into
+                                    Metadata::OptStore opt,       // option for data compression
+                                    buffer_T* buffer,             // optional buffer (vector) providing memory for encoded blocks
+                                    const void* encoderExt,       // optional external encoder
+                                    float memfc)                  // memory allocation margin factor
 {
 
   using storageBuffer_t = W;
@@ -852,7 +848,7 @@ o2::ctf::CTFIOSize EncodedBlocks<H, N, W>::encode(const input_IT srcBegin,      
   // case 1: empty source message
   if (messageLength == 0) {
     mMetadata[slot] = Metadata{0, 0, sizeof(input_t), sizeof(ransState_t), sizeof(ransStream_t), symbolTablePrecision, Metadata::OptStore::NODATA, 0, 0, 0, 0, 0};
-    return {};
+    return;
   }
 
   auto* thisBlock = &mBlocks[slot];
@@ -959,7 +955,6 @@ o2::ctf::CTFIOSize EncodedBlocks<H, N, W>::encode(const input_IT srcBegin,      
 
     *thisMetadata = Metadata{messageLength, 0, sizeof(input_t), sizeof(ransState_t), sizeof(storageBuffer_t), symbolTablePrecision, opt, 0, 0, 0, static_cast<int>(nBufferElems), 0};
   }
-  return {0, thisMetadata->getUncompressedSize(), thisMetadata->getCompressedSize()};
 }
 
 /// create a special EncodedBlocks containing only dictionaries made from provided vector of frequency tables

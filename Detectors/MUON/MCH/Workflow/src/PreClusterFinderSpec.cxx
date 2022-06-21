@@ -122,13 +122,6 @@ class PreClusterFinderTask
     // create the output message for precluster ROFs
     auto& preClusterROFs = pc.outputs().make<std::vector<ROFRecord>>(OutputRef{"preclusterrofs"});
 
-    // count the number of digits associated with the input ROFs. This can be smaller than the
-    // total number of digits if we are processing filtered ROFs.
-    int nDigitsInRofs = 0;
-    for (const auto& digitROF : digitROFs) {
-      nDigitsInRofs += digitROF.getNEntries();
-    }
-
     // prepare to receive new data
     mPreClusters.clear();
     mUsedDigits.clear();
@@ -174,16 +167,13 @@ class PreClusterFinderTask
       }
 
       // check sizes of input and output digits vectors
-      bool digitsSizesDiffer = (nRemovedDigits + mUsedDigits.size() != nDigitsInRofs);
+      bool digitsSizesDiffer = (nRemovedDigits + mUsedDigits.size() != digits.size());
       switch (mCheckNoLeftoverDigits) {
         case CHECK_NO_LEFTOVER_DIGITS_OFF:
           break;
         case CHECK_NO_LEFTOVER_DIGITS_ERROR:
           if (digitsSizesDiffer) {
-            static int nAlarms = 0;
-            if (nAlarms++ < 5) {
-              LOG(alarm) << "some digits have been lost during the preclustering";
-            }
+            LOG(error) << "some digits have been lost during the preclustering";
           }
           break;
         case CHECK_NO_LEFTOVER_DIGITS_FATAL:

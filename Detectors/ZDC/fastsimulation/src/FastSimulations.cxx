@@ -114,7 +114,6 @@ BatchHandler& o2::zdc::fastsim::BatchHandler::getInstance(size_t batchSize)
 
 std::optional<std::vector<std::vector<float>>> BatchHandler::getBatch(const std::vector<float>& input)
 {
-  std::scoped_lock guard(mMutex);
   mBatch.emplace_back(input);
   if (mBatch.size() == mBatchSize) {
     auto value = std::optional(std::move(mBatch));

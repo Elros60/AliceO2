@@ -24,7 +24,6 @@
 #include <TF1.h>
 #include "FairLogger.h" // for LOG
 #include "CommonDataFormat/InteractionRecord.h"
-#include "CommonUtils/TreeStreamRedirector.h"
 
 ClassImp(o2::emcal::Digitizer);
 
@@ -68,10 +67,6 @@ void Digitizer::init()
       sf.push_back(RawResponse.Eval(j - mTimeWindowStart));
     }
     mAmplitudeInTimeBins.push_back(sf);
-  }
-
-  if (mEnableDebugStreaming) {
-    mDebugStream = std::make_unique<o2::utils::TreeStreamRedirector>("emcaldigitsDebug.root", "RECREATE");
   }
 }
 
@@ -122,16 +117,14 @@ void Digitizer::process(const std::vector<LabeledDigit>& labeledSDigits)
 
       auto labels = labeleddigit.getLabels();
       LabeledDigit d(digit, labels[0]);
-      int iLabel(0);
       for (auto& label : labels) {
-        if (digit.getAmplitude() < __DBL_EPSILON__) {
+        if (digit.getAmplitude() == 0) {
           label.setAmplitudeFraction(0);
         }
-        if (iLabel == 0) {
+        if (label == labels.front()) {
           continue;
         }
         d.addLabel(label);
-        iLabel++;
       }
       listofLabeledDigit.push_back(d);
     }
@@ -154,12 +147,10 @@ void Digitizer::sampleSDigit(const Digit& sDigit)
     return;
   }
 
-  Double_t energies[15];
   if (mSimulateTimeResponse) {
     for (int j = 0; j < mAmplitudeInTimeBins.at(mPhase).size(); j++) {
 
       double val = energy * (mAmplitudeInTimeBins.at(mPhase).at(j));
-      energies[j] = val;
       double digitTime = (mEventTimeOffset + mDelay - mTimeWindowStart) * constants::EMCAL_TIMESAMPLE;
       Digit digit(tower, val, digitTime);
       mTempDigitVector.push_back(digit);
@@ -167,31 +158,6 @@ void Digitizer::sampleSDigit(const Digit& sDigit)
   } else {
     Digit digit(tower, energy, (mDelay - mTimeWindowStart) * constants::EMCAL_TIMESAMPLE);
     mTempDigitVector.push_back(digit);
-  }
-
-  if (mEnableDebugStreaming) {
-    double timeStamp = sDigit.getTimeStamp();
-    (*mDebugStream).GetFile()->cd();
-    (*mDebugStream) << "DigitsTimeSamples"
-                    << "Tower=" << tower
-                    << "Time=" << timeStamp
-                    << "DigitEnergy=" << energy
-                    << "Sample0=" << energies[0]
-                    << "Sample1=" << energies[1]
-                    << "Sample2=" << energies[2]
-                    << "Sample3=" << energies[3]
-                    << "Sample4=" << energies[4]
-                    << "Sample5=" << energies[5]
-                    << "Sample6=" << energies[6]
-                    << "Sample7=" << energies[7]
-                    << "Sample8=" << energies[8]
-                    << "Sample9=" << energies[9]
-                    << "Sample10=" << energies[10]
-                    << "Sample11=" << energies[11]
-                    << "Sample12=" << energies[12]
-                    << "Sample13=" << energies[13]
-                    << "Sample14=" << energies[14]
-                    << "\n";
   }
 }
 
@@ -209,7 +175,7 @@ void Digitizer::setEventTime(o2::InteractionTimeRecord record)
 
   mDigits.forwardMarker(record);
 
-  mPhase = mSimParam->doSimulateL1Phase() ? mDigits.getPhase() : 0;
+  mPhase = mDigits.getPhase();
 
   mEventTimeOffset = 0;
 

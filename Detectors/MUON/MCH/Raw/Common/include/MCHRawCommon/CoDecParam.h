@@ -20,6 +20,8 @@ namespace o2::mch
 
 struct CoDecParam : public o2::conf::ConfigurableParamHelper<CoDecParam> {
 
+  int sampaBcOffset = 0; // default global sampa bunch-crossing offset
+
   // default minimum allowed digit time, in orbit units
   int minDigitOrbitAccepted = -10;
   // default maximum allowed digit time, in orbit units

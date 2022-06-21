@@ -146,7 +146,8 @@ void TRDGlobalTracking::fillMCTruthInfo(const TrackTRD& trk, o2::MCCompLabel lbl
   // if that is not the case one of the most frequent labels is chosen arbitrarily
   LOG(debug) << "Checking seed with label: " << lblSeed;
   std::unordered_map<o2::MCCompLabel, unsigned int> labelCounter;
-  int maxOccurences = 0;
+  int nTracklets = 0;
+  unsigned int maxOccurences = 0;
   for (int iLy = 0; iLy < constants::NLAYER; ++iLy) {
     auto trkltIndex = trk.getTrackletIndex(iLy);
     if (trkltIndex == -1) {
@@ -259,11 +260,11 @@ void TRDGlobalTracking::run(ProcessingContext& pc)
 
   // check trigger record filter setting
   bool foundFilteredTrigger = false;
-  for (unsigned int iTrig = 0; iTrig < mChainTracking->mIOPtrs.nTRDTriggerRecords; ++iTrig) {
+  for (int iTrig = 0; iTrig < mChainTracking->mIOPtrs.nTRDTriggerRecords; ++iTrig) {
     if (mChainTracking->mIOPtrs.trdTrigRecMask[iTrig] == 0) {
       foundFilteredTrigger = true;
     }
-    LOGF(debug, "TRD trigger %u added with time %f", iTrig, mChainTracking->mIOPtrs.trdTriggerTimes[iTrig]);
+    LOGF(debug, "TRD trigger %i added with time %f", iTrig, mChainTracking->mIOPtrs.trdTriggerTimes[iTrig]);
   }
   if (!foundFilteredTrigger && mTrigRecFilter) {
     static bool warningSent = false;
@@ -280,7 +281,7 @@ void TRDGlobalTracking::run(ProcessingContext& pc)
   int nTracksLoadedITSTPC = 0;
   int nTracksLoadedTPC = 0;
   // load ITS-TPC matched tracks
-  for (unsigned int iTrk = 0; iTrk < mChainTracking->mIOPtrs.nTracksTPCITSO2; ++iTrk) {
+  for (int iTrk = 0; iTrk < mChainTracking->mIOPtrs.nTracksTPCITSO2; ++iTrk) {
     const auto& trkITSTPC = mChainTracking->mIOPtrs.tracksTPCITSO2[iTrk];
     GPUTRDTracker::HelperTrackAttributes trkAttribs;
     trkAttribs.mTime = trkITSTPC.getTimeMUS().getTimeStamp();
@@ -295,7 +296,7 @@ void TRDGlobalTracking::run(ProcessingContext& pc)
     LOGF(debug, "Loaded ITS-TPC track %i with time %f. Window from %f to %f", nTracksLoadedITSTPC, trkAttribs.mTime, trkAttribs.mTime - trkAttribs.mTimeSubMax, trkAttribs.mTime + trkAttribs.mTimeAddMax);
   }
   // load TPC-only tracks
-  for (unsigned int iTrk = 0; iTrk < mChainTracking->mIOPtrs.nOutputTracksTPCO2; ++iTrk) {
+  for (int iTrk = 0; iTrk < mChainTracking->mIOPtrs.nOutputTracksTPCO2; ++iTrk) {
     if (mChainTracking->mIOPtrs.tpcLinkITS && mChainTracking->mIOPtrs.tpcLinkITS[iTrk] != -1) {
       // this TPC tracks has already been matched to ITS and the ITS-TPC track has already been loaded in the tracker
       continue;
@@ -353,7 +354,7 @@ void TRDGlobalTracking::run(ProcessingContext& pc)
     if (trackGID.includesDet(GTrackID::Source::ITS)) {
       // this track is from an ITS-TPC seed
       tracksOutITSTPC.push_back(trdTrack);
-      if (!refitITSTPCTRDTrack(tracksOutITSTPC.back(), mChainTracking->mIOPtrs.trdTriggerTimes[trdTrack.getCollisionId()], &inputTracks) || std::isnan(tracksOutITSTPC.back().getSnp())) {
+      if (!refitITSTPCTRDTrack(tracksOutITSTPC.back(), mChainTracking->mIOPtrs.trdTriggerTimes[trdTrack.getCollisionId()], &inputTracks)) {
         tracksOutITSTPC.pop_back();
         ++nTracksFailedITSTPCTRDRefit;
         continue;
@@ -364,7 +365,7 @@ void TRDGlobalTracking::run(ProcessingContext& pc)
     } else {
       // this track is from a TPC-only seed
       tracksOutTPC.push_back(trdTrack);
-      if (!refitTPCTRDTrack(tracksOutTPC.back(), mChainTracking->mIOPtrs.trdTriggerTimes[trdTrack.getCollisionId()], &inputTracks) || std::isnan(tracksOutTPC.back().getSnp())) {
+      if (!refitTPCTRDTrack(tracksOutTPC.back(), mChainTracking->mIOPtrs.trdTriggerTimes[trdTrack.getCollisionId()], &inputTracks)) {
         tracksOutTPC.pop_back();
         ++nTracksFailedTPCTRDRefit;
         continue;

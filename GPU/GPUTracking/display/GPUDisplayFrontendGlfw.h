@@ -63,7 +63,6 @@ class GPUDisplayFrontendGlfw : public GPUDisplayFrontend
   int mWindowHeight = INIT_HEIGHT;
   char mKeyDownMap[256] = {0};
   unsigned char mLastKeyDown = 0;
-  bool mUseIMGui = false;
 };
 } // namespace GPUCA_NAMESPACE::gpu
 

@@ -37,9 +37,7 @@ class LabeledDigit
   LabeledDigit() = default;
 
   LabeledDigit(Digit digit, o2::emcal::MCLabel label);
-  LabeledDigit(Short_t tower, Double_t amplitudeGeV, Double_t time, o2::emcal::MCLabel label);
-  LabeledDigit(Short_t tower, uint16_t noiseLG, uint16_t noiseHG, Double_t time, o2::emcal::MCLabel label);
-
+  LabeledDigit(Short_t tower, Double_t amplitudeGeV, Double_t time, o2::emcal::MCLabel label, ChannelType_t ctype = ChannelType_t::HIGH_GAIN);
   ~LabeledDigit() = default; // override
 
   void setDigit(Digit d) { mDigit = d; }
@@ -51,7 +49,7 @@ class LabeledDigit
 
   bool operator<(const LabeledDigit& other) const { return getTimeStamp() < other.getTimeStamp(); }
   bool operator>(const LabeledDigit& other) const { return getTimeStamp() > other.getTimeStamp(); }
-  bool operator==(const LabeledDigit& other) const { return (getTimeStamp() == other.getTimeStamp()); }
+  bool operator==(const LabeledDigit& other) const { return getTimeStamp() == other.getTimeStamp(); }
 
   bool canAdd(const LabeledDigit other)
   {

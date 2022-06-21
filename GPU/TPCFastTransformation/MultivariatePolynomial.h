@@ -38,10 +38,8 @@ namespace GPUCA_NAMESPACE::gpu
 /// Usage: see example in testMultivarPolynomials.cxx
 ///    Dim > 0 && Degree > 0 : the number of dimensions and the degree is known at compile time
 ///    Dim = 0 && Degree = 0 : the number of dimensions and the degree will be set during runtime
-///    InteractionOnly: consider only interaction terms: ignore x[0]*x[0]..., x[1]*x[1]*x[2]... etc. terms (same feature as 'interaction_only' in sklearn https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.PolynomialFeatures.html)
-///                     can be used for N-linear interpolation (https://en.wikipedia.org/wiki/Trilinear_interpolation#Alternative_algorithm)
-template <unsigned int Dim, unsigned int Degree, bool InteractionOnly = false>
-class MultivariatePolynomial : public FlatObject, public MultivariatePolynomialHelper<Dim, Degree, InteractionOnly>
+template <unsigned int Dim, unsigned int Degree>
+class MultivariatePolynomial : public FlatObject, public MultivariatePolynomialHelper<Dim, Degree>
 {
  public:
 #if !defined(GPUCA_GPUCODE)
@@ -49,14 +47,14 @@ class MultivariatePolynomial : public FlatObject, public MultivariatePolynomialH
   /// \param nDim number of dimensions
   /// \param degree degree of the polynomial
   template <bool IsEnabled = true, typename std::enable_if<(IsEnabled && (Dim == 0 && Degree == 0)), int>::type = 0>
-  MultivariatePolynomial(const unsigned int nDim, const unsigned int degree, const bool interactionOnly = false) : MultivariatePolynomialHelper<Dim, Degree, false>{nDim, degree, interactionOnly}, mNParams{this->getNParameters(degree, nDim, interactionOnly)}
+  MultivariatePolynomial(const unsigned int nDim, const unsigned int degree) : MultivariatePolynomialHelper<Dim, Degree>{nDim, degree}, mNParams{this->getNParameters(degree, nDim)}
   {
     construct();
   }
 
   /// constructor for compile time evaluation of polynomial formula
   template <bool IsEnabled = true, typename std::enable_if<(IsEnabled && (Dim != 0 && Degree != 0)), int>::type = 0>
-  MultivariatePolynomial() : mNParams{this->getNParameters(Degree, Dim, InteractionOnly)}
+  MultivariatePolynomial() : mNParams{this->getNParameters(Degree, Dim)}
   {
     construct();
   }
@@ -120,25 +118,10 @@ class MultivariatePolynomial : public FlatObject, public MultivariatePolynomialH
   /// \param outf output file
   /// \param name name of the output object
   void writeToFile(TFile& outf, const char* name);
-
-  /// performs fit of input point
-  /// \param x position of the points of length 'Dim * nPoints' (structured as in https://root.cern.ch/doc/master/classTLinearFitter.html)
-  /// \param y values which will be fitted of length 'nPoints'
-  /// \param error error of weigths of the points (if empty no weights are applied)
-  /// \param clearPoints perform the fit on new data points
-  template <bool IsEnabled = true, typename std::enable_if<(IsEnabled && (Dim == 0 && Degree == 0)), int>::type = 0>
-  void fit(std::vector<double>& x, std::vector<double>& y, std::vector<double>& error, const bool clearPoints)
-  {
-    const auto vec = MultivariatePolynomialHelper<Dim, Degree, InteractionOnly>::fit(x, y, error, clearPoints);
-    if (vec.empty()) {
-      return;
-    }
-    setParams(vec.data());
-  }
 #endif
 
   /// converts the parameters to a container which can be written to a root file
-  MultivariatePolynomialContainer getContainer() const { return MultivariatePolynomialContainer{this->getDim(), this->getDegree(), mNParams, mParams, this->isInteractionOnly()}; }
+  MultivariatePolynomialContainer getContainer() const { return MultivariatePolynomialContainer{this->getDim(), this->getDegree(), mNParams, mParams}; }
 
   /// set the parameters from MultivariatePolynomialContainer
   /// \param container container for the parameters
@@ -164,8 +147,8 @@ class MultivariatePolynomial : public FlatObject, public MultivariatePolynomialH
 //=================================================================================
 
 #if !defined(GPUCA_GPUCODE) && !defined(GPUCA_STANDALONE)
-template <unsigned int Dim, unsigned int Degree, bool InteractionOnly>
-void MultivariatePolynomial<Dim, Degree, InteractionOnly>::loadFromFile(TFile& inpf, const char* name)
+template <unsigned int Dim, unsigned int Degree>
+void MultivariatePolynomial<Dim, Degree>::loadFromFile(TFile& inpf, const char* name)
 {
   MultivariatePolynomialContainer* polTmp = nullptr;
   inpf.GetObject(name, polTmp);
@@ -173,32 +156,20 @@ void MultivariatePolynomial<Dim, Degree, InteractionOnly>::loadFromFile(TFile& i
     setFromContainer(*polTmp);
     delete polTmp;
   } else {
-#ifndef GPUCA_ALIROOT_LIB
     LOGP(info, fmt::format("couldnt load object {} from input file", name));
-#endif
   }
 }
 
-template <unsigned int Dim, unsigned int Degree, bool InteractionOnly>
-void MultivariatePolynomial<Dim, Degree, InteractionOnly>::setFromContainer(const MultivariatePolynomialContainer& container)
+template <unsigned int Dim, unsigned int Degree>
+void MultivariatePolynomial<Dim, Degree>::setFromContainer(const MultivariatePolynomialContainer& container)
 {
   if constexpr (Dim > 0 && Degree > 0) {
     if (this->getDim() != container.mDim) {
-#ifndef GPUCA_ALIROOT_LIB
       LOGP(info, fmt::format("wrong number of dimensions! this {} container {}", this->getDim(), container.mDim));
-#endif
       return;
     }
     if (this->getDegree() != container.mDegree) {
-#ifndef GPUCA_ALIROOT_LIB
       LOGP(info, fmt::format("wrong number of degrees! this {} container {}", this->getDegree(), container.mDegree));
-#endif
-      return;
-    }
-    if (this->isInteractionOnly() != container.mInteractionOnly) {
-#ifndef GPUCA_ALIROOT_LIB
-      LOGP(info, fmt::format("InteractionOnly is set for this object to {}, but stored as {} in the container", this->isInteractionOnly(), container.mInteractionOnly));
-#endif
       return;
     }
     setParams(container.mParams.data());
@@ -209,15 +180,15 @@ void MultivariatePolynomial<Dim, Degree, InteractionOnly>::setFromContainer(cons
   }
 }
 
-template <unsigned int Dim, unsigned int Degree, bool InteractionOnly>
-void MultivariatePolynomial<Dim, Degree, InteractionOnly>::writeToFile(TFile& outf, const char* name)
+template <unsigned int Dim, unsigned int Degree>
+void MultivariatePolynomial<Dim, Degree>::writeToFile(TFile& outf, const char* name)
 {
   const MultivariatePolynomialContainer cont = getContainer();
   outf.WriteObject(&cont, name);
 }
 
-template <unsigned int Dim, unsigned int Degree, bool InteractionOnly>
-void MultivariatePolynomial<Dim, Degree, InteractionOnly>::cloneFromObject(const MultivariatePolynomial<Dim, Degree, InteractionOnly>& obj, char* newFlatBufferPtr)
+template <unsigned int Dim, unsigned int Degree>
+void MultivariatePolynomial<Dim, Degree>::cloneFromObject(const MultivariatePolynomial<Dim, Degree>& obj, char* newFlatBufferPtr)
 {
   const char* oldFlatBufferPtr = obj.mFlatBufferPtr;
   FlatObject::cloneFromObject(obj, newFlatBufferPtr);
@@ -225,15 +196,14 @@ void MultivariatePolynomial<Dim, Degree, InteractionOnly>::cloneFromObject(const
   if constexpr (Dim == 0 && Degree == 0) {
     this->mDim = obj.mDim;
     this->mDegree = obj.mDegree;
-    this->mInteractionOnly = obj.mInteractionOnly;
   }
   if (obj.mParams) {
     mParams = FlatObject::relocatePointer(oldFlatBufferPtr, mFlatBufferPtr, obj.mParams);
   }
 }
 
-template <unsigned int Dim, unsigned int Degree, bool InteractionOnly>
-void MultivariatePolynomial<Dim, Degree, InteractionOnly>::moveBufferTo(char* newFlatBufferPtr)
+template <unsigned int Dim, unsigned int Degree>
+void MultivariatePolynomial<Dim, Degree>::moveBufferTo(char* newFlatBufferPtr)
 {
   char* oldFlatBufferPtr = mFlatBufferPtr;
   FlatObject::moveBufferTo(newFlatBufferPtr);
@@ -242,8 +212,8 @@ void MultivariatePolynomial<Dim, Degree, InteractionOnly>::moveBufferTo(char* ne
   setActualBufferAddress(currFlatBufferPtr);
 }
 
-template <unsigned int Dim, unsigned int Degree, bool InteractionOnly>
-void MultivariatePolynomial<Dim, Degree, InteractionOnly>::construct()
+template <unsigned int Dim, unsigned int Degree>
+void MultivariatePolynomial<Dim, Degree>::construct()
 {
   FlatObject::startConstruction();
   const std::size_t flatbufferSize = sizeOfParameters();
@@ -252,22 +222,22 @@ void MultivariatePolynomial<Dim, Degree, InteractionOnly>::construct()
 }
 #endif
 
-template <unsigned int Dim, unsigned int Degree, bool InteractionOnly>
-void MultivariatePolynomial<Dim, Degree, InteractionOnly>::destroy()
+template <unsigned int Dim, unsigned int Degree>
+void MultivariatePolynomial<Dim, Degree>::destroy()
 {
   mParams = nullptr;
   FlatObject::destroy();
 }
 
-template <unsigned int Dim, unsigned int Degree, bool InteractionOnly>
-void MultivariatePolynomial<Dim, Degree, InteractionOnly>::setActualBufferAddress(char* actualFlatBufferPtr)
+template <unsigned int Dim, unsigned int Degree>
+void MultivariatePolynomial<Dim, Degree>::setActualBufferAddress(char* actualFlatBufferPtr)
 {
   FlatObject::setActualBufferAddress(actualFlatBufferPtr);
   mParams = reinterpret_cast<float*>(mFlatBufferPtr);
 }
 
-template <unsigned int Dim, unsigned int Degree, bool InteractionOnly>
-void MultivariatePolynomial<Dim, Degree, InteractionOnly>::setFutureBufferAddress(char* futureFlatBufferPtr)
+template <unsigned int Dim, unsigned int Degree>
+void MultivariatePolynomial<Dim, Degree>::setFutureBufferAddress(char* futureFlatBufferPtr)
 {
   mParams = FlatObject::relocatePointer(mFlatBufferPtr, futureFlatBufferPtr, mParams);
   FlatObject::setFutureBufferAddress(futureFlatBufferPtr);

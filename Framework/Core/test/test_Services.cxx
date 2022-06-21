@@ -18,7 +18,7 @@
 #include "Framework/CommonServices.h"
 #include <Framework/DeviceState.h>
 #include <boost/test/unit_test.hpp>
-#include <fairmq/ProgOptions.h>
+#include <options/FairMQProgOptions.h>
 #include <iostream>
 #include <memory>
 
@@ -174,7 +174,7 @@ BOOST_AUTO_TEST_CASE(TestServiceDeclaration)
   using namespace o2::framework;
   ServiceRegistry registry;
   DeviceState state;
-  fair::mq::ProgOptions options;
+  FairMQProgOptions options;
   options.SetProperty("monitoring-backend", "no-op://");
   options.SetProperty("infologger-mode", "no-op://");
   options.SetProperty("infologger-severity", "info");

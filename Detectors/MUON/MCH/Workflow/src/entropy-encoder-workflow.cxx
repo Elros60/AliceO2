@@ -66,14 +66,15 @@ void EntropyEncoderSpec::run(ProcessingContext& pc)
   auto cput = mTimer.CpuTime();
   mTimer.Start(false);
   mCTFCoder.updateTimeDependentParams(pc);
-  auto rofs = pc.inputs().get<gsl::span<o2::mch::ROFRecord>>("rofs", 0);
-  auto digits = pc.inputs().get<gsl::span<o2::mch::Digit>>("digits", 0);
+  auto rofs = pc.inputs().get<gsl::span<o2::mch::ROFRecord>>("rofs");
+  auto digits = pc.inputs().get<gsl::span<o2::mch::Digit>>("digits");
 
   auto& buffer = pc.outputs().make<std::vector<o2::ctf::BufferType>>(Output{"MCH", "CTFDATA", 0, Lifetime::Timeframe});
-  auto iosize = mCTFCoder.encode(buffer, rofs, digits);
-  pc.outputs().snapshot({"ctfrep", 0}, iosize);
+  mCTFCoder.encode(buffer, rofs, digits);
+  auto sz = mCTFCoder.finaliseCTFOutput<CTF>(buffer);
   mTimer.Stop();
-  LOG(info) << iosize.asString() << " in " << mTimer.CpuTime() - cput << " s";
+  LOG(info) << fmt::format("Created encoded data ({} digits and {} rofs) of size {} ({:5.1f} MB) for MCH in {:5.1f} s ",
+                           digits.size(), rofs.size(), sz, sz / 1024.0 / 1024, mTimer.CpuTime() - cput);
 }
 
 void EntropyEncoderSpec::endOfStream(EndOfStreamContext& ec)
@@ -92,8 +93,7 @@ DataProcessorSpec getEntropyEncoderSpec(const char* specName)
   return DataProcessorSpec{
     specName,
     inputs,
-    Outputs{{"MCH", "CTFDATA", 0, Lifetime::Timeframe},
-            {{"ctfrep"}, "MCH", "CTFENCREP", 0, Lifetime::Timeframe}},
+    Outputs{{"MCH", "CTFDATA", 0, Lifetime::Timeframe}},
     AlgorithmSpec{adaptFromTask<EntropyEncoderSpec>()},
     Options{{"ctf-dict", VariantType::String, "ccdb", {"CTF dictionary: empty or ccdb=CCDB, none=no external dictionary otherwise: local filename"}},
             {"mem-factor", VariantType::Float, 1.f, {"Memory allocation margin factor"}}}};

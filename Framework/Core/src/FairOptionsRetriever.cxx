@@ -12,7 +12,7 @@
 #include "Framework/ConfigParamSpec.h"
 #include "PropertyTreeHelpers.h"
 
-#include <fairmq/ProgOptions.h>
+#include <options/FairMQProgOptions.h>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <string>

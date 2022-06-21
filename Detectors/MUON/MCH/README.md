@@ -14,8 +14,6 @@ This is a top page for the MCH detector documentation.
 \subpage refDetectorsMUONMCHContour
 \subpage refDetectorsMUONMCHDevIO
 \subpage refDetectorsMUONMCHDigitFiltering
-\subpage refDetectorsMUONMCHROFFiltering
-\subpage refDetectorsMUONMCHTimeClustering
 \subpage refDetectorsMUONMCHGeometry
 \subpage refDetectorsMUONMCHMapping
 \subpage refDetectorsMUONMCHRaw

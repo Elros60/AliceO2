@@ -37,7 +37,7 @@ struct MessageSet {
     size_t size = 0;
   };
   // linear storage of messages
-  std::vector<fair::mq::MessagePtr> messages;
+  std::vector<FairMQMessagePtr> messages;
   // message map describes O2 messages consisting of a header message and
   // payload message(s), index describes position in the linear storage
   std::vector<Index> messageMap;
@@ -142,36 +142,36 @@ struct MessageSet {
     }
   }
 
-  fair::mq::MessagePtr& header(size_t partIndex)
+  FairMQMessagePtr& header(size_t partIndex)
   {
     return messages[messageMap[partIndex].position];
   }
 
-  fair::mq::MessagePtr& payload(size_t partIndex, size_t payloadIndex = 0)
+  FairMQMessagePtr& payload(size_t partIndex, size_t payloadIndex = 0)
   {
     assert(partIndex < messageMap.size());
     assert(messageMap[partIndex].position + payloadIndex + 1 < messages.size());
     return messages[messageMap[partIndex].position + payloadIndex + 1];
   }
 
-  fair::mq::MessagePtr const& header(size_t partIndex) const
+  FairMQMessagePtr const& header(size_t partIndex) const
   {
     return messages[messageMap[partIndex].position];
   }
 
-  fair::mq::MessagePtr const& payload(size_t partIndex, size_t payloadIndex = 0) const
+  FairMQMessagePtr const& payload(size_t partIndex, size_t payloadIndex = 0) const
   {
     assert(partIndex < messageMap.size());
     assert(messageMap[partIndex].position + payloadIndex + 1 < messages.size());
     return messages[messageMap[partIndex].position + payloadIndex + 1];
   }
 
-  fair::mq::MessagePtr const& associatedHeader(size_t pos) const
+  FairMQMessagePtr const& associatedHeader(size_t pos) const
   {
     return messages[messageMap[pairMap[pos].partIndex].position];
   }
 
-  fair::mq::MessagePtr const& associatedPayload(size_t pos) const
+  FairMQMessagePtr const& associatedPayload(size_t pos) const
   {
     auto partIndex = pairMap[pos].partIndex;
     auto payloadIndex = pairMap[pos].payloadIndex;

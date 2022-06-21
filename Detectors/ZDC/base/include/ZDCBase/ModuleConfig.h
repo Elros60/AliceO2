@@ -15,7 +15,6 @@
 #include "ZDCBase/Constants.h"
 #include <Rtypes.h>
 #include <array>
-#include <string>
 
 namespace o2
 {
@@ -55,8 +54,6 @@ struct ModuleConfig {
 
   void print() const;
   void check() const;
-  uint32_t getTriggerMask() const;
-  std::string getPrintTriggerMask() const;
   ClassDefNV(ModuleConfig, 1);
 };
 

@@ -19,7 +19,6 @@
 
 #include <onnxruntime/core/session/onnxruntime_cxx_api.h>
 #include <optional>
-#include <mutex>
 
 namespace o2::zdc::fastsim
 {
@@ -133,7 +132,6 @@ class BatchHandler
   explicit BatchHandler(size_t batchSize);
   ~BatchHandler() = default;
 
-  std::mutex mMutex;
   std::vector<std::vector<float>> mBatch;
   size_t mBatchSize;
 };

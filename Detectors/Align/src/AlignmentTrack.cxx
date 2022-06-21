@@ -20,14 +20,12 @@
 #include "Align/AlignableSensor.h"
 #include "Align/AlignableVolume.h"
 #include "Align/AlignableDetector.h"
-#include "Align/AlignConfig.h"
 #include "Align/utils.h"
 #include <TMatrixD.h>
 #include <TVectorD.h>
 #include <TMatrixDSymEigen.h>
 
 using namespace o2::align::utils;
-using namespace o2::base;
 using namespace TMath;
 
 namespace o2
@@ -42,13 +40,42 @@ const int kRichardsonN = kRichardsonOrd + 1; // N of 2-point symmetric derivativ
 const int kNRDClones = kRichardsonN * 2;     // number of variations for derivative of requested order
 
 //____________________________________________________________________________
+AlignmentTrack::AlignmentTrack() : TrackParametrizationWithError<double>(), TObject(), mNLocPar(0), mNLocExtPar(0), mNGloPar(0), mNDF(0), mInnerPointID(0),
+                                   //  ,mMinX2X0Pt2Account(5/1.0),
+                                   mMinX2X0Pt2Account(0.5e-3 / 1.0),
+                                   mMass(0.14),
+                                   mChi2(0),
+                                   mChi2CosmUp(0),
+                                   mChi2CosmDn(0),
+                                   mChi2Ini(0),
+                                   mPoints(0),
+                                   mLocPar(),
+                                   mGloParID(0),
+                                   mGloParIDA(nullptr),
+                                   mLocParA(nullptr)
+{
+  // def c-tor
+  for (int i = 0; i < 2; i++) {
+    // we start with 0 size buffers for derivatives, they will be expanded automatically
+    mResid[i].Set(0);
+    mDResDGlo[i].Set(0);
+    mDResDLoc[i].Set(0);
+    //
+    mResidA[i] = nullptr;
+    mDResDLocA[i] = nullptr;
+    mDResDGloA[i] = nullptr;
+  }
+  mNeedInv[0] = mNeedInv[1] = false;
+  //
+}
+
+//____________________________________________________________________________
 void AlignmentTrack::Clear(Option_t*)
 {
   // reset the track
   TObject::Clear();
   ResetBit(0xffffffff);
-  mPoints.clear();
-  mDetPoints.clear();
+  mPoints.Clear();
   mChi2 = mChi2CosmUp = mChi2CosmDn = mChi2Ini = 0;
   mNDF = 0;
   mInnerPointID = -1;
@@ -93,14 +120,30 @@ void AlignmentTrack::defineDOFs()
       pnt->setMaxLocVarID(mNLocPar); // flag up to which parameted ID this points depends on
     }
   }
-  mLocPar.clear();
-  mLocPar.resize(mNLocPar);
-  for (int i = 0; i < 2; i++) {
-    mResid[i].clear();
-    mDResDLoc[i].clear();
-    mResid[i].resize(np);
-    mDResDLoc[i].resize(mNLocPar * np);
+  //
+  if (mLocPar.GetSize() < mNLocPar) {
+    mLocPar.Set(mNLocPar);
   }
+  mLocPar.Reset();
+  mLocParA = mLocPar.GetArray();
+  //
+  if (mResid[0].GetSize() < np) {
+    mResid[0].Set(np);
+    mResid[1].Set(np);
+  }
+  if (mDResDLoc[0].GetSize() < mNLocPar * np) {
+    mDResDLoc[0].Set(mNLocPar * np);
+    mDResDLoc[1].Set(mNLocPar * np);
+  }
+  for (int i = 2; i--;) {
+    mResid[i].Reset();
+    mDResDLoc[i].Reset();
+    mResidA[i] = mResid[i].GetArray();
+    mDResDLocA[i] = mDResDLoc[i].GetArray();
+  }
+  //
+  //  memcpy(mLocParA,GetParameter(),mNLocExtPar*sizeof(double));
+  memset(mLocParA, 0, mNLocExtPar * sizeof(double));
 }
 
 //______________________________________________________
@@ -118,7 +161,7 @@ bool AlignmentTrack::calcResidDeriv(double* params)
   // If params are not provided, use internal params array
   //
   if (!params) {
-    params = mLocPar.data();
+    params = mLocParA;
   }
   //
   if (!getResidDone()) {
@@ -217,10 +260,10 @@ bool AlignmentTrack::calcResidDeriv(double* extendedParams, bool invert, int pFr
       //
       if (pnt->containsMeasurement()) {
         int offsDer = ip * mNLocPar + ipar;
-        richardsonDeriv(probD, varDelta, pnt, mDResDLoc[0][offsDer], mDResDLoc[1][offsDer]); // calculate derivatives
+        richardsonDeriv(probD, varDelta, pnt, mDResDLocA[0][offsDer], mDResDLocA[1][offsDer]); // calculate derivatives
         if (invert && kInvElem[ipar] < 0) {
-          mDResDLoc[0][offsDer] = -mDResDLoc[0][offsDer];
-          mDResDLoc[1][offsDer] = -mDResDLoc[1][offsDer];
+          mDResDLocA[0][offsDer] = -mDResDLocA[0][offsDer];
+          mDResDLocA[1][offsDer] = -mDResDLocA[1][offsDer];
         }
       }
     } // loop over points
@@ -289,8 +332,8 @@ bool AlignmentTrack::calcResidDeriv(double* extendedParams, bool invert, int pFr
       }
       if (pnt->containsMeasurement()) { // calculate derivatives at the scattering point itself
         int offsDerIP = ip * mNLocPar + offsIP;
-        richardsonDeriv(probD, varDelta, pnt, mDResDLoc[0][offsDerIP], mDResDLoc[1][offsDerIP]); // calculate derivatives for ip
-                                                                                                 // printf("DR SELF: %e %e at %d (%d)\n",mDResDLoc[0][offsDerIP], mDResDLoc[1][offsDerIP],offsI, offsDerIP);
+        richardsonDeriv(probD, varDelta, pnt, mDResDLocA[0][offsDerIP], mDResDLocA[1][offsDerIP]); // calculate derivatives for ip
+                                                                                                   // printf("DR SELF: %e %e at %d (%d)\n",mDResDLocA[0][offsDerIP], mDResDLocA[1][offsDerIP],offsI, offsDerIP);
       }
       //
       // loop over points whose residuals can be affected by the material effects on point ip
@@ -312,7 +355,7 @@ bool AlignmentTrack::calcResidDeriv(double* extendedParams, bool invert, int pFr
         if (pntJ->containsMeasurement()) {
           int offsDerJ = jp * mNLocPar + offsIP;
           // calculate derivatives
-          richardsonDeriv(probD, varDelta, pntJ, mDResDLoc[0][offsDerJ], mDResDLoc[1][offsDerJ]);
+          richardsonDeriv(probD, varDelta, pntJ, mDResDLocA[0][offsDerJ], mDResDLocA[1][offsDerJ]);
         }
         //
       } // << loop over points whose residuals can be affected by the material effects on point ip
@@ -361,9 +404,9 @@ bool AlignmentTrack::calcResidDerivGlo(AlignmentPoint* pnt)
       // store diagonalized residuals in track buffer
       pnt->diagonalizeResiduals((dXYZ[AlignmentPoint::kX] * slpY - dXYZ[AlignmentPoint::kY]),
                                 (dXYZ[AlignmentPoint::kX] * slpZ - dXYZ[AlignmentPoint::kZ]),
-                                mDResDGlo[0][mNGloPar], mDResDGlo[1][mNGloPar]);
+                                mDResDGloA[0][mNGloPar], mDResDGloA[1][mNGloPar]);
       // and register global ID of varied parameter
-      mGloParID[mNGloPar] = vol->getParGloID(ip);
+      mGloParIDA[mNGloPar] = vol->getParGloID(ip);
       mNGloPar++;
     }
     //
@@ -382,9 +425,9 @@ bool AlignmentTrack::calcResidDerivGlo(AlignmentPoint* pnt)
       sens->dPosTraDParCalib(pnt, deriv, idf, nullptr);
       pnt->diagonalizeResiduals((deriv[AlignmentPoint::kX] * slpY - deriv[AlignmentPoint::kY]),
                                 (deriv[AlignmentPoint::kX] * slpZ - deriv[AlignmentPoint::kZ]),
-                                mDResDGlo[0][mNGloPar], mDResDGlo[1][mNGloPar]);
+                                mDResDGloA[0][mNGloPar], mDResDGloA[1][mNGloPar]);
       // and register global ID of varied parameter
-      mGloParID[mNGloPar] = det->getParGloID(idf);
+      mGloParIDA[mNGloPar] = det->getParGloID(idf);
       mNGloPar++;
     }
   }
@@ -409,7 +452,7 @@ bool AlignmentTrack::calcResiduals(const double* extendedParams)
   // If extendedParams are not provided, use internal extendedParams array
   //
   if (!extendedParams) {
-    extendedParams = mLocPar.data();
+    extendedParams = mLocParA;
   }
   int np = getNPoints();
   mChi2 = 0;
@@ -483,19 +526,19 @@ bool AlignmentTrack::calcResiduals(const double* extendedParams, bool invert, in
     pnt->setTrParamWSA(probe.getParams());
     //
     if (pnt->containsMeasurement()) { // need to calculate residuals in the frame where errors are orthogonal
-      pnt->getResidualsDiag(probe.getParams(), mResid[0][ip], mResid[1][ip]);
-      mChi2 += mResid[0][ip] * mResid[0][ip] / pnt->getErrDiag(0);
-      mChi2 += mResid[1][ip] * mResid[1][ip] / pnt->getErrDiag(1);
+      pnt->getResidualsDiag(probe.getParams(), mResidA[0][ip], mResidA[1][ip]);
+      mChi2 += mResidA[0][ip] * mResidA[0][ip] / pnt->getErrDiag(0);
+      mChi2 += mResidA[1][ip] * mResidA[1][ip] / pnt->getErrDiag(1);
       mNDF += 2;
     }
     //
     if (pnt->containsMaterial()) {
       // material degrees of freedom do not contribute to NDF since they are constrained by 0 expectation
       int nCorrPar = pnt->getNMatPar();
+      const double* corrDiag = &mLocParA[pnt->getMaxLocVarID() - nCorrPar]; // corrections in diagonalized frame
       float* corCov = pnt->getMatCorrCov();                                 // correction diagonalized covariance
-      auto offs = pnt->getMaxLocVarID() - nCorrPar;
       for (int i = 0; i < nCorrPar; i++) {
-        mChi2 += mLocPar[offs + i] * mLocPar[offs + i] / corCov[i];
+        mChi2 += corrDiag[i] * corrDiag[i] / corCov[i];
       }
     }
   }
@@ -558,7 +601,7 @@ bool AlignmentTrack::propagate(trackParam_t& track, const AlignmentPoint* pnt, d
       return -dir;
     }
   }();
-  return PropagatorD::Instance()->propagateTo(track, pnt->getXPoint(), pnt->getUseBzOnly(), maxSnp, maxStep, mt, tLT, signCorr);
+  return Propagator::Instance()->propagateTo(track, pnt->getXPoint(), pnt->getUseBzOnly(), maxSnp, maxStep, mt, tLT, signCorr);
 }
 
 /*
@@ -760,8 +803,8 @@ void AlignmentTrack::Print(Option_t* opt) const
   // print track data
   printf("%s ", isCosmic() ? "  Cosmic  " : "Collision ");
   trackParam_t::print();
-  printf("N Free Par: %d (Kinem: %d) | Npoints: %d (Inner:%d) | Chi2Ini:%.1f Chi2: %.1f/%d",
-         mNLocPar, mNLocExtPar, getNPoints(), getInnerPointID(), mChi2Ini, mChi2, mNDF);
+  printf("N Free Par: %d (Kinem: %d) | Npoints: %d (Inner:%d) | M : %.3f | Chi2Ini:%.1f Chi2: %.1f/%d",
+         mNLocPar, mNLocExtPar, getNPoints(), getInnerPointID(), mMass, mChi2Ini, mChi2, mNDF);
   if (isCosmic()) {
     int npLow = getInnerPointID();
     int npUp = getNPoints() - npLow - 1;
@@ -779,7 +822,7 @@ void AlignmentTrack::Print(Option_t* opt) const
   if (par) {
     printf("Ref.track corr: ");
     for (int i = 0; i < mNLocExtPar; i++) {
-      printf("%+.3e ", mLocPar[i]);
+      printf("%+.3e ", mLocParA[i]);
     }
     printf("\n");
   }
@@ -787,8 +830,8 @@ void AlignmentTrack::Print(Option_t* opt) const
   if (optS.Contains("p") || res || der) {
     for (int ip = 0; ip < getNPoints(); ip++) {
       printf("#%3d ", ip);
-      auto* pnt = getPoint(ip);
-      pnt->print(0); // RS FIXME OPT
+      AlignmentPoint* pnt = getPoint(ip);
+      pnt->Print(opt);
       //
       if (res && pnt->containsMeasurement()) {
         printf("  Residuals  : %+.3e %+.3e -> Pulls: %+7.2f %+7.2f\n",
@@ -803,21 +846,22 @@ void AlignmentTrack::Print(Option_t* opt) const
       //
       if (par && pnt->containsMaterial()) { // material corrections
         int nCorrPar = pnt->getNMatPar();
+        const double* corrDiag = &mLocParA[pnt->getMaxLocVarID() - nCorrPar];
         printf("  Corr.Diag:  ");
         for (int i = 0; i < nCorrPar; i++) {
-          printf("%+.3e ", mLocPar[i + pnt->getMaxLocVarID() - nCorrPar]);
+          printf("%+.3e ", corrDiag[i]);
         }
         printf("\n");
         printf("  Corr.Pull:  ");
         float* corCov = pnt->getMatCorrCov(); // correction covariance
         //float *corExp = pnt->getMatCorrExp(); // correction expectation
         for (int i = 0; i < nCorrPar; i++) {
-          printf("%+.3e ", (mLocPar[i + pnt->getMaxLocVarID() - nCorrPar] /* - corExp[i]*/) / Sqrt(corCov[i]));
+          printf("%+.3e ", (corrDiag[i] /* - corExp[i]*/) / Sqrt(corCov[i]));
         }
         printf("\n");
         if (paru) { // print also mat.corrections in track frame
           double corr[5] = {0};
-          pnt->unDiagMatCorr(&mLocPar[pnt->getMaxLocVarID() - nCorrPar], corr);
+          pnt->unDiagMatCorr(corrDiag, corr);
           //   if (!pnt->getELossVaried()) corr[kParQ2Pt] = pnt->getMatCorrExp()[kParQ2Pt]; // fixed eloss expected effect
           printf("  Corr.Track: ");
           for (int i = 0; i < kNKinParBON; i++) {
@@ -836,7 +880,7 @@ void AlignmentTrack::dumpCoordinates() const
   // print various coordinates for inspection
   printf("gpx/D:gpy/D:gpz/D:gtxb/D:gtyb/D:gtzb/D:gtxa/D:gtya/D:gtza/D:alp/D:px/D:py/D:pz/D:tyb/D:tzb/D:tya/D:tza/D:ey/D:ez/D\n");
   for (int ip = 0; ip < getNPoints(); ip++) {
-    auto* pnt = getPoint(ip);
+    AlignmentPoint* pnt = getPoint(ip);
     if (!pnt->containsMeasurement()) {
       continue;
     }
@@ -848,6 +892,7 @@ void AlignmentTrack::dumpCoordinates() const
 bool AlignmentTrack::iniFit()
 {
   // perform initial fit of the track
+  //
   //
   trackParam_t trc = *this;
   //
@@ -869,8 +914,6 @@ bool AlignmentTrack::iniFit()
   //
   //  printf("Lower leg: %d %d\n",0,getInnerPointID()); trc.print();
   //
-  const auto& cnf = AlignConfig::Instance();
-  ;
   if (isCosmic()) {
     mChi2CosmDn = mChi2;
     trackParam_t trcU = trc;
@@ -884,7 +927,7 @@ bool AlignmentTrack::iniFit()
     //
     // propagate to reference point, which is the inner point of lower leg
     const AlignmentPoint* refP = getPoint(getInnerPointID());
-    if (!propagateToPoint(trcU, refP, cnf.maxStep, cnf.maxSnp, cnf.matCorType)) {
+    if (!propagateToPoint(trcU, refP, MaxDefStep, MaxDefSnp, DefMatCorrType)) {
       return false;
     }
     //
@@ -979,6 +1022,7 @@ bool AlignmentTrack::fitLeg(trackParam_t& trc, int pFrom, int pTo, bool& inv)
   // perform initial fit of the track
   // the fit will always start from the outgoing track in inward direction (i.e. if cosmics - bottom leg)
   const int kMinNStep = 3;
+  const double MaxDefStep = 3.0;
   const double kErrSpace = 50.;
   const double kErrAng = 0.7;
   const double kErrRelPtI = 1.;
@@ -990,8 +1034,6 @@ bool AlignmentTrack::fitLeg(trackParam_t& trc, int pFrom, int pTo, bool& inv)
                          0, 0, 0, 0, kErrRelPtI * kErrRelPtI};
   //
   // prepare seed at outer point
-  const auto& cnf = AlignConfig::Instance();
-  ;
   AlignmentPoint* p0 = getPoint(pFrom);
   double phi = trc.getPhi(), alp = p0->getAlphaSens();
   bringTo02Pi(phi);
@@ -1012,7 +1054,7 @@ bool AlignmentTrack::fitLeg(trackParam_t& trc, int pFrom, int pTo, bool& inv)
 #endif
     return false;
   }
-  if (!propagateParamToPoint(trc, p0, cnf.maxStep)) {
+  if (!propagateParamToPoint(trc, p0, MaxDefStep)) {
     //  if (!propagateToPoint(trc,p0,5,30,true)) {
     //trc.PropagateParamOnlyTo(p0->getXPoint()+kOverShootX,AliTrackerBase::GetBz())) {
 #if DEBUG > 3
@@ -1038,7 +1080,7 @@ bool AlignmentTrack::fitLeg(trackParam_t& trc, int pFrom, int pTo, bool& inv)
     //
     //    printf("*** fitLeg %d (%d %d)\n",ip,pFrom,pTo);
     //    printf("Before propagate: "); trc.print();
-    if (!propagateToPoint(trc, pnt, cnf.maxStep, cnf.maxSnp, cnf.matCorType)) {
+    if (!propagateToPoint(trc, pnt, MaxDefStep, MaxDefSnp, DefMatCorrType)) {
       return false;
     }
     if (pnt->containsMeasurement()) {
@@ -1079,6 +1121,7 @@ bool AlignmentTrack::residKalman()
   //
   bool inv = false;
   const int kMinNStep = 3;
+  const double MaxDefStep = 3.0;
   const double kErrSpace = 50.;
   const double kErrAng = 0.7;
   const double kErrRelPtI = 1.;
@@ -1091,10 +1134,9 @@ bool AlignmentTrack::residKalman()
   //  const double kOverShootX = 5;
   //
   trackParam_t trc = *this;
-  const auto& cnf = AlignConfig::Instance();
-  ;
   //
   int pID = 0, nPnt = getNPoints();
+  ;
   AlignmentPoint* pnt = nullptr;
   // get 1st measured point
   while (pID < nPnt && !(pnt = getPoint(pID))->containsMeasurement()) {
@@ -1119,7 +1161,7 @@ bool AlignmentTrack::residKalman()
 #endif
     return false;
   }
-  if (!propagateParamToPoint(trc, pnt, cnf.maxStep)) {
+  if (!propagateParamToPoint(trc, pnt, MaxDefStep)) {
     //if (!trc.PropagateParamOnlyTo(pnt->getXPoint()+kOverShootX,AliTrackerBase::GetBz())) {
 #if DEBUG > 3
     AliWarningF("Failed on PropagateParamOnlyTo to %f", pnt->getXPoint() + kOverShootX);
@@ -1142,7 +1184,7 @@ bool AlignmentTrack::residKalman()
     }
     //    printf("*** ResidKalm %d (%d %d)\n",ip,0,nPnt);
     //    printf("Before propagate: "); trc.print();
-    if (!propagateToPoint(trc, pnt, cnf.maxStep, cnf.maxSnp, cnf.matCorType)) {
+    if (!propagateToPoint(trc, pnt, MaxDefStep, MaxDefSnp, DefMatCorrType)) {
       return false;
     }
     if (!pnt->containsMeasurement()) {
@@ -1184,7 +1226,7 @@ bool AlignmentTrack::residKalman()
       trc.invert();
       inv = !inv;
     }
-    if (!propagateToPoint(trc, pnt, cnf.maxStep, cnf.maxSnp, cnf.matCorType)) {
+    if (!propagateToPoint(trc, pnt, MaxDefStep, MaxDefSnp, DefMatCorrType)) {
       return false;
     }
     if (!pnt->containsMeasurement()) {
@@ -1258,7 +1300,7 @@ bool AlignmentTrack::processMaterials()
   // attach material effect info to alignment points
   trackParam_t trc = *this;
 
-  // collision track or cosmic lower leg: move along track direction from last (middle for cosmic lower leg)
+  // collision track of cosmic lower leg: move along track direction from last (middle for cosmic lower leg)
   // point (inner) to 1st one (outer)
   if (mNeedInv[0]) {
     trc.invert();
@@ -1290,6 +1332,7 @@ bool AlignmentTrack::processMaterials(trackParam_t& trc, int pFrom, int pTo)
 {
   // attach material effect info to alignment points
   const int kMinNStep = 3;
+  const double MaxDefStep = 3.0;
   const double kErrSpcT = 1e-6;
   const double kErrAngT = 1e-6;
   const double kErrPtIT = 1e-12;
@@ -1318,8 +1361,6 @@ bool AlignmentTrack::processMaterials(trackParam_t& trc, int pFrom, int pTo)
   double dpar[5] = {0};
   covMat_t dcov{0};
   matTL.setTimeNotNeeded();
-  const auto& cnf = AlignConfig::Instance();
-  ;
   //
   int pinc;
   if (pTo > pFrom) { // fit in points decreasing order: cosmics upper leg
@@ -1336,7 +1377,7 @@ bool AlignmentTrack::processMaterials(trackParam_t& trc, int pFrom, int pTo)
     tr0 = trc;
     //
     //    printf("-> ProcMat %d (%d->%d)\n",ip,pFrom,pTo);
-    if (!propagateToPoint(trc, pnt, cnf.maxStep, cnf.maxSnp, cnf.matCorType, &matTL)) { // with material corrections
+    if (!propagateToPoint(trc, pnt, MaxDefStep, MaxDefSnp, DefMatCorrType, &matTL)) { // with material corrections
 #if DEBUG > 3
       LOG(error) << "Failed to take track to point" << ip << " (dir: " << pFrom << "->" pTo << ") with mat.corr.";
       trc.print();
@@ -1346,10 +1387,10 @@ bool AlignmentTrack::processMaterials(trackParam_t& trc, int pFrom, int pTo)
     }
     //
     // is there enough material to consider the point as a scatterer?
-    pnt->setContainsMaterial(matTL.getX2X0() * Abs(trc.getQ2Pt()) > cnf.minX2X0Pt2Account);
+    pnt->setContainsMaterial(matTL.getX2X0() * Abs(trc.getQ2Pt()) > getMinX2X0Pt2Account());
     //
     //    printf("-> ProcMat000 %d (%d->%d)\n",ip,pFrom,pTo);
-    if (!propagateToPoint(tr0, pnt, cnf.maxStep, cnf.maxSnp, MatCorrType::USEMatCorrNONE)) { // no material corrections
+    if (!propagateToPoint(tr0, pnt, MaxDefStep, MaxDefSnp, MatCorrType::USEMatCorrNONE)) { // no material corrections
 #if DEBUG > 3
       LOG(error) << "Failed to take track to point" << ip << " (dir: " << pFrom << "->" pTo << ") with mat.corr.";
       tr0.print();
@@ -1358,7 +1399,7 @@ bool AlignmentTrack::processMaterials(trackParam_t& trc, int pFrom, int pTo)
       return false;
     }
     // the difference between the params, covariance of tracks with and  w/o material accounting gives
-    // parameters and covariance of material correction. For params ONLY ELoss effect is relevant
+    // paramets and covariance of material correction. For params ONLY ELoss effect is revealed
     const covMat_t& cov0 = tr0.getCov();
     double* par0 = (double*)tr0.getParams();
     const covMat_t& cov1 = trc.getCov();
@@ -1432,34 +1473,13 @@ void AlignmentTrack::sortPoints()
   // The mInnerPointID will mark the id of the innermost point, i.e. the last one for collision-like
   // tracks and in case of cosmics - the point of lower leg with smallest R
   //
-  // the mDetPoints vector will not change anymore: it is safe to work with pointers
-  for (size_t i = 0; i < mDetPoints.size(); i++) {
-    mPoints.push_back(&mDetPoints[i]);
-  }
-
-  auto isAfter = [](const AlignmentPoint* a, const AlignmentPoint* b) {
-    auto xa = a->getXPoint(), xb = b->getXPoint();
-    if (!a->isInvDir()) {   // lower leg: track propagates from low to large X via this point
-      if (!b->isInvDir()) { // this one also
-        return xa > xb;
-      } else {
-        return true; // any point on the lower leg has higher priority than on the upper leg
-      }
-    } else { // this point is from upper cosmic leg: track propagates from large to low X
-      if (b->isInvDir()) {
-        return xa < xb;
-      } else {
-        return false;
-      }
-    }
-  };
-
-  std::sort(mPoints.begin(), mPoints.end(), isAfter);
+  mPoints.Sort();
   int np = getNPoints();
   mInnerPointID = np - 1;
   if (isCosmic()) {
     for (int ip = np; ip--;) {
-      if (getPoint(ip)->isInvDir()) {
+      AlignmentPoint* pnt = getPoint(ip);
+      if (pnt->isInvDir()) {
         continue;
       } // this is a point of upper leg
       mInnerPointID = ip;
@@ -1473,17 +1493,22 @@ void AlignmentTrack::sortPoints()
 void AlignmentTrack::setLocPars(const double* pars)
 {
   // store loc par corrections
-  memcpy(mLocPar.data(), pars, mNLocPar * sizeof(double));
+  memcpy(mLocParA, pars, mNLocPar * sizeof(double));
 }
 
 //______________________________________________
-void AlignmentTrack::checkExpandDerGloBuffer(unsigned int minSize)
+void AlignmentTrack::checkExpandDerGloBuffer(int minSize)
 {
   // if needed, expand global derivatives buffer
-  if (mGloParID.size() < minSize) {
-    mGloParID.resize(minSize);
-    mDResDGlo[0].resize(minSize);
-    mDResDGlo[1].resize(minSize);
+  if (mGloParID.GetSize() < minSize) {
+    mGloParID.Set(minSize + 100);
+    mDResDGlo[0].Set(minSize + 100);
+    mDResDGlo[1].Set(minSize + 100);
+    //
+    // reassign fast access arrays
+    mGloParIDA = mGloParID.GetArray();
+    mDResDGloA[0] = mDResDGlo[0].GetArray();
+    mDResDGloA[1] = mDResDGlo[1].GetArray();
   }
 }
 

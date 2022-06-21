@@ -10,6 +10,10 @@
 // or submit itself to any jurisdiction.
 ///
 
+#include <cassert>
+#include <ostream>
+#include <fstream>
+
 #include <boost/histogram.hpp>
 #include <boost/format.hpp>
 
@@ -17,12 +21,8 @@
 #include "ITStracking/ClusterLines.h"
 #include "ITStracking/Tracklet.h"
 
-#ifdef VTX_DEBUG
 #include "TTree.h"
 #include "TFile.h"
-#include <fstream>
-#include <ostream>
-#endif
 
 // #define VTX_DEBUG
 
@@ -139,7 +139,7 @@ void VertexerTraits::computeTracklets()
     trackleterKernelSerial<TrackletMode::Layer0Layer1>(
       mTimeFrame->getClustersOnLayer(rofId, 0),
       mTimeFrame->getClustersOnLayer(rofId, 1),
-      mTimeFrame->getIndexTables(rofId)[0].data(),
+      mTimeFrame->getIndexTableL0(rofId).data(),
       mVrtParams.phiCut,
       mTimeFrame->getTracklets()[0],
       mTimeFrame->getNTrackletsCluster(rofId, 0),
@@ -147,7 +147,7 @@ void VertexerTraits::computeTracklets()
     trackleterKernelSerial<TrackletMode::Layer1Layer2>(
       mTimeFrame->getClustersOnLayer(rofId, 2),
       mTimeFrame->getClustersOnLayer(rofId, 1),
-      mTimeFrame->getIndexTables(rofId)[2].data(),
+      mTimeFrame->getIndexTables(rofId)[1].data(),
       mVrtParams.phiCut,
       mTimeFrame->getTracklets()[1],
       mTimeFrame->getNTrackletsCluster(rofId, 1),
@@ -182,6 +182,7 @@ void VertexerTraits::computeTracklets()
   trackletFile->cd();
   tr_tre->Write();
   trackletFile->Close();
+#endif
 
   std::ofstream out01("NTC01_cpu.txt"), out12("NTC12_cpu.txt");
   for (int iRof{0}; iRof < mTimeFrame->getNrof(); ++iRof) {
@@ -192,7 +193,6 @@ void VertexerTraits::computeTracklets()
   }
   out01.close();
   out12.close();
-#endif
 }
 
 void VertexerTraits::computeTrackletMatching()

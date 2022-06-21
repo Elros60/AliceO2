@@ -17,6 +17,7 @@
 #define ALICEO2_DATA_GRPMAGFIELDOBJECT_H_
 
 #include <Rtypes.h>
+#include <cstdint>
 #include "CommonTypes/Units.h"
 
 namespace o2
@@ -42,9 +43,9 @@ class GRPMagField
   void setFieldUniformity(bool v) { mUniformField = v; }
 
   /// print itself
-  void print() const;
+  void print() const { printf("magnet currents (A) L3 = %.3f, Dipole = %.f; uniformity = %s\n", getL3Current(), getDipoleCurrent(), mUniformField ? "true" : "false"); }
 
-  static GRPMagField* loadFrom(const std::string& grpMagFieldFileName = "");
+  static GRPMagField* loadFrom(const std::string& grpMagFieldFileName = "", const std::string& grpMagFieldName = "GRPMAGFIELD");
 
  private:
   o2::units::Current_t mL3Current = 0.f;     ///< signed current in L3

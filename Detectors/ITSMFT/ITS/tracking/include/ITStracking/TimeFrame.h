@@ -135,6 +135,7 @@ class TimeFrame
 
   // Vertexer
   void computeTrackletsScans();
+  std::vector<int>& getIndexTableL0(int tf);
   int& getNTrackletsROf(int tf, int combId);
   std::vector<Line>& getLines(int tf);
   std::vector<ClusterLines>& getTrackletClusters(int tf);
@@ -147,12 +148,11 @@ class TimeFrame
   const unsigned long long& getRoadLabel(int i) const;
   bool isRoadFake(int i) const;
 
-  void setMultiplicityCutMask(const std::vector<bool>& cutMask) { mMultiplicityCutMask = cutMask; }
+  void setMultiplicityCutMask(std::vector<bool> cutMask) { mMultiplicityCutMask.swap(cutMask); }
 
   int hasBogusClusters() const { return std::accumulate(mBogusClusters.begin(), mBogusClusters.end(), 0); }
 
   void setBz(float bz) { mBz = bz; }
-  float getBz() const { return mBz; }
 
   /// Debug and printing
   void checkTrackletLUTs();
@@ -169,6 +169,7 @@ class TimeFrame
   std::vector<std::vector<TrackingFrameInfo>> mTrackingFrameInfo;
   std::vector<std::vector<int>> mClusterExternalIndices;
   std::vector<std::vector<int>> mROframesClusters;
+  std::vector<std::vector<int>> mIndexTablesL0;
   std::vector<index_table_t> mIndexTables;
   int mNrof = 0;
 
@@ -316,6 +317,11 @@ inline int TimeFrame::getClusterExternalIndex(int layerId, const int clId) const
 inline index_table_t& TimeFrame::getIndexTables(int tf)
 {
   return mIndexTables[tf];
+}
+
+inline std::vector<int>& TimeFrame::getIndexTableL0(int tf)
+{
+  return mIndexTablesL0[tf];
 }
 
 inline std::vector<Line>& TimeFrame::getLines(int tf)

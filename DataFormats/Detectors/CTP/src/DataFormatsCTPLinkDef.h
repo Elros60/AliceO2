@@ -42,13 +42,9 @@
 #pragma link C++ class o2::ctp::CTPScalerRecordO2 + ;
 #pragma link C++ class vector < o2::ctp::CTPScalerRecordO2> + ;
 #pragma link C++ class o2::ctp::CTPRunScalers + ;
-#pragma link C++ class o2::ctp::CTPRunManager + ;
 
 #pragma link C++ struct o2::ctp::CTFHeader + ;
 #pragma link C++ struct o2::ctp::CTF + ;
 #pragma link C++ class o2::ctf::EncodedBlocks < o2::ctp::CTFHeader, 4, uint32_t> + ;
-
-#pragma link C++ class o2::ctp::TriggerOffsetsParam + ;
-#pragma link C++ class o2::conf::ConfigurableParamHelper < o2::ctp::TriggerOffsetsParam> + ;
 
 #endif

@@ -18,7 +18,6 @@
 
 #include <cstdint>
 #include <vector>
-#include <functional>
 #include "CommonDataFormat/InteractionRecord.h"
 #include "DataFormatsMID/ROBoard.h"
 #include "DataFormatsMID/ROFRecord.h"

@@ -46,18 +46,20 @@ class CCDBManagerInstance
     std::string uuid;
     long startvalidity = 0;
     long endvalidity = -1;
+    bool isBlob = false; // is this raw blob or parsed object?
     bool isValid(long ts) { return ts < endvalidity && ts > startvalidity; }
     void clear()
     {
-      noCleanupPtr = nullptr;
       objPtr.reset();
       uuid = "";
       startvalidity = 0;
       endvalidity = -1;
+      isBlob = false;
     }
   };
 
  public:
+  using BLOB = std::vector<char>;
   using MD = std::map<std::string, std::string>;
 
   CCDBManagerInstance(std::string const& path) : mCCDBAccessor{}
@@ -101,6 +103,11 @@ class CCDBManagerInstance
     return getForTimeStamp<T>(path, mTimestamp);
   }
 
+  /// aliases for BLOB retrieval
+  BLOB* getBlobForTimeStamp(std::string const& path, long timestamp) { return getForTimeStamp<BLOB>(path, timestamp); }
+  BLOB* getSpecificBlob(std::string const& path, long timestamp = -1, MD metaData = MD()) { return getSpecific<BLOB>(path, timestamp, metaData); }
+  BLOB* getBlob(std::string const& path) { return get<BLOB>(path); }
+
   bool isHostReachable() const { return mCCDBAccessor.isHostReachable(); }
 
   /// clear all entries in the cache
@@ -119,15 +126,6 @@ class CCDBManagerInstance
     if (!v) {
       clearCache();
     }
-  }
-
-  /// Check if an object in cache is valid
-  bool isCachedObjectValid(std::string const& path, long timestamp)
-  {
-    if (!isCachingEnabled()) {
-      return false;
-    }
-    return mCache[path].isValid(timestamp);
   }
 
   /// check if checks of object validity before CCDB query is enabled
@@ -159,13 +157,13 @@ class CCDBManagerInstance
   /// set the fatal property (when false; nullptr object responses will not abort)
   void setFatalWhenNull(bool b) { mFatalWhenNull = b; }
 
-  /// a convenience function for MC to fetch
-  /// valid timestamps given an ALICE run number
-  std::pair<uint64_t, uint64_t> getRunDuration(int runnumber) const;
-
  private:
   // method to print (fatal) error
   void reportFatal(std::string_view s);
+  BLOB* createBlob(std::string const& path,
+                   MD const& metadata, long timestamp,
+                   MD* headers, std::string const& etag,
+                   const std::string& createdNotAfter, const std::string& createdNotBefore);
   // we access the CCDB via the CURL based C++ API
   o2::ccdb::CcdbApi mCCDBAccessor;
   std::unordered_map<std::string, CachedObject> mCache; //! map for {path, CachedObject} associations
@@ -187,27 +185,52 @@ T* CCDBManagerInstance::getForTimeStamp(std::string const& path, long timestamp)
 {
   T* ptr = nullptr;
   if (!isCachingEnabled()) {
-    ptr = mCCDBAccessor.retrieveFromTFileAny<T>(path, mMetaData, timestamp, nullptr, "",
-                                                mCreatedNotAfter ? std::to_string(mCreatedNotAfter) : "",
-                                                mCreatedNotBefore ? std::to_string(mCreatedNotBefore) : "");
+    if constexpr (std::is_same<T, BLOB>::value) {
+      ptr = createBlob(path, mMetaData, timestamp, nullptr, "",
+                       mCreatedNotAfter ? std::to_string(mCreatedNotAfter) : "",
+                       mCreatedNotBefore ? std::to_string(mCreatedNotBefore) : "");
+    } else {
+      ptr = mCCDBAccessor.retrieveFromTFileAny<T>(path, mMetaData, timestamp, nullptr, "",
+                                                  mCreatedNotAfter ? std::to_string(mCreatedNotAfter) : "",
+                                                  mCreatedNotBefore ? std::to_string(mCreatedNotBefore) : "");
+    }
     if (!ptr && mFatalWhenNull) {
       reportFatal(std::string("Got nullptr from CCDB for path ") + path + std::string(" and timestamp ") + std::to_string(timestamp));
     }
     return ptr;
   }
   auto& cached = mCache[path];
+  if constexpr (std::is_same<T, BLOB>::value) { // check if cached object type is consistent with requested one
+    if (!cached.isBlob) {
+      cached.clear();
+    }
+  } else {
+    if (cached.isBlob) {
+      cached.clear();
+    }
+  }
   if (mCheckObjValidityEnabled && cached.isValid(timestamp)) {
     return reinterpret_cast<T*>(cached.noCleanupPtr ? cached.noCleanupPtr : cached.objPtr.get());
   }
-  ptr = mCCDBAccessor.retrieveFromTFileAny<T>(path, mMetaData, timestamp, &mHeaders, cached.uuid,
-                                              mCreatedNotAfter ? std::to_string(mCreatedNotAfter) : "",
-                                              mCreatedNotBefore ? std::to_string(mCreatedNotBefore) : "");
+  if constexpr (std::is_same<T, BLOB>::value) {
+    ptr = createBlob(path, mMetaData, timestamp, &mHeaders, cached.uuid,
+                     mCreatedNotAfter ? std::to_string(mCreatedNotAfter) : "",
+                     mCreatedNotBefore ? std::to_string(mCreatedNotBefore) : "");
+  } else {
+    ptr = mCCDBAccessor.retrieveFromTFileAny<T>(path, mMetaData, timestamp, &mHeaders, cached.uuid,
+                                                mCreatedNotAfter ? std::to_string(mCreatedNotAfter) : "",
+                                                mCreatedNotBefore ? std::to_string(mCreatedNotBefore) : "");
+  }
   if (ptr) { // new object was shipped, old one (if any) is not valid anymore
-    if constexpr (std::is_same<TGeoManager, T>::value || std::is_base_of<o2::conf::ConfigurableParam, T>::value) {
-      // some special objects cannot be cached to shared_ptr since root may delete their raw global pointer
+    if constexpr (std::is_same<TGeoManager, T>::value) { // some special objects cannot be cached to shared_ptr since root may delete their raw global pointer
       cached.noCleanupPtr = ptr;
     } else {
       cached.objPtr.reset(ptr);
+    }
+    if constexpr (std::is_same<T, BLOB>::value) {
+      cached.isBlob = true;
+    } else {
+      cached.isBlob = false;
     }
     cached.uuid = mHeaders["ETag"];
     cached.startvalidity = std::stol(mHeaders["Valid-From"]);

@@ -172,7 +172,7 @@ class PropagatorImpl
 };
 
 using PropagatorF = PropagatorImpl<float>;
-using PropagatorD = PropagatorImpl<double>;
+using PropatatorD = PropagatorImpl<double>;
 using Propagator = PropagatorF;
 
 } // namespace base

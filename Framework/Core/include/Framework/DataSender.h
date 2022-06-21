@@ -15,8 +15,7 @@
 #include "Framework/SendingPolicy.h"
 #include "Framework/Tracing.h"
 #include "Framework/OutputSpec.h"
-#include <fairmq/Message.h>
-#include <fairmq/Parts.h>
+#include <fairmq/FairMQParts.h>
 #include <string>
 
 #include <cstddef>
@@ -34,8 +33,8 @@ class DataSender
  public:
   DataSender(ServiceRegistry& registry,
              SendingPolicy const& policy);
-  void send(fair::mq::Parts&, ChannelIndex index);
-  std::unique_ptr<fair::mq::Message> create(RouteIndex index);
+  void send(FairMQParts&, ChannelIndex index);
+  std::unique_ptr<FairMQMessage> create(RouteIndex index);
 
  private:
   FairMQDeviceProxy& mProxy;

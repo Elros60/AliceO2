@@ -32,14 +32,17 @@ class AlignableSensorTRD : public AlignableSensor
 {
  public:
   AlignableSensorTRD(const char* name = 0, int vid = 0, int iid = 0, int isec = 0);
-  ~AlignableSensorTRD() final;
+  virtual ~AlignableSensorTRD();
   //
   int GetSector() const { return fSector; }
   void SetSector(uint32_t sc) { fSector = (uint8_t)sc; }
   //
-  void dPosTraDParCalib(const AlignmentPoint* pnt, double* deriv, int calibID, const AlignableVolume* parent = 0) const final;
+  virtual AlignmentPoint* TrackPoint2AlgPoint(int pntId, const AliTrackPointArray* trpArr, const AliESDtrack* t);
   //
-  void prepareMatrixT2L() final;
+  virtual void dPosTraDParCalib(const AlignmentPoint* pnt, double* deriv, int calibID, const AlignableVolume* parent = 0) const;
+  //
+  //  virtual void   setTrackingFrame();
+  virtual void prepareMatrixT2L();
   //
  protected:
   //

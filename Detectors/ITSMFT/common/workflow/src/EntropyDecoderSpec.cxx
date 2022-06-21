@@ -48,7 +48,6 @@ void EntropyDecoderSpec::run(ProcessingContext& pc)
 {
   auto cput = mTimer.CpuTime();
   mTimer.Start(false);
-  o2::ctf::CTFIOSize iosize;
   updateTimeDependentParams(pc);
 
   auto buff = pc.inputs().get<gsl::span<o2::ctf::BufferType>>("ctf");
@@ -59,20 +58,19 @@ void EntropyDecoderSpec::run(ProcessingContext& pc)
   if (mGetDigits) {
     auto& digits = pc.outputs().make<std::vector<o2::itsmft::Digit>>(OutputRef{"Digits"});
     if (buff.size()) {
-      iosize = mCTFCoder.decode(o2::itsmft::CTF::getImage(buff.data()), rofs, digits, mNoiseMap, mPattIdConverter);
+      mCTFCoder.decode(o2::itsmft::CTF::getImage(buff.data()), rofs, digits, mNoiseMap, mPattIdConverter);
     }
     mTimer.Stop();
-    LOG(info) << "Decoded " << digits.size() << " digits in " << rofs.size() << " RO frames, (" << iosize.asString() << ") in " << mTimer.CpuTime() - cput << " s";
+    LOG(info) << "Decoded " << digits.size() << " digits in " << rofs.size() << " RO frames in " << mTimer.CpuTime() - cput << " s";
   } else {
     auto& compcl = pc.outputs().make<std::vector<o2::itsmft::CompClusterExt>>(OutputRef{"compClusters"});
     auto& patterns = pc.outputs().make<std::vector<unsigned char>>(OutputRef{"patterns"});
     if (buff.size()) {
-      iosize = mCTFCoder.decode(o2::itsmft::CTF::getImage(buff.data()), rofs, compcl, patterns, mNoiseMap, mPattIdConverter);
+      mCTFCoder.decode(o2::itsmft::CTF::getImage(buff.data()), rofs, compcl, patterns, mNoiseMap, mPattIdConverter);
     }
     mTimer.Stop();
-    LOG(info) << "Decoded " << compcl.size() << " clusters in " << rofs.size() << " RO frames, (" << iosize.asString() << ") in " << mTimer.CpuTime() - cput << " s";
+    LOG(info) << "Decoded " << compcl.size() << " clusters in " << rofs.size() << " RO frames in " << mTimer.CpuTime() - cput << " s";
   }
-  pc.outputs().snapshot({"ctfrep", 0}, iosize);
 }
 
 void EntropyDecoderSpec::endOfStream(EndOfStreamContext& ec)
@@ -120,8 +118,6 @@ DataProcessorSpec getEntropyDecoderSpec(o2::header::DataOrigin orig, int verbosi
     outputs.emplace_back(OutputSpec{{"ROframes"}, orig, "CLUSTERSROF", 0, Lifetime::Timeframe});
     outputs.emplace_back(OutputSpec{{"patterns"}, orig, "PATTERNS", 0, Lifetime::Timeframe});
   }
-  outputs.emplace_back(OutputSpec{{"ctfrep"}, orig, "CTFDECREP", 0, Lifetime::Timeframe});
-
   std::vector<InputSpec> inputs;
   inputs.emplace_back("ctf", orig, "CTFDATA", sspec, Lifetime::Timeframe);
   inputs.emplace_back("noise", orig, "NOISEMAP", 0, Lifetime::Condition, ccdbParamSpec(fmt::format("{}/Calib/NoiseMap", orig.as<std::string>())));

@@ -56,9 +56,7 @@ o2_target_root_dictionary(GlobalTracking
                                   include/GlobalTracking/MatchCosmics.h
                                   include/GlobalTracking/MatchCosmicsParams.h
                                   include/GlobalTracking/MatchITSTPCQC.h
-                                  include/GlobalTracking/ITSTPCMatchingQCParams.h
-                                  include/GlobalTracking/TrackMethods.h
-                                  include/GlobalTracking/TrackCuts.h)
+                                  include/GlobalTracking/ITSTPCMatchingQCParams.h)
 
 
 if (OpenMP_CXX_FOUND)

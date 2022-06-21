@@ -183,8 +183,7 @@ class TrackReference
 // already fetched from VMC
 inline TrackReference::TrackReference(float x, float y, float z, float px, float py, float pz, float l, float tof,
                                       int trackID, int detlabel)
-  : mTrackNumber(trackID),
-    mX(x),
+  : mX(x),
     mY(y),
     mZ(z),
     mPX(px),
@@ -192,6 +191,7 @@ inline TrackReference::TrackReference(float x, float y, float z, float px, float
     mPZ(pz),
     mTrackLength(l),
     mTof(tof),
+    mTrackNumber(trackID),
     mDetectorId(detlabel)
 {
 }

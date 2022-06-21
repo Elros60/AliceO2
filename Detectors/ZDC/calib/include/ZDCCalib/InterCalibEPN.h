@@ -20,9 +20,9 @@
 #include "CommonDataFormat/FlatHisto1D.h"
 #include "CommonDataFormat/FlatHisto2D.h"
 #include "DataFormatsZDC/RecEvent.h"
+#include "DataFormatsZDC/InterCalibData.h"
 #include "ZDCReconstruction/ZDCEnergyParam.h"
 #include "ZDCReconstruction/ZDCTowerParam.h"
-#include "ZDCCalib/InterCalibData.h"
 #include "ZDCCalib/InterCalibConfig.h"
 #ifndef ALICEO2_ZDC_INTERCALIBEPN_H_
 #define ALICEO2_ZDC_INTERCALIBEPN_H_
@@ -55,9 +55,8 @@ class InterCalibEPN
   const InterCalibConfig* getInterCalibConfig() const { return mInterCalibConfig; };
   void setSaveDebugHistos() { mSaveDebugHistos = true; }
   void setDontSaveDebugHistos() { mSaveDebugHistos = false; }
-  void setVerbosity(int val) { mVerbosity = val; }
-  InterCalibData mData;
   InterCalibData& getData() { return mData; }
+  InterCalibData mData;
   std::array<o2::dataformats::FlatHisto1D<float>*, 2 * NH> mH{};
   std::array<o2::dataformats::FlatHisto2D<float>*, NH> mC{};
 

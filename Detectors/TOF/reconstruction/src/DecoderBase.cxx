@@ -21,10 +21,8 @@
 #include <cstring>
 #include <iostream>
 
-// o2::ctf::CTFIOSize iosize;
-#define ENCODER_PARANOID
-// o2::ctf::CTFIOSize iosize;
-#define ENCODER_VERBOSE
+//#define DECODER_PARANOID
+//#define DECODER_VERBOSE
 
 #ifdef DECODER_PARANOID
 #warning "Building code with DecoderParanoid option. This may limit the speed."

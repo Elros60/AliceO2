@@ -71,13 +71,6 @@ class TPCCalibPadGainTracksDevice : public o2::framework::Task
     assert(chargeType == 0 || chargeType == 1);
     mPadGainTracks.setChargeType(static_cast<ChargeType>(chargeType));
 
-    mUseEveryNthTF = ic.options().get<int>("useEveryNthTF");
-    if (mUseEveryNthTF <= 0) {
-      mUseEveryNthTF = 1;
-    }
-
-    mMaxTracksPerTF = ic.options().get<int>("maxTracksPerTF");
-
     const std::string gainMapFile = ic.options().get<std::string>("gainMapFile");
     if (!gainMapFile.empty()) {
       LOGP(info, "Loading GainMap from file {}", gainMapFile);
@@ -131,12 +124,7 @@ class TPCCalibPadGainTracksDevice : public o2::framework::Task
 
   void run(o2::framework::ProcessingContext& pc) final
   {
-    const auto currentTF = processing_helpers::getCurrentTF(pc);
-    if (mTFCounter++ % mUseEveryNthTF) {
-      LOGP(info, "Skipping TF {}", currentTF);
-      return;
-    }
-
+    ++mProcessedTFs;
     auto tracks = pc.inputs().get<gsl::span<o2::tpc::TrackTPC>>("trackTPC");
     auto clRefs = pc.inputs().get<gsl::span<o2::tpc::TPCClRefElem>>("trackTPCClRefs");
     const auto& clusters = getWorkflowTPCInput(pc);
@@ -144,7 +132,7 @@ class TPCCalibPadGainTracksDevice : public o2::framework::Task
     if (nTracks == 0) {
       return;
     }
-    LOGP(info, "Processing TF {} with {} tracks by considering {} tracks", currentTF, nTracks, mMaxTracksPerTF);
+    LOGP(info, "Processing TF {} with {} tracks", processing_helpers::getCurrentTF(pc), nTracks);
 
     if (!mDisablePolynomialsCCDB) {
       pc.inputs().get<o2::tpc::CalibdEdxTrackTopologyPolContainer*>("tpctopologygain");
@@ -156,13 +144,13 @@ class TPCCalibPadGainTracksDevice : public o2::framework::Task
     }
 
     mPadGainTracks.setMembers(&tracks, &clRefs, clusters->clusterIndex);
-    mPadGainTracks.processTracks(mMaxTracksPerTF);
-    ++mProcessedTFs;
+    mPadGainTracks.processTracks();
+
     if ((mPublishAfter && (mProcessedTFs % mPublishAfter) == 0)) {
       LOGP(info, "Publishing after {} TFs", mProcessedTFs);
       mProcessedTFs = 0;
       if (mDebug) {
-        mPadGainTracks.dumpToFile(fmt::format("calPadGain_TF{}.root", currentTF).data());
+        mPadGainTracks.dumpToFile(fmt::format("calPadGain_TF{}.root", processing_helpers::getCurrentTF(pc)).data());
       }
       sendOutput(pc.outputs());
     }
@@ -174,11 +162,8 @@ class TPCCalibPadGainTracksDevice : public o2::framework::Task
   const bool mUseLastExtractedMapAsReference{false}; ///< using the last extracted gain map as the reference map which will be applied
   bool mDisablePolynomialsCCDB{false};               ///< do not load the polynomials from the CCDB
   uint32_t mProcessedTFs{0};                         ///< counter to keep track of the processed TFs
-  uint32_t mTFCounter{0};                            ///< counter to keep track of the TFs
   CalibPadGainTracks mPadGainTracks{false};          ///< class for creating the pad-by-pad gain map
   bool mUsingDefaultGainMapForFirstIter{true};       ///< using no reference gain map for the first iteration
-  unsigned int mUseEveryNthTF{1};                    ///< process every Nth TF only
-  int mMaxTracksPerTF{-1};                           ///< max number of tracks processed per TF
 
   void sendOutput(DataAllocator& output)
   {
@@ -187,18 +172,14 @@ class TPCCalibPadGainTracksDevice : public o2::framework::Task
   }
 };
 
-DataProcessorSpec getTPCCalibPadGainTracksSpec(const uint32_t publishAfterTFs, const bool debug, const bool useLastExtractedMapAsReference, const std::string polynomialsFile, bool disablePolynomialsCCDB)
+DataProcessorSpec getTPCCalibPadGainTracksSpec(const uint32_t publishAfterTFs, const bool debug, const bool useLastExtractedMapAsReference, const std::string polynomialsFile, const bool disablePolynomialsCCDB)
 {
   std::vector<InputSpec> inputs;
   inputs.emplace_back("trackTPC", gDataOriginTPC, "TRACKS", 0, Lifetime::Timeframe);
   inputs.emplace_back("trackTPCClRefs", gDataOriginTPC, "CLUSREFS", 0, Lifetime::Timeframe);
   inputs.emplace_back("clusTPC", ConcreteDataTypeMatcher{gDataOriginTPC, "CLUSTERNATIVE"}, Lifetime::Timeframe);
 
-  if (!polynomialsFile.empty()) {
-    disablePolynomialsCCDB = true;
-  }
-
-  if (!disablePolynomialsCCDB) {
+  if (polynomialsFile.empty() || disablePolynomialsCCDB) {
     inputs.emplace_back("tpctopologygain", gDataOriginTPC, "TOPOLOGYGAIN", 0, Lifetime::Condition, ccdbParamSpec(CDBTypeMap.at(CDBType::CalTopologyGain)));
   }
 
@@ -207,7 +188,7 @@ DataProcessorSpec getTPCCalibPadGainTracksSpec(const uint32_t publishAfterTFs, c
   }
 
   std::vector<OutputSpec> outputs;
-  outputs.emplace_back(gDataOriginTPC, "TRACKGAINHISTOS", 0, o2::framework::Lifetime::Sporadic);
+  outputs.emplace_back(gDataOriginTPC, "TRACKGAINHISTOS", 0, o2::framework::Lifetime::Timeframe);
 
   return DataProcessorSpec{
     "calib-tpc-gainmap-tracks",
@@ -215,6 +196,7 @@ DataProcessorSpec getTPCCalibPadGainTracksSpec(const uint32_t publishAfterTFs, c
     outputs,
     AlgorithmSpec{adaptFromTask<TPCCalibPadGainTracksDevice>(publishAfterTFs, debug, useLastExtractedMapAsReference, polynomialsFile, disablePolynomialsCCDB)},
     Options{
+      {"ccdb-uri", VariantType::String, o2::base::NameConf::getCCDBServer(), {"URI for the CCDB access"}},
       {"nBins", VariantType::Int, 20, {"Number of bins per histogram"}},
       {"reldEdxMin", VariantType::Int, 0, {"Minimum x coordinate of the histogram for Q/(dE/dx)"}},
       {"reldEdxMax", VariantType::Int, 3, {"Maximum x coordinate of the histogram for Q/(dE/dx)"}},
@@ -230,8 +212,6 @@ DataProcessorSpec getTPCCalibPadGainTracksSpec(const uint32_t publishAfterTFs, c
       {"dedxType", VariantType::Int, 0, {"recalculating the dE/dx (0), using it from tracking (1)"}},
       {"chargeType", VariantType::Int, 0, {"Using qMax (0) or qTot (1) for the dE/dx and the pad-by-pad histograms"}},
       {"propagateTrack", VariantType::Bool, false, {"Propagating the track instead of performing a refit for obtaining track parameters."}},
-      {"useEveryNthTF", VariantType::Int, 10, {"Using only a fraction of the data: 1: Use every TF, 10: Use only every tenth TF."}},
-      {"maxTracksPerTF", VariantType::Int, 10000, {"Maximum number of processed tracks per TF (-1 for processing all tracks)"}},
     }}; // end DataProcessorSpec
 }
 
