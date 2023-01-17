@@ -251,7 +251,7 @@ void test_Alignement(std::string prefix, std::string mchFileName,
   // Load tracks //
   /////////////////
 
-  
+  /*
   // Input file: MCH -> mchtracks.root
   cout << "Reading tracks..." << endl;
   cout << "Loading MCH tracks..." <<endl;
@@ -264,7 +264,7 @@ void test_Alignement(std::string prefix, std::string mchFileName,
                                                             "tracks"};
   TTreeReaderValue<std::vector<mch::Cluster>> mchClusters = {*mchReader,
                                                              "trackclusters"};
-
+  */
 
   /*
   // For tracking matching MCH-MID
@@ -283,7 +283,7 @@ void test_Alignement(std::string prefix, std::string mchFileName,
 
 
   // Reading data
-  /*                                                          
+                                                            
   TChain *mchChain = new TChain("o2sim");
   TChain *muonChain = new TChain("o2sim");
   int runNumbers[] = {520495, 520496, 520497, 520498, 520506, 520508};
@@ -301,7 +301,7 @@ void test_Alignement(std::string prefix, std::string mchFileName,
   TTreeReaderValue<std::vector<mch::ROFRecord>> mchROFs = {*mchReader, "trackrofs"};
   TTreeReaderValue<std::vector<mch::TrackMCH>> mchTracks = {*mchReader, "tracks"};
   TTreeReaderValue<std::vector<mch::Cluster>> mchClusters = {*mchReader, "trackclusters"};
-  */
+  
   
 
   ///////////////////////                                                           
