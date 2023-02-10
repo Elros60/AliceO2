@@ -1,32 +1,47 @@
 #!/bin/bash
 TARGET_DIR=$1
 LOCAL_DIR=$2
-SET=$3
-RUN=$4
-PASS=$5
-CTF=$6
+#SET=$3
+# RUN=$4
+PASS=$3
 
-NEW_DIR=$SET"_"$RUN"_"$PASS"_"$CTF
-
+NEW_DIR=$PASS
 mkdir -p $LOCAL_DIR/$NEW_DIR
-cd $LOCAL_DIR/$NEW_DIR
 
-echo "Start copying from $TARGET_DIR ..."
-CTF_LIST=`alien_ls $TARGET_DIR | grep o2_ctf_*`
-echo "Found jobs:"
-echo $CTF_LIST
-
-for CTF in $CTF_LIST
+for RUN_DEBUG in 523897 523821 523797 523792 523789 523788 523786 523783 523779 523731 523728 523677 523671 523669 523559 523541 523441 523401 523399 523397 523309 523308 523306 523298 523186 523182 523148 523142 523141
 do
-	mkdir -p $CTF
-	echo "Processing $CTF"
-	for ITEM in log_archive.zip mchtracks.root QC.root stderr.log stdout.log
+	cd $LOCAL_DIR/$NEW_DIR
+	mkdir -p $RUN_DEBUG
+	cd $RUN_DEBUG
+	echo "Start processing $RUN_DEBUG..."
+
+	COPY_DIR=$TARGET_DIR/$RUN_DEBUG/apass2_debug
+	echo "Start copying from $COPY_DIR ..."
+	CTF_LIST=`alien_ls $COPY_DIR`
+	echo "Found jobs:"
+	echo $CTF_LIST
+	for CTF in $CTF_LIST
 	do
-		echo "Copying $ITEM ..."
-		alien_cp alien:$TARGET_DIR/$CTF/$ITEM file:$LOCAL_DIR/$NEW_DIR/$CTF/$ITEM
-		echo "$ITEM copied."
+		mkdir -p $CTF
+		echo "Processing $CTF"
+			
+		EPN_LIST=`alien_ls $COPY_DIR/$CTF | grep o2_ctf*`
+		echo "Found EPN:"
+		echo $EPN_LIST
+		for EPN in $EPN_LIST
+		do
+			for ITEM in log_archive.zip mchtracks.root stderr.log stdout.log muontracks.root
+			do
+				echo "Copying $ITEM ..."
+				alien_cp alien:$COPY_DIR/$CTF/$EPN/$ITEM file:$LOCAL_DIR/$NEW_DIR/$RUN_DEBUG/$CTF/$ITEM
+				echo "$ITEM copied."
+			done
+		done
+
 	done
 
 done
 
-hadd -f mchtracks.root o2_ctf_*/mchtracks.root
+cd $LOCAL_DIR/$NEW_DIR
+hadd -f mchtracks.root */*/mchtracks.root
+hadd -f muontracks.root */*/muontracks.root

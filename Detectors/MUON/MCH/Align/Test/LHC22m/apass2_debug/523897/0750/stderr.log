@@ -1,0 +1,3 @@
+Info in <TUnixSystem::ACLiC>: creating shared library /workdir/./getIRandDuration_C.so
+Info in <TJAlienConnectionManager>: Successfully connected to JBox
+Info in <TJAlienFile::Open>: Accessing file /alice/data/CCDB/CTP/Calib/Scalers/14/01218/2da5d546-22ab-11ed-8003-0aa140651b9a in SE <ALICE::CERN::OCDB>
