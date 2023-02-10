@@ -1,0 +1,31 @@
+39:SA1G
+53:SA2G
+61:Segment 0 gas
+68:Segment 1 gas
+75:Segment 2 gas
+115:S2- gas
+125:B2N2+ gas
+134:B1N1 gas
+141:R1 gas
+159:R2 gas
+177:B2N2- gas
+183:S2+ gas
+251:B3-N3 gas
+266:B3+N3 gas
+272:R3 gas
+380:Gas longRPC_11
+390:Gas topCutRPC_11
+399:Gas shortRPC_11
+408:Gas bottomCutRPC_11
+419:Gas longRPC_12
+429:Gas topCutRPC_12
+438:Gas shortRPC_12
+447:Gas bottomCutRPC_12
+458:Gas longRPC_13
+468:Gas topCutRPC_13
+477:Gas shortRPC_13
+486:Gas bottomCutRPC_13
+497:Gas longRPC_14
+507:Gas topCutRPC_14
+516:Gas shortRPC_14
+525:Gas bottomCutRPC_14
