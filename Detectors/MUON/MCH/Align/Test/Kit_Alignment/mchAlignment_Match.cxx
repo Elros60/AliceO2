@@ -25,6 +25,7 @@
 #include <TTreeReaderValue.h>
 #include <TChain.h>
 #include <TGraph.h>
+#include <TGraphErrors.h>
 #include <TLine.h>
 
 #include "CommonConstants/LHCConstants.h"
@@ -119,9 +120,7 @@ void LoadDigits(TrackInfo &trackInfo, const std::vector<mch::Cluster> &clusters,
                 bool rejectBackground);
 void computeMCHTime(const std::vector<const mch::Digit *> &digits, double &mean,
                     double &rms, int deMin = 100, int deMax = 1025);
-const dataformats::TrackMCHMID *
-FindMuon(uint32_t iMCHTrack,
-         const std::vector<dataformats::TrackMCHMID> &muonTracks);
+bool FindMuon(int iMCHTrack, std::vector<dataformats::TrackMCHMID> &muonTracks);
 bool ExtrapToVertex(TrackInfo &trackInfo);
 bool IsSelected(TrackInfo &trackInfo);
 bool IsSignal(TrackInfo &trackInfo);
@@ -152,7 +151,7 @@ void WriteHistos(TFile *f, const char *dirName,
 mch::Track MCHFormatConvert(mch::TrackMCH &mchTrack,
                             std::vector<mch::Cluster> &mchClusters, bool doReAlign);
 bool RemoveTrack(mch::Track &track, double ImproveCut);
-void drawHisto(double *params, double *errors, double *pulls);
+void drawHisto(double *params, double *errors, double *pulls, TTree &Res_Tree, std::string outFileName);
 
 Int_t GetDetElemNumber(Int_t iDetElemId);
 Int_t GetDetElemId(Int_t iDetElemNumber);
@@ -161,7 +160,7 @@ Int_t GetDetElemId(Int_t iDetElemNumber);
 // Load gSystem->Load("libO2MCHMappingImpl4"); in ROOT before compile the marco.
 
 //_________________________________________________________________________________________________
-void test_Alignement(std::string prefix, std::string mchFileName,
+void mchAlignment_Match(std::string prefix, std::string mchFileName,
                      std::string muonFileName = "", std::string recDataFileName = "",
                      std::string recConsFileName = "",
                      std::string outFileName = "Alignment",
@@ -169,10 +168,8 @@ void test_Alignement(std::string prefix, std::string mchFileName,
                      std::string NewGeoFileName = "",
                      bool doAlign = false,
                      bool doReAlign = false,
-                     std::string param_config = "PbPb",
-                     Double_t weightRecord = 1,
-                     bool applyTrackSelection = false,
-                     bool selectSignal = false, bool rejectBackground = false) {
+                     std::string param_config = "pp",
+                     Double_t weightRecord = 1) {
 
 
 
@@ -268,10 +265,11 @@ void test_Alignement(std::string prefix, std::string mchFileName,
                                                              "trackclusters"};
 
 
-  /*
+  
+
   // For tracking matching MCH-MID
   // Input file: MUON -> muontracks; contains MCH–MID matching
-  LOG(info) << "Data mode";
+  LOG(info) << "matching mode";
   cout << "Loading MID muon tracks..." <<endl;
   auto [fMUON, muonReader] = LoadData(muonFileName.c_str(), "o2sim");
   TTreeReaderValue<std::vector<dataformats::TrackMCHMID>> muonTracks = {*muonReader, "tracks"};
@@ -280,8 +278,7 @@ void test_Alignement(std::string prefix, std::string mchFileName,
     LOG(error) << mchFileName << " and " << muonFileName
              << " do not contain the same number of TF";
     exit(-1);
-  }
-  */
+  }                                                  
 
 
   // Reading data
@@ -326,7 +323,7 @@ void test_Alignement(std::string prefix, std::string mchFileName,
 
 
   // Fix chambers
-  const Int_t chambers[] = {1,10,0};
+  const Int_t chambers[] = {5,10,0};
   for (Int_t i = 0; chambers[i] > 0; ++i) {
     std::cout << "Fixing chamber " << chambers[i] << std::endl;
     test_align->FixChamber(chambers[i]);
@@ -371,10 +368,10 @@ void test_Alignement(std::string prefix, std::string mchFileName,
   int tracksGood = 0;
   int tracksGoodwithoutFit = 0;
   int tracksAll = 0;
+  int trackMCHMID = 0;
 
   // processing for each track
-  while (mchReader->Next()) {
-
+  while (mchReader->Next()&&muonReader->Next()) {
     int id_event = mchReader->GetCurrentEntry();
     cout << "=========================================================="
                 "===="
@@ -406,6 +403,11 @@ void test_Alignement(std::string prefix, std::string mchFileName,
       for (int iMCHTrack = mchROF.getFirstIdx();
            iMCHTrack <= mchROF.getLastIdx(); ++iMCHTrack) {
         
+
+        // MCH-MID matching
+        if(!FindMuon(iMCHTrack,*muonTracks)) continue;
+        trackMCHMID += 1;          
+
         auto mchTrack = mchTracks->at(iMCHTrack);
         int id_track = iMCHTrack;
         int nb_clusters = mchTrack.getNClusters();
@@ -432,11 +434,9 @@ void test_Alignement(std::string prefix, std::string mchFileName,
           LOG(info) << "Current track has been excluded for alignment process.";
           continue;
         }else{
+          LOG(info) << "Current track is being considered into alignment process.";
           tracksGood += 1;
         }
-
-        // Finalization of fitted track (smoothing + finalization)
-        trackFitter->fit(convertedTrack,true,true);
 
         //  Track processing, saving residuals
         AliMillePedeRecord *mchRecord = test_align->ProcessTrack(
@@ -487,11 +487,11 @@ void test_Alignement(std::string prefix, std::string mchFileName,
   // Evaluation for track removing and selection
   LOG(info) << Form("%s%d", "Number of good tracks used in alignment process: ",tracksGood);
   LOG(info) << Form("%s%d", "Number of good tracks without fit processing: ",tracksGoodwithoutFit);
+  LOG(info) << Form("%s%d", "Number of MCH-MID tracks: ",trackMCHMID);
   LOG(info) << Form("%s%d","Total number of tracks loaded: ", tracksAll);
-  double ratio_tracksBefore = double(tracksGoodwithoutFit)/tracksAll;
-  LOG(info) << Form("%s%f","Ratio before fit: ", ratio_tracksBefore);    
-  double ratio_tracks = double(tracksGood)/tracksAll;
-  LOG(info) << Form("%s%f","Ratio after fit: ", ratio_tracks);
+  LOG(info) << Form("%s%f","Ratio of MCH-MID track: ", double(trackMCHMID)/tracksAll);
+  LOG(info) << Form("%s%f","Ratio before fit: ", double(tracksGoodwithoutFit)/tracksAll);    
+  LOG(info) << Form("%s%f","Ratio after fit: ", double(tracksGood)/tracksAll);
   cout<<endl;
   cout<<endl;
 
@@ -508,20 +508,19 @@ void test_Alignement(std::string prefix, std::string mchFileName,
     FileAlign->WriteObjectAny(&ParamAligned, "std::vector<o2::detectors::AlignParam>", "alignment");
     FileAlign->Close();
 
-
     string Geo_file;
 
     if(doReAlign){
-      Geo_file = Form("%s%s","o2sim_geometry_ReAlign_",".root");
+      Geo_file = Form("%s%s","o2sim_geometry_ReAlign",".root");
     }else{
-      Geo_file = Form("%s%s","o2sim_geometry_Align_",".root");
+      Geo_file = Form("%s%s","o2sim_geometry_Align",".root");
     }
 
     // Store aligned geometry
     gGeoManager->Export(Geo_file.c_str());
 
     // Store param plots
-    drawHisto(params, errors, pulls);
+    drawHisto(params, errors, pulls,*(test_align->GetResTree()), outFileName);
 
   }
 
@@ -588,10 +587,9 @@ mch::Track MCHFormatConvert(mch::TrackMCH &mchTrack,
   }
 
   // Get trackparameters by calling trackFitter
-  convertedTrack.print();
-  trackFitter->fit(convertedTrack,true,false);
-  convertedTrack.print();
-
+  //convertedTrack.print();
+  //trackFitter->fit(convertedTrack,false,false);
+  //convertedTrack.print();
 
   return mch::Track(convertedTrack);
 
@@ -669,6 +667,7 @@ bool RemoveTrack(mch::Track &track, double ImproveCut){
         param.setParameters(param.getSmoothParameters());
         param.setCovariances(param.getSmoothCovariances());
     }
+    LOG(info) << "Track has been finalised.";
   }
 
   return removeTrack;
@@ -676,7 +675,7 @@ bool RemoveTrack(mch::Track &track, double ImproveCut){
 }
 
 //_________________________________________________________________________________________________
-void drawHisto(double *params, double *errors, double *pulls){
+void drawHisto(double *params, double *errors, double *pulls, TTree &Res_Tree, std::string outFileName){
 
   TH1F *hPullX = new TH1F("hPullX", "hPullX", 201, -10, 10);
   TH1F *hPullY = new TH1F("hPullY", "hPullY", 201, -10, 10);
@@ -746,7 +745,8 @@ void drawHisto(double *params, double *errors, double *pulls){
   // graphAlignYZ->Draw("AP");
 
   // Saving plots
-  TFile *PlotFiles = TFile::Open("ParamPlots.root","RECREATE");
+  std::string PlotFiles_name = Form("%s%s",outFileName.c_str(),"_results.root");
+  TFile *PlotFiles = TFile::Open(PlotFiles_name.c_str(),"RECREATE");
   PlotFiles->WriteObjectAny(hPullX,"TH1F","hPullX");
   PlotFiles->WriteObjectAny(hPullY,"TH1F","hPullY");
   PlotFiles->WriteObjectAny(hPullZ,"TH1F","hPullZ");
@@ -760,50 +760,212 @@ void drawHisto(double *params, double *errors, double *pulls){
   TCanvas *cvn1 = new TCanvas("cvn1", "cvn1", 1200, 1600);
   //cvn1->Draw();
   cvn1->Divide(1, 4);
-  TLine limLine(4, -15, 4, 15);
+  TLine limLine(4, -5, 4, 5);
   TH1F *aHisto = new TH1F("aHisto", "AlignParam", 161, 0, 160);
   aHisto->SetXTitle("Det. Elem. Number");
   for (int i = 1; i < 5; i++) {
     cvn1->cd(i);
+    double Range[4] = {5.0, 1.0, 5.0, 0.01};
     switch (i) {
     case 1:
       aHisto->SetYTitle("#delta_{#X} (cm)");
       aHisto->GetYaxis()->SetRangeUser(-5.0, 5.0);
       aHisto->DrawCopy();
       graphAlignX->Draw("Psame");
+      limLine.DrawLine(4, -Range[i-1], 4, Range[i-1]);
+      limLine.DrawLine(8, -Range[i-1], 8, Range[i-1]);
+      limLine.DrawLine(12, -Range[i-1], 12, Range[i-1]);
+      limLine.DrawLine(16, -Range[i-1], 16, Range[i-1]);
+      limLine.DrawLine(16 + 18, -Range[i-1], 16 + 18, Range[i-1]);
+      limLine.DrawLine(16 + 2 * 18, -Range[i-1], 16 + 2 * 18, Range[i-1]);
+      limLine.DrawLine(16 + 2 * 18 + 26, -Range[i-1], 16 + 2 * 18 + 26, Range[i-1]);
+      limLine.DrawLine(16 + 2 * 18 + 2 * 26, -Range[i-1], 16 + 2 * 18 + 2 * 26, Range[i-1]);
+      limLine.DrawLine(16 + 2 * 18 + 3 * 26, -Range[i-1], 16 + 2 * 18 + 3 * 26, Range[i-1]);
       break;
     case 2:
       aHisto->SetYTitle("#delta_{#Y} (cm)");
-      aHisto->GetYaxis()->SetRangeUser(-5.0, 5.0);
+      aHisto->GetYaxis()->SetRangeUser(-1.0, 1.0);
       aHisto->DrawCopy();
       graphAlignY->Draw("Psame");
+      limLine.DrawLine(4, -Range[i-1], 4, Range[i-1]);
+      limLine.DrawLine(8, -Range[i-1], 8, Range[i-1]);
+      limLine.DrawLine(12, -Range[i-1], 12, Range[i-1]);
+      limLine.DrawLine(16, -Range[i-1], 16, Range[i-1]);
+      limLine.DrawLine(16 + 18, -Range[i-1], 16 + 18, Range[i-1]);
+      limLine.DrawLine(16 + 2 * 18, -Range[i-1], 16 + 2 * 18, Range[i-1]);
+      limLine.DrawLine(16 + 2 * 18 + 26, -Range[i-1], 16 + 2 * 18 + 26, Range[i-1]);
+      limLine.DrawLine(16 + 2 * 18 + 2 * 26, -Range[i-1], 16 + 2 * 18 + 2 * 26, Range[i-1]);
+      limLine.DrawLine(16 + 2 * 18 + 3 * 26, -Range[i-1], 16 + 2 * 18 + 3 * 26, Range[i-1]);      
       break;
     case 3:
       aHisto->SetYTitle("#delta_{#Z} (cm)");
-      aHisto->GetYaxis()->SetRangeUser(-15.0, 15.0);
+      aHisto->GetYaxis()->SetRangeUser(-5.0, 5.0);
       aHisto->DrawCopy();
       graphAlignZ->Draw("Psame");
+      limLine.DrawLine(4, -Range[i-1], 4, Range[i-1]);
+      limLine.DrawLine(8, -Range[i-1], 8, Range[i-1]);
+      limLine.DrawLine(12, -Range[i-1], 12, Range[i-1]);
+      limLine.DrawLine(16, -Range[i-1], 16, Range[i-1]);
+      limLine.DrawLine(16 + 18, -Range[i-1], 16 + 18, Range[i-1]);
+      limLine.DrawLine(16 + 2 * 18, -Range[i-1], 16 + 2 * 18, Range[i-1]);
+      limLine.DrawLine(16 + 2 * 18 + 26, -Range[i-1], 16 + 2 * 18 + 26, Range[i-1]);
+      limLine.DrawLine(16 + 2 * 18 + 2 * 26, -Range[i-1], 16 + 2 * 18 + 2 * 26, Range[i-1]);
+      limLine.DrawLine(16 + 2 * 18 + 3 * 26, -Range[i-1], 16 + 2 * 18 + 3 * 26, Range[i-1]);  
       break;
     case 4:
       aHisto->SetYTitle("#delta_{#varphi} (cm)");
       aHisto->GetYaxis()->SetRangeUser(-0.01, 0.01);
       aHisto->DrawCopy();
       graphAlignPhi->Draw("Psame");
+      limLine.DrawLine(4, -Range[i-1], 4, Range[i-1]);
+      limLine.DrawLine(8, -Range[i-1], 8, Range[i-1]);
+      limLine.DrawLine(12, -Range[i-1], 12, Range[i-1]);
+      limLine.DrawLine(16, -Range[i-1], 16, Range[i-1]);
+      limLine.DrawLine(16 + 18, -Range[i-1], 16 + 18, Range[i-1]);
+      limLine.DrawLine(16 + 2 * 18, -Range[i-1], 16 + 2 * 18, Range[i-1]);
+      limLine.DrawLine(16 + 2 * 18 + 26, -Range[i-1], 16 + 2 * 18 + 26, Range[i-1]);
+      limLine.DrawLine(16 + 2 * 18 + 2 * 26, -Range[i-1], 16 + 2 * 18 + 2 * 26, Range[i-1]);
+      limLine.DrawLine(16 + 2 * 18 + 3 * 26, -Range[i-1], 16 + 2 * 18 + 3 * 26, Range[i-1]);  
       break;
     }
-
-    limLine.DrawLine(4, -15, 4, 15);
-    limLine.DrawLine(8, -15, 8, 15);
-    limLine.DrawLine(12, -15, 12, 15);
-    limLine.DrawLine(16, -15, 16, 15);
-    limLine.DrawLine(16 + 18, -15, 16 + 18, 15);
-    limLine.DrawLine(16 + 2 * 18, -15, 16 + 2 * 18, 15);
-    limLine.DrawLine(16 + 2 * 18 + 26, -15, 16 + 2 * 18 + 26, 15);
-    limLine.DrawLine(16 + 2 * 18 + 2 * 26, -15, 16 + 2 * 18 + 2 * 26, 15);
-    limLine.DrawLine(16 + 2 * 18 + 3 * 26, -15, 16 + 2 * 18 + 3 * 26, 15);
   }
 
+  Int_t RefClDetElem;
+  Int_t RefClDetElemNumber;
+  Float_t RefClusterX;
+  Float_t RefClusterY;
+  Float_t RefTrackX;
+  Float_t RefTrackY;
+  Float_t RefTrackSlopeX;
+  Float_t RefTrackSlopeY;
+  Res_Tree.SetBranchAddress("fClusterX",&RefClusterX);
+  Res_Tree.SetBranchAddress("fClusterY",&RefClusterY);
+  Res_Tree.SetBranchAddress("fTrackX",&RefTrackX);
+  Res_Tree.SetBranchAddress("fTrackY",&RefTrackY);
+  Res_Tree.SetBranchAddress("fTrackSlopeX",&RefTrackSlopeX);
+  Res_Tree.SetBranchAddress("fTrackSlopeY",&RefTrackSlopeY);
+  Res_Tree.SetBranchAddress("fClDetElem",&RefClDetElem);
+  Res_Tree.SetBranchAddress("fClDetElemNumber",&RefClDetElemNumber);
+
+  TH1F *Histos_Res[2][11];
+  for(int i=0;i<2;i++){
+    for(int j=0;j<11;j++){
+      if(i==0){
+        Histos_Res[i][j] = new TH1F(Form("%s%d","Residual_X_Ch",j),Form("%s%d","Residual_x_Ch",j),200,-5,5);
+      }
+
+      if(i==1){
+        Histos_Res[i][j] = new TH1F(Form("%s%d","Residual_Y_Ch",j),Form("%s%d","Residual_y_Ch",j),200,-5,5);
+      }
+    }
+  }
+
+
+  TH1F *Histos_DETRes[2][156];
+  for(int i=0;i<2;i++){
+    for(int j=0;j<156;j++){
+      if(i==0) Histos_DETRes[i][j] = new TH1F(Form("%s%d","Hist_x_DET",j+1),Form("%s%d","Hist_x_DET",j+1),200,-5,5);
+      if(i==1) Histos_DETRes[i][j] = new TH1F(Form("%s%d","Hist_y_DET",j+1),Form("%s%d","Hist_y_DET",j+1),200,-5,5);
+    }
+  }
+
+  int Ref_NbEntries = Res_Tree.GetEntries();
+  for(int i=0; i < Ref_NbEntries;i++){
+
+    Res_Tree.GetEntry(i);
+    double Res_X = RefClusterX - RefTrackX;
+    double Res_Y = RefClusterY - RefTrackY;
+
+    for(int iCh=0; iCh<11;iCh++){
+      if(iCh==0){
+        Histos_Res[0][iCh]->Fill(Res_X);
+        Histos_Res[1][iCh]->Fill(Res_Y);
+      }else{
+        if(iCh == int(RefClDetElem/100)){
+          Histos_Res[0][iCh]->Fill(Res_X);
+          Histos_Res[1][iCh]->Fill(Res_Y);
+        }
+      }
+    }
+
+    for(int iDEN = 0; iDEN < 156; iDEN++){
+      if(RefClDetElemNumber == iDEN){
+        Histos_DETRes[0][iDEN]->Fill(Res_X);
+        Histos_DETRes[1][iDEN]->Fill(Res_Y);
+      }
+
+    }
+
+  }
+
+  for(int i=0;i<2;i++){
+    for(int j=0;j<11;j++){
+      if(i==0) PlotFiles->WriteObjectAny(Histos_Res[i][j],"TH1F",Form("%s%d","Residual_X_Ch",j));
+      if(i==1) PlotFiles->WriteObjectAny(Histos_Res[i][j],"TH1F",Form("%s%d","Residual_Y_Ch",j));
+    }
+  }
+
+  double ResX_mean[156]={};
+  double ResX_err[156]={};
+  double ResY_mean[156]={};
+  double ResY_err[156]={};
+  for(int iDEN = 0; iDEN < 156; iDEN++){
+
+    ResX_mean[iDEN]=Histos_DETRes[0][iDEN]->GetMean();
+    ResX_err[iDEN]=Histos_DETRes[0][iDEN]->GetRMS();
+
+    ResY_mean[iDEN]=Histos_DETRes[1][iDEN]->GetMean();
+    ResY_err[iDEN]=Histos_DETRes[1][iDEN]->GetRMS();
+  }
+
+  TGraphErrors *graphResX = new TGraphErrors(156, deNumber, ResX_mean, nullptr, ResX_err);
+  TGraphErrors *graphResY = new TGraphErrors(156, deNumber, ResY_mean, nullptr, ResY_err);
+
+  TCanvas *graphRes = new TCanvas("graphRes","graphRes",1200, 1600);
+  TH1F *gHisto = new TH1F("gHisto", "Residuals", 161, 0, 160);
+  gHisto->SetXTitle("Det. Elem. Number");
+
+  graphRes->Divide(1,2);
+
+  graphRes->cd(1);
+  gHisto->SetYTitle("TrackX - ClusterX (cm)");
+  gHisto->GetYaxis()->SetRangeUser(-5.0, 5.0);
+  gHisto->DrawCopy();
+  graphResX->SetMarkerStyle(8);
+  graphResX->SetMarkerSize(0.7);
+  graphResX->SetLineColor(kBlue);
+  graphResX->Draw("PZsame");
+  limLine.DrawLine(4, -5, 4, 5);
+  limLine.DrawLine(8, -5, 8, 5);
+  limLine.DrawLine(12, -5, 12, 5);
+  limLine.DrawLine(16, -5, 16, 5);
+  limLine.DrawLine(16 + 18, -5, 16 + 18, 5);
+  limLine.DrawLine(16 + 2 * 18, -5, 16 + 2 * 18, 5);
+  limLine.DrawLine(16 + 2 * 18 + 26, -5, 16 + 2 * 18 + 26, 5);
+  limLine.DrawLine(16 + 2 * 18 + 2 * 26, -5, 16 + 2 * 18 + 2 * 26, 5);
+  limLine.DrawLine(16 + 2 * 18 + 3 * 26, -5, 16 + 2 * 18 + 3 * 26, 5);
+
+  graphRes->cd(2);
+  gHisto->SetYTitle("TrackY - ClusterY (cm)");
+  gHisto->GetYaxis()->SetRangeUser(-5.0, 5.0);
+  gHisto->DrawCopy();
+  graphResY->SetMarkerStyle(8);
+  graphResY->SetMarkerSize(0.7);
+  graphResY->SetLineColor(kBlue);
+  graphResY->Draw("PZsame");
+  limLine.DrawLine(4, -5, 4, 5);
+  limLine.DrawLine(8, -5, 8, 5);
+  limLine.DrawLine(12, -5, 12, 5);
+  limLine.DrawLine(16, -5, 16, 5);
+  limLine.DrawLine(16 + 18, -5, 16 + 18, 5);
+  limLine.DrawLine(16 + 2 * 18, -5, 16 + 2 * 18, 5);
+  limLine.DrawLine(16 + 2 * 18 + 26, -5, 16 + 2 * 18 + 26, 5);
+  limLine.DrawLine(16 + 2 * 18 + 2 * 26, -5, 16 + 2 * 18 + 2 * 26, 5);
+  limLine.DrawLine(16 + 2 * 18 + 3 * 26, -5, 16 + 2 * 18 + 3 * 26, 5);
+
+
   PlotFiles->WriteObjectAny(cvn1,"TCanvas","AlignParam");
+  PlotFiles->WriteObjectAny(graphRes,"TCanvas","ResGraph");
   PlotFiles->Close();
 
 }
@@ -925,17 +1087,15 @@ void computeMCHTime(const std::vector<const mch::Digit *> &digits, double &mean,
 }
 
 //_________________________________________________________________________________________________
-const dataformats::TrackMCHMID *
-FindMuon(uint32_t iMCHTrack,
-         const std::vector<dataformats::TrackMCHMID> &muonTracks) {
+bool FindMuon(int iMCHTrack, std::vector<dataformats::TrackMCHMID> &muonTracks) {
   /// find the MCH-MID matched track corresponding to this MCH track
   for (const auto &muon : muonTracks) {
     // cout << "Muon track index: " << muon.getMCHRef().getIndex()<<endl;
     if (muon.getMCHRef().getIndex() == iMCHTrack) {
-      return &muon;
+      return true;
     }
   }
-  return nullptr;
+  return false;
 }
 
 //_________________________________________________________________________________________________

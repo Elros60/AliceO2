@@ -323,7 +323,7 @@ void test_Alignement(std::string prefix, std::string mchFileName,
 
 
   // Fix chambers
-  const Int_t chambers[] = {1,10,0};
+  const Int_t chambers[] = {5,10,0};
   for (Int_t i = 0; chambers[i] > 0; ++i) {
     std::cout << "Fixing chamber " << chambers[i] << std::endl;
     test_align->FixChamber(chambers[i]);
