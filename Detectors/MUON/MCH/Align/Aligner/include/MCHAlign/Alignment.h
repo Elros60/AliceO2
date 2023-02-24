@@ -73,14 +73,14 @@ class LocalTrackClusterResidual
 
   // private:
   //* y and z
-  int fClDetElem = 0.0;
-  int fClDetElemNumber = 0.0;
-  double fClusterX = 0.0;
-  double fClusterY = 0.0;
-  double fTrackX = 0.0;
-  double fTrackY = 0.0;
-  double fTrackSlopeX = 0.0;
-  double fTrackSlopeY = 0.0;
+  Int_t fClDetElem = 0.0;
+  Int_t fClDetElemNumber = 0.0;
+  Float_t fClusterX = 0.0;
+  Float_t fClusterY = 0.0;
+  Float_t fTrackX = 0.0;
+  Float_t fTrackY = 0.0;
+  Float_t fTrackSlopeX = 0.0;
+  Float_t fTrackSlopeY = 0.0;
 }; // class LocalTrackClusterResidual
 
 class Alignment : public TObject

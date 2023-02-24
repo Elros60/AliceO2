@@ -275,7 +275,7 @@ void Alignment::init(std::string DataRecFName, std::string ConsRecFName)
   // setup monitoring TFile
   if (fDoEvaluation) {
     // if (fDoEvaluation && fRefitStraightTracks) {
-    string Path_file = Form("%s%s","ResRecord",".root");
+    string Path_file = Form("%s%s","Residual",".root");
 
     fTFile = new TFile(Path_file.c_str(), "RECREATE");
     fTTree = new TTree("TreeE", "Evaluation");
@@ -290,7 +290,15 @@ void Alignment::init(std::string DataRecFName, std::string ConsRecFName)
     // fTTree->Branch("fTrackParamNew", "LocalTrackParam", &fTrackParamNew, kBufsize, kSplitlevel);
 
     fTrkClRes = new o2::mch::LocalTrackClusterResidual();
-    fTTree->Branch("fTrkClRes", &fTrkClRes, kBufsize, kSplitlevel);
+    fTTree->Branch("fClDetElem", &(fTrkClRes->fClDetElem), "fClDetElem/I");
+    fTTree->Branch("fClDetElemNumber", &(fTrkClRes->fClDetElemNumber), "fClDetElemNumber/I");
+    fTTree->Branch("fClusterX", &(fTrkClRes->fClusterX), "fClusterX/F");
+    fTTree->Branch("fClusterY", &(fTrkClRes->fClusterY), "fClusterY/F");
+    fTTree->Branch("fTrackX", &(fTrkClRes->fTrackX), "fTrackX/F");
+    fTTree->Branch("fTrackY", &(fTrkClRes->fTrackY), "fTrackY/F");
+    fTTree->Branch("fTrackSlopeX", &(fTrkClRes->fTrackSlopeX), "fTrackSlopeX/F");
+    fTTree->Branch("fTrackSlopeY", &(fTrkClRes->fTrackSlopeY), "fTrackSlopeY/F");
+
   }
 }
 
