@@ -81,6 +81,7 @@ class LocalTrackClusterResidual
   Float_t fTrackY = 0.0;
   Float_t fTrackSlopeX = 0.0;
   Float_t fTrackSlopeY = 0.0;
+  Float_t fBendingMomentum = 0.0;
 }; // class LocalTrackClusterResidual
 
 class Alignment : public TObject

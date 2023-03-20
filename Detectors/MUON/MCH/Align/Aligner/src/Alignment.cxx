@@ -298,7 +298,7 @@ void Alignment::init(std::string DataRecFName, std::string ConsRecFName)
     fTTree->Branch("fTrackY", &(fTrkClRes->fTrackY), "fTrackY/F");
     fTTree->Branch("fTrackSlopeX", &(fTrkClRes->fTrackSlopeX), "fTrackSlopeX/F");
     fTTree->Branch("fTrackSlopeY", &(fTrkClRes->fTrackSlopeY), "fTrackSlopeY/F");
-
+    fTTree->Branch("fBendingMomentum", &(fTrkClRes->fBendingMomentum), "fBendingMomentum/F");
   }
 }
 
@@ -456,6 +456,10 @@ AliMillePedeRecord* Alignment::ProcessTrack(Track& track, const o2::mch::geo::Tr
     // printf("DE %d, X: %f %f ; Y: %f %f ; Z: %f\n", cluster->getDEId(), fClustPos[0], fTrackPos[0], fClustPos[1], fTrackPos[1], fClustPos[2]);
 
     if (fDoEvaluation) {
+
+      Float_t InvBendingMom = itTrackParam->getInverseBendingMomentum();
+      Float_t TrackCharge = itTrackParam->getCharge();
+
       fTrkClRes->fClDetElem = cluster->getDEId();
       fTrkClRes->fClDetElemNumber = GetDetElemNumber(cluster->getDEId());
       fTrkClRes->fClusterX = fClustPos[0];
@@ -470,9 +474,9 @@ AliMillePedeRecord* Alignment::ProcessTrack(Track& track, const o2::mch::geo::Tr
       fTrkClRes->fTrackY = fTrackPos[1];
       fTrkClRes->fTrackSlopeX = fTrackSlope[0];
       fTrkClRes->fTrackSlopeY = fTrackSlope[1];
+      fTrkClRes->fBendingMomentum = TrackCharge/InvBendingMom;
 
-      if (fTTree)
-        fTTree->Fill();
+      if (fTTree) fTTree->Fill();
     }
     // Set local equations
     LocalEquationX(r);
