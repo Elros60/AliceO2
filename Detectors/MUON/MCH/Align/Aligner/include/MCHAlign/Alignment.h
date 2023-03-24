@@ -75,13 +75,30 @@ class LocalTrackClusterResidual
   //* y and z
   Int_t fClDetElem = 0.0;
   Int_t fClDetElemNumber = 0.0;
+
   Float_t fClusterX = 0.0;
   Float_t fClusterY = 0.0;
+  Float_t fClusterXloc = 0.0;
+  Float_t fClusterYloc = 0.0;
+
   Float_t fTrackX = 0.0;
   Float_t fTrackY = 0.0;
+  Float_t fTrackXloc = 0.0;
+  Float_t fTrackYloc = 0.0;
+
   Float_t fTrackSlopeX = 0.0;
   Float_t fTrackSlopeY = 0.0;
+
   Float_t fBendingMomentum = 0.0;
+
+  Float_t fResiduXGlobal = 0.0;
+  Float_t fResiduYGlobal = 0.0;
+
+  Float_t fResiduXLocal = 0.0;
+  Float_t fResiduYLocal = 0.0;
+
+  Float_t fCharge = 0.0;
+
 }; // class LocalTrackClusterResidual
 
 class Alignment : public TObject

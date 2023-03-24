@@ -296,9 +296,19 @@ void Alignment::init(std::string DataRecFName, std::string ConsRecFName)
     fTTree->Branch("fClusterY", &(fTrkClRes->fClusterY), "fClusterY/F");
     fTTree->Branch("fTrackX", &(fTrkClRes->fTrackX), "fTrackX/F");
     fTTree->Branch("fTrackY", &(fTrkClRes->fTrackY), "fTrackY/F");
+    fTTree->Branch("fClusterXloc", &(fTrkClRes->fClusterXloc), "fClusterXloc/F");
+    fTTree->Branch("fClusterYloc", &(fTrkClRes->fClusterYloc), "fClusterYloc/F");
+    fTTree->Branch("fTrackXloc", &(fTrkClRes->fTrackXloc), "fTrackXloc/F");
+    fTTree->Branch("fTrackYloc", &(fTrkClRes->fTrackYloc), "fTrackYloc/F");
     fTTree->Branch("fTrackSlopeX", &(fTrkClRes->fTrackSlopeX), "fTrackSlopeX/F");
     fTTree->Branch("fTrackSlopeY", &(fTrkClRes->fTrackSlopeY), "fTrackSlopeY/F");
     fTTree->Branch("fBendingMomentum", &(fTrkClRes->fBendingMomentum), "fBendingMomentum/F");
+    fTTree->Branch("fResiduXGlobal", &(fTrkClRes->fResiduXGlobal), "fResiduXGlobal/F");
+    fTTree->Branch("fResiduYGlobal", &(fTrkClRes->fResiduYGlobal), "fResiduYGlobal/F");
+    fTTree->Branch("fResiduXLocal", &(fTrkClRes->fResiduXLocal), "fResiduXLocal/F");
+    fTTree->Branch("fResiduYLocal", &(fTrkClRes->fResiduYLocal), "fResiduYLocal/F");
+    fTTree->Branch("fCharge", &(fTrkClRes->fCharge), "fCharge/F");
+
   }
 }
 
@@ -457,8 +467,8 @@ AliMillePedeRecord* Alignment::ProcessTrack(Track& track, const o2::mch::geo::Tr
 
     if (fDoEvaluation) {
 
-      Float_t InvBendingMom = itTrackParam->getInverseBendingMomentum();
-      Float_t TrackCharge = itTrackParam->getCharge();
+      const Float_t InvBendingMom = itTrackParam->getInverseBendingMomentum();
+      const Float_t TrackCharge = itTrackParam->getCharge();
 
       fTrkClRes->fClDetElem = cluster->getDEId();
       fTrkClRes->fClDetElemNumber = GetDetElemNumber(cluster->getDEId());
@@ -472,9 +482,24 @@ AliMillePedeRecord* Alignment::ProcessTrack(Track& track, const o2::mch::geo::Tr
 
       fTrkClRes->fTrackX = fTrackPos[0];
       fTrkClRes->fTrackY = fTrackPos[1];
+
+      fTrkClRes->fClusterXloc = r[0]*fClustPos[0] + r[1]*fClustPos[1];
+      fTrkClRes->fClusterYloc = r[3]*fClustPos[0] + r[4]*fClustPos[1];
+
+      fTrkClRes->fTrackXloc = r[0]*fTrackPos[0] + r[1]*fTrackPos[1];
+      fTrkClRes->fTrackYloc = r[3]*fTrackPos[0] + r[4]*fTrackPos[1];
+
       fTrkClRes->fTrackSlopeX = fTrackSlope[0];
       fTrkClRes->fTrackSlopeY = fTrackSlope[1];
+
       fTrkClRes->fBendingMomentum = TrackCharge/InvBendingMom;
+
+      fTrkClRes->fResiduXGlobal = fClustPos[0] - fTrackPos[0];
+      fTrkClRes->fResiduYGlobal = fClustPos[1] - fTrackPos[1];
+      fTrkClRes->fResiduXLocal = r[0]*(fClustPos[0] - fTrackPos[0]) + r[1]*(fClustPos[1] - fTrackPos[1]);
+      fTrkClRes->fResiduYLocal = r[3]*(fClustPos[0] - fTrackPos[0]) + r[4]*(fClustPos[1] - fTrackPos[1]);
+
+      fTrkClRes->fCharge = TrackCharge;
 
       if (fTTree) fTTree->Fill();
     }
