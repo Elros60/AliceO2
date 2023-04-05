@@ -78,11 +78,13 @@ class LocalTrackClusterResidual
 
   Float_t fClusterX = 0.0;
   Float_t fClusterY = 0.0;
+  Float_t fClusterZ = 0.0;
   Float_t fClusterXloc = 0.0;
   Float_t fClusterYloc = 0.0;
 
   Float_t fTrackX = 0.0;
   Float_t fTrackY = 0.0;
+  Float_t fTrackZ = 0.0;
   Float_t fTrackXloc = 0.0;
   Float_t fTrackYloc = 0.0;
 
@@ -98,6 +100,10 @@ class LocalTrackClusterResidual
   Float_t fResiduYLocal = 0.0;
 
   Float_t fCharge = 0.0;
+
+  Float_t fBx = 0.0;
+  Float_t fBy = 0.0;
+  Float_t fBz = 0.0;
 
 }; // class LocalTrackClusterResidual
 
