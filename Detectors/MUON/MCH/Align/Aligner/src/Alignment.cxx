@@ -45,6 +45,7 @@
 #include "MCHGeometryTest/Helpers.h"
 #include "MCHGeometryTransformer/Transformations.h"
 #include "TGeoManager.h"
+#include <TGeoGlobalMagField.h>
 
 // #include "Align/Millepede2Record.h" //to be replaced
 // #include "AliMpExMap.h"
@@ -308,6 +309,11 @@ void Alignment::init(std::string DataRecFName, std::string ConsRecFName)
     fTTree->Branch("fResiduXLocal", &(fTrkClRes->fResiduXLocal), "fResiduXLocal/F");
     fTTree->Branch("fResiduYLocal", &(fTrkClRes->fResiduYLocal), "fResiduYLocal/F");
     fTTree->Branch("fCharge", &(fTrkClRes->fCharge), "fCharge/F");
+    fTTree->Branch("fClusterZ", &(fTrkClRes->fClusterZ), "fClusterZ/F");
+    fTTree->Branch("fTrackZ", &(fTrkClRes->fTrackZ), "fTrackZ/F");
+    fTTree->Branch("fBx", &(fTrkClRes->fBx), "fBx/F");
+    fTTree->Branch("fBy", &(fTrkClRes->fBy), "fBy/F");
+    fTTree->Branch("fBz", &(fTrkClRes->fBz), "fBz/F");
 
   }
 }
@@ -470,10 +476,18 @@ AliMillePedeRecord* Alignment::ProcessTrack(Track& track, const o2::mch::geo::Tr
       const Float_t InvBendingMom = itTrackParam->getInverseBendingMomentum();
       const Float_t TrackCharge = itTrackParam->getCharge();
 
+      double B[3] = {0.0, 0.0, 0.0};
+      double x[3] = {fTrackPos[0], fTrackPos[1], fTrackPos[2]};
+      TGeoGlobalMagField::Instance()->Field(x, B);
+      const Float_t Bx = B[0];
+      const Float_t By = B[1];
+      const Float_t Bz = B[2];
+
       fTrkClRes->fClDetElem = cluster->getDEId();
       fTrkClRes->fClDetElemNumber = GetDetElemNumber(cluster->getDEId());
       fTrkClRes->fClusterX = fClustPos[0];
       fTrkClRes->fClusterY = fClustPos[1];
+      fTrkClRes->fClusterZ = fClustPos[2];
     
       //fTrkClRes->fTrackX = fTrackPos0[0] + fTrackSlope0[0] * (fTrackPos[2] - fTrackPos0[2]); // fTrackPos[0];
       //fTrkClRes->fTrackY = fTrackPos0[1] + fTrackSlope0[1] * (fTrackPos[2] - fTrackPos0[2]); // fTrackPos[1];
@@ -482,6 +496,7 @@ AliMillePedeRecord* Alignment::ProcessTrack(Track& track, const o2::mch::geo::Tr
 
       fTrkClRes->fTrackX = fTrackPos[0];
       fTrkClRes->fTrackY = fTrackPos[1];
+      fTrkClRes->fTrackZ = fTrackPos[2];
 
       fTrkClRes->fClusterXloc = r[0]*fClustPos[0] + r[1]*fClustPos[1];
       fTrkClRes->fClusterYloc = r[3]*fClustPos[0] + r[4]*fClustPos[1];
@@ -500,6 +515,10 @@ AliMillePedeRecord* Alignment::ProcessTrack(Track& track, const o2::mch::geo::Tr
       fTrkClRes->fResiduYLocal = r[3]*(fClustPos[0] - fTrackPos[0]) + r[4]*(fClustPos[1] - fTrackPos[1]);
 
       fTrkClRes->fCharge = TrackCharge;
+
+      fTrkClRes->fBx = Bx;
+      fTrkClRes->fBy = By;
+      fTrkClRes->fBz = Bz;
 
       if (fTTree) fTTree->Fill();
     }
@@ -1485,8 +1504,11 @@ void Alignment::LocalEquationX(const Double_t* r)
   // local derivatives
   SetLocalDerivative(0, r[0]);
   SetLocalDerivative(1, r[0] * (fTrackPos[2] - fTrackPos0[2]));
+  //SetLocalDerivative(1, -r[0] * fTrackPos[2]);
+
   SetLocalDerivative(2, r[1]);
   SetLocalDerivative(3, r[1] * (fTrackPos[2] - fTrackPos0[2]));
+  //SetLocalDerivative(3, -r[1] * fTrackPos[2]);
 
   // global derivatives
   /*
@@ -1536,9 +1558,12 @@ void Alignment::LocalEquationY(const Double_t* r)
 
   // store local derivatives
   SetLocalDerivative(0, r[3]);
-  SetLocalDerivative(1, r[3] * (fTrackPos[2] - fTrackPos0[2]));
+  //SetLocalDerivative(1, r[3] * (fTrackPos[2] - fTrackPos0[2]));
+  SetLocalDerivative(1, -r[3] * fTrackPos[2]);
+
   SetLocalDerivative(2, r[4]);
-  SetLocalDerivative(3, r[4] * (fTrackPos[2] - fTrackPos0[2]));
+  //SetLocalDerivative(3, r[4] * (fTrackPos[2] - fTrackPos0[2]));
+  SetLocalDerivative(3, -r[4] * fTrackPos[2]);
 
   // set global derivatives
   SetGlobalDerivative(fDetElemNumber * fgNParCh + 0, -r[3]);
