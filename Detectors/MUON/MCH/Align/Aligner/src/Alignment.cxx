@@ -1558,12 +1558,12 @@ void Alignment::LocalEquationY(const Double_t* r)
 
   // store local derivatives
   SetLocalDerivative(0, r[3]);
-  //SetLocalDerivative(1, r[3] * (fTrackPos[2] - fTrackPos0[2]));
-  SetLocalDerivative(1, -r[3] * fTrackPos[2]);
+  SetLocalDerivative(1, r[3] * (fTrackPos[2] - fTrackPos0[2]));
+  //SetLocalDerivative(1, -r[3] * fTrackPos[2]);
 
   SetLocalDerivative(2, r[4]);
-  //SetLocalDerivative(3, r[4] * (fTrackPos[2] - fTrackPos0[2]));
-  SetLocalDerivative(3, -r[4] * fTrackPos[2]);
+  SetLocalDerivative(3, r[4] * (fTrackPos[2] - fTrackPos0[2]));
+  //SetLocalDerivative(3, -r[4] * fTrackPos[2]);
 
   // set global derivatives
   SetGlobalDerivative(fDetElemNumber * fgNParCh + 0, -r[3]);
