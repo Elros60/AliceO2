@@ -371,7 +371,7 @@ AliMillePedeRecord* Alignment::ProcessTrack(Track& track, const o2::mch::geo::Tr
       fTrackPos0[2] = fTrackPos[2];
       fTrackSlope0[0] = fTrackSlope[0];
       fTrackSlope0[1] = fTrackSlope[1];
-
+      fInvBendingMom0 = fInvBendingMom;
       break;
     }
   }
@@ -428,6 +428,8 @@ AliMillePedeRecord* Alignment::ProcessTrack(Track& track, const o2::mch::geo::Tr
     const Cluster* cluster = itTrackParam->getClusterPtr();
     if (!cluster)
       continue;
+
+    fTrackDetElem = cluster->getDEId();
 
     // fill local variables for this position --> one measurement
 
@@ -1491,6 +1493,19 @@ void Alignment::FillTrackParamData(const TrackParam* trackParam)
   fTrackPos[2] = trackParam->getZ();
   fTrackSlope[0] = trackParam->getNonBendingSlope();
   fTrackSlope[1] = trackParam->getBendingSlope();
+  fInvBendingMom = trackParam->getInverseBendingMomentum();
+  fCharge = trackParam->getCharge();
+
+  double B[3] = {0.0, 0.0, 0.0};
+  double x[3] = {fTrackPos[0], fTrackPos[1], fTrackPos[2]};
+  TGeoGlobalMagField::Instance()->Field(x, B);
+  fBField = B[0];
+
+  if(B[0]!=0){
+    fRBending = 1/fInvBendingMom/fCharge/B[0];
+  }else{
+    fRBending = 0.0;
+  }
 }
 
 //______________________________________________________________________
@@ -1501,14 +1516,51 @@ void Alignment::LocalEquationX(const Double_t* r)
   // 'inverse' (GlobalToLocal) rotation matrix
   // const Double_t* r(fGeoCombiTransInverse.GetRotationMatrix());
 
-  // local derivatives
-  SetLocalDerivative(0, r[0]);
-  SetLocalDerivative(1, r[0] * (fTrackPos[2] - fTrackPos0[2]));
-  //SetLocalDerivative(1, -r[0] * fTrackPos[2]);
 
-  SetLocalDerivative(2, r[1]);
-  SetLocalDerivative(3, r[1] * (fTrackPos[2] - fTrackPos0[2]));
-  //SetLocalDerivative(3, -r[1] * fTrackPos[2]);
+
+  // local derivatives
+  /*
+  track parameters are
+  0: x_r
+  1: t_x_r
+  2: y_r
+  3: t_y_r
+  4: 1/Pb_r
+  */
+
+  // Old setup without 1/Pb_r:
+  /*
+  SetLocalDerivative(0, r[0]); // df/d(x_r) | x_r = x_0
+  SetLocalDerivative(1, r[0] * (fTrackPos[2] - fTrackPos0[2])); // df/d(t_x_r) | x_r = x_0
+  //SetLocalDerivative(1, -r[0] * fTrackPos[2]);  // df/d(t_x_r) | x_r = x_0
+
+  SetLocalDerivative(2, r[1]); // df/d(y_r) | y_r = y_0
+  SetLocalDerivative(3, r[1] * (fTrackPos[2] - fTrackPos0[2])); // df/d(t_y_r) | t_y_r = t_y_0
+  //SetLocalDerivative(3, -r[1] * fTrackPos[2]); // df/d(t_y_r) | t_y_r = t_y_0
+  */
+
+
+  // Non-linear track model (uniform magnetic field):
+  SetLocalDerivative(0, r[0]); // df_x/d(x_r) | x_r = x_0
+  SetLocalDerivative(1, r[0] * (fTrackPos[2] - fTrackPos0[2])); // df_x/d(t_x_r) | x_r = x_0
+  SetLocalDerivative(2, r[1]); // df_x/d(y_r) | y_r = y_0
+  // sign of charge needed for specifying
+  if(int(fTrackDetElem/100)<5){
+    SetLocalDerivative(3, r[1] * (fTrackPos[2] - fTrackPos0[2])); // df_x/d(t_y_r) | t_y_r = t_y_0
+    SetLocalDerivative(4, 0.0); // df_x/d(1/Pb_r) | 1/Pb_r = 1/Pb_0
+  }else if(int(fTrackDetElem/100)>6){
+
+  }else{
+    if(fCharge*fBField>0){
+      SetLocalDerivative(3, r[1] * ()); // df_x/d(t_y_r) | t_y_r = t_y_0
+    }else{
+
+    }
+  }
+  SetLocalDerivative(3, r[1]); // df/d(t_y_r) | t_y_r = t_y_0
+
+
+
 
   // global derivatives
   /*
@@ -1556,14 +1608,42 @@ void Alignment::LocalEquationY(const Double_t* r)
   // 'inverse' (GlobalToLocal) rotation matrix
   // const Double_t* r(fGeoCombiTransInverse.GetRotationMatrix());
 
-  // store local derivatives
-  SetLocalDerivative(0, r[3]);
-  SetLocalDerivative(1, r[3] * (fTrackPos[2] - fTrackPos0[2]));
-  //SetLocalDerivative(1, -r[3] * fTrackPos[2]);
 
-  SetLocalDerivative(2, r[4]);
-  SetLocalDerivative(3, r[4] * (fTrackPos[2] - fTrackPos0[2]));
-  //SetLocalDerivative(3, -r[4] * fTrackPos[2]);
+
+  // local derivatives
+  /*
+  track parameters are
+  0: x_r
+  1: t_x_r
+  2: y_r
+  3: t_y_r
+  4: 1/Pb_r
+  */
+
+  // Old setup without 1/Pb_r:
+  SetLocalDerivative(0, r[2]); // df_y/d(x_r) | x_r = x_0
+  SetLocalDerivative(1, r[2] * (fTrackPos[2] - fTrackPos0[2])); // df_y/d(t_x_r) | x_r = x_0
+  //SetLocalDerivative(1, -r[0] * fTrackPos[2]);  // df_y/d(t_x_r) | x_r = x_0
+
+  SetLocalDerivative(2, r[3]); // df_y/d(y_r) | y_r = y_0
+  SetLocalDerivative(3, r[3] * (fTrackPos[2] - fTrackPos0[2])); // df_y/d(t_y_r) | t_y_r = t_y_0
+  //SetLocalDerivative(3, -r[1] * fTrackPos[2]); // df_y/d(t_y_r) | t_y_r = t_y_0
+
+
+  // Non-linear track model (uniform magnetic field):
+
+
+
+
+
+  // global derivatives
+  /*
+  alignment parameters are
+  0: delta_x
+  1: delta_y
+  2: delta_phiz
+  3: delta_z
+  */
 
   // set global derivatives
   SetGlobalDerivative(fDetElemNumber * fgNParCh + 0, -r[3]);

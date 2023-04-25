@@ -143,7 +143,8 @@ class Alignment : public TObject
     fgNDetElem = 156,
 
     /// Number of local parameters
-    fNLocal = 4, // t_x, t_y, x0, y0
+    // fNLocal = 4, // t_x, t_y, x0, y0
+    fNLocal = 5, // t_x, t_y, x0, y0, 1/P_b(Inverse Bending-Momentum)
 
     /// Number of degrees of freedom per chamber
     fgNParCh = 4, // x,y,z,phi
@@ -417,6 +418,24 @@ class Alignment : public TObject
 
   /// Cluster (global) position
   Double_t fClustPos[3];
+
+  /// Current detection element
+  Int_t fTrackDetElem;
+
+  /// Track charge
+  Double_t fCharge;
+
+  /// Track Inverse Bending-Momentum at reference point
+  Double_t fInvBendingMom0;
+
+  /// Bending radius
+  Double_t fRBending;
+
+  /// Bending field
+  Double_t fBField;
+
+  /// Track Inverse Bending-Momentum at current point
+  Double_t fInvBendingMom;
 
   /// Track slope at reference point
   Double_t fTrackSlope0[2];
