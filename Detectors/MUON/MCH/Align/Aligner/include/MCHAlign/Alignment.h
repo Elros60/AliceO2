@@ -437,6 +437,12 @@ class Alignment : public TObject
   /// Track Inverse Bending-Momentum at current point
   Double_t fInvBendingMom;
 
+  /// Track intersection when getting into B field
+  Double_t fTrackB_in[3];
+
+  /// Track intersection when getting out from B field
+  Double_t fTrackB_out[3];
+
   /// Track slope at reference point
   Double_t fTrackSlope0[2];
 

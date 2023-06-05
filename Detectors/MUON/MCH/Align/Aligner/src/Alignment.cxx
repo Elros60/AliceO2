@@ -372,6 +372,9 @@ AliMillePedeRecord* Alignment::ProcessTrack(Track& track, const o2::mch::geo::Tr
       fTrackSlope0[0] = fTrackSlope[0];
       fTrackSlope0[1] = fTrackSlope[1];
       fInvBendingMom0 = fInvBendingMom;
+
+      fTrackB_in[0] = fTrackPos0[0] + fTrackSlope0[0] * (fTrackB_in[2] - fTrackPos0[2]);
+      fTrackB_in[1] = fTrackPos0[1] + fTrackSlope0[1] * (fTrackB_in[2] - fTrackPos0[2]); 
       break;
     }
   }
@@ -1543,13 +1546,15 @@ void Alignment::LocalEquationX(const Double_t* r)
   // Non-linear track model (uniform magnetic field):
   SetLocalDerivative(0, r[0]); // df_x/d(x_r) | x_r = x_0
   SetLocalDerivative(1, r[0] * (fTrackPos[2] - fTrackPos0[2])); // df_x/d(t_x_r) | x_r = x_0
+
   SetLocalDerivative(2, r[1]); // df_x/d(y_r) | y_r = y_0
   // sign of charge needed for specifying
   if(int(fTrackDetElem/100)<5){
     SetLocalDerivative(3, r[1] * (fTrackPos[2] - fTrackPos0[2])); // df_x/d(t_y_r) | t_y_r = t_y_0
     SetLocalDerivative(4, 0.0); // df_x/d(1/Pb_r) | 1/Pb_r = 1/Pb_0
   }else if(int(fTrackDetElem/100)>6){
-
+    SetLocalDerivative(3, r[1] * ((fTrackB_in[3]-fTrackPos0[3])+));
+    SetLocalDerivative(4, );
   }else{
     if(fCharge*fBField>0){
       SetLocalDerivative(3, r[1] * ()); // df_x/d(t_y_r) | t_y_r = t_y_0
