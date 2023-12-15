@@ -20,7 +20,8 @@ o2_add_library(MCHAlign
 		src/AliSymBDMatrix.cxx
 		src/AliRectMatrix.cxx
 		src/AliVectorSparse.cxx
-		src/AliSymMatrix.cxx				           
+		src/AliSymMatrix.cxx
+		src/AlignmentSpec.cxx			           
 	PUBLIC_LINK_LIBRARIES
 	  O2::MathUtils 
 		O2::Align 
@@ -28,7 +29,13 @@ o2_add_library(MCHAlign
 		O2::MCHTracking
 		O2::MCHGeometryTransformer
 		O2::MCHGeometryCreator
-		O2::MCHGeometryTest)
+		O2::MCHGeometryTest
+		O2::CommonUtils
+		O2::DataFormatsParameters
+		O2::DetectorsBase
+		O2::Framework
+		O2::ReconstructionDataFormats
+		O2::DetectorsCommonDataFormats)
 
 o2_target_root_dictionary(MCHAlign
   HEADERS 
@@ -41,16 +48,14 @@ o2_target_root_dictionary(MCHAlign
     include/MCHAlign/AliSymBDMatrix.h
 	  include/MCHAlign/AliRectMatrix.h
 	  include/MCHAlign/AliVectorSparse.h
-	  include/MCHAlign/AliSymMatrix.h)
+	  include/MCHAlign/AliSymMatrix.h
+	  include/MCHAlign/AlignmentSpec.h)
 
-# o2_add_executable(pedestal-decoding-workflow
-#         SOURCES src/pedestal-decoding-workflow.cxx
-#         COMPONENT_NAME mch
-#         PUBLIC_LINK_LIBRARIES Boost::program_options O2::Framework O2::DPLUtils O2::MCHCalibration)
+o2_add_executable(
+				alignment-workflow
+				SOURCES src/alignment-workflow.cxx
+				COMPONENT_NAME mch
+				PUBLIC_LINK_LIBRARIES O2::MCHAlign)
 
-# o2_add_executable(mch-pedestal-calib-workflow
-#                   COMPONENT_NAME calibration
-#                   SOURCES src/pedestal-calib-workflow.cxx
-#                   PUBLIC_LINK_LIBRARIES O2::Framework O2::MCHCalibration O2::DetectorsCalibration)
 
 
