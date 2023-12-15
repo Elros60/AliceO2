@@ -41,7 +41,6 @@
 #include <TLine.h>
 #include <TSystem.h>
 
-
 #include "Framework/CallbackService.h"
 #include "Framework/ConcreteDataMatcher.h"
 #include "Framework/ConfigParamRegistry.h"
@@ -52,6 +51,8 @@
 #include "Framework/Task.h"
 #include "Framework/Logger.h"
 
+#include "CCDB/BasicCCDBManager.h"
+#include "CCDB/CCDBTimeStampUtils.h"
 #include "CommonUtils/NameConf.h"
 #include "CommonUtils/ConfigurableParam.h"
 #include "DetectorsBase/GRPGeomHelper.h"
@@ -76,6 +77,7 @@
 #include "DetectorsCommonDataFormats/DetID.h"
 #include "DetectorsCommonDataFormats/DetectorNameConf.h"
 #include "MathUtils/Cartesian.h"
+
 
 
 namespace o2{
@@ -159,13 +161,13 @@ public:
 
 
 			auto geoRefFile = ic.options().get<string>("geo-file-ref");
-				if (filesystem::exists(geoRefFile)) {
-					base::GeometryManager::loadGeometry(geoRefFile.c_str());
-					transformation = geo::transformationFromTGeoManager(*gGeoManager);
-					for (int i = 0; i < 156; i++) { 
-						int iDEN = GetDetElemId(i);
-						transformRef[iDEN] = transformation(iDEN);
-				}
+			if (filesystem::exists(geoRefFile)) {
+				base::GeometryManager::loadGeometry(geoRefFile.c_str());
+				transformation = geo::transformationFromTGeoManager(*gGeoManager);
+				for (int i = 0; i < 156; i++) { 
+					int iDEN = GetDetElemId(i);
+					transformRef[iDEN] = transformation(iDEN);
+			}
 			} else {
 				LOG(fatal) << "No reference geometry";
 			}
@@ -944,7 +946,7 @@ private:
 //_________________________________________________________________________________________________
 o2::framework::DataProcessorSpec getAlignmentSpec(bool disableCCDB)
 {
-  vector<framework::InputSpec> inputSpecs{};
+  vector<framework::InputSpec> inputSpecs{{"STFDist", "FLP", "DISTSUBTIMEFRAME", 0}};
   vector<framework::OutputSpec> outputSpecs{};
   auto ccdbRequest = disableCCDB ? nullptr : std::make_shared<base::GRPGeomRequest>(false,                      	// orbitResetTime
 																					false,                      	// GRPECS=true
@@ -968,7 +970,6 @@ o2::framework::DataProcessorSpec getAlignmentSpec(bool disableCCDB)
             {"fix-chamber", VariantType::String, "", {"Chamber fixing, ex 1,2,3"}},
         	{"output", VariantType::String, "Alignment", {"Option for name of output file"}}}} ;
 }
-
 
 
 } // namespace mch

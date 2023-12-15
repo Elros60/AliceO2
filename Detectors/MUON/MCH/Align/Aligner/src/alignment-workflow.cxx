@@ -14,11 +14,67 @@
 ///
 /// \author Chi ZHANG, CEA-Saclay
 
-#include "CommonUtils/ConfigurableParam.h"
 #include "MCHAlign/AlignmentSpec.h"
+
+#include "CommonUtils/ConfigurableParam.h"
+#include "Headers/STFHeader.h"
+#include "DetectorsRaw/HBFUtils.h"
+#include "CCDB/BasicCCDBManager.h"
+#include "CCDB/CCDBTimeStampUtils.h"
+#include "Framework/CallbackService.h"
+#include "Framework/ConcreteDataMatcher.h"
+#include "Framework/ConfigParamRegistry.h"
+#include "Framework/ControlService.h"
+#include "Framework/DataProcessorSpec.h"
+#include "Framework/Lifetime.h"
+#include "Framework/Output.h"
+#include "Framework/Task.h"
+#include "Framework/Logger.h"
+#include "Headers/STFHeader.h"
+#include "DetectorsRaw/HBFUtils.h"
+
 
 using namespace o2::framework;
 using namespace std;
+
+namespace o2::mch
+{
+
+class SeederTask : public Task
+{
+ public:
+  void run(ProcessingContext& pc) final
+  {
+    const auto& hbfu = o2::raw::HBFUtils::Instance();
+    auto& tinfo = pc.services().get<o2::framework::TimingInfo>();
+    if (hbfu.startTime != 0) {
+      tinfo.creation = hbfu.startTime;
+    } else {
+      tinfo.creation = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
+    }
+    if (hbfu.orbitFirstSampled != 0) {
+      tinfo.firstTForbit = hbfu.orbitFirstSampled;
+    } else {
+      tinfo.firstTForbit = 0;
+    }
+    auto& stfDist = pc.outputs().make<o2::header::STFHeader>(Output{"FLP", "DISTSUBTIMEFRAME", 0});
+    pc.services().get<ControlService>().endOfStream();
+    pc.services().get<ControlService>().readyToQuit(QuitRequest::Me);
+  }
+};
+
+}
+
+o2::framework::DataProcessorSpec getSeederSpec()
+{
+  return DataProcessorSpec{
+    "seeder",
+    Inputs{},
+    Outputs{{"FLP", "DISTSUBTIMEFRAME", 0}},
+    AlgorithmSpec{o2::framework::adaptFromTask<o2::mch::SeederTask>()},
+    Options{}};
+}
+
 
 // we need to add workflow options before including Framework/runDataProcessing
 void customize(vector<ConfigParamSpec>& workflowOptions)
@@ -34,5 +90,5 @@ WorkflowSpec defineDataProcessing(const ConfigContext& configcontext)
 {
   o2::conf::ConfigurableParam::updateFromString(configcontext.options().get<std::string>("configKeyValues"));
   bool disableCCDB = configcontext.options().get<bool>("disable-input-from-ccdb");
-  return WorkflowSpec{o2::mch::getAlignmentSpec(disableCCDB)};
+  return WorkflowSpec{o2::mch::getAlignmentSpec(disableCCDB), getSeederSpec()};
 }
