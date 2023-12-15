@@ -21,6 +21,7 @@
 #include <string>
 #include <tuple>
 #include <vector>
+#include <chrono>
 #include <iostream>
 #include <TCanvas.h>
 #include <TDatabasePDG.h>
@@ -198,10 +199,12 @@ public:
 		mAlign.SetAllowedVariation(3, 2.0);
 
 		// Fix chambers
-		const Int_t chambers[] = {1,6,0};
-		for (Int_t i = 0; chambers[i] > 0; ++i) {
-			LOG(info) << Form("%s%d","Fixing chamber: ",chambers[i]);
-			mAlign.FixChamber(chambers[i]);
+		auto chambers = ic.options().get<string>("fix-chamber");;
+		for (int i = 0; i < chambers.length(); ++i) {
+			if(chambers[i]==',') continue;
+			int chamber = chambers[i] - '0';
+			LOG(info) << Form("%s%d","Fixing chamber: ",chamber);
+			mAlign.FixChamber(chamber);
   		}
 
   		// Initialize alignment algorithm
@@ -211,6 +214,15 @@ public:
 
 		doMatched = ic.options().get<bool>("matched");
 		outFileName = ic.options().get<string>("output");
+
+
+		ic.services().get<CallbackService>().set<CallbackService::Id::Stop>([this](){
+			LOG(info) << "Alignment duration = " << mElapsedTime.count() << " s";
+		});
+
+		auto stop = [this]() {
+			mAlign.terminate();
+		};
 
 
 	}
@@ -242,84 +254,77 @@ public:
 
 	//_________________________________________________________________________________________________
 	void processWithMatching(vector<ROFRecord> &mchROFs, vector<TrackMCH> &mchTracks, vector<Cluster> &mchClusters, 
-								TTreeReader* mchReader, vector<dataformats::TrackMCHMID> &muonTracks, TTreeReader* muonReader)
+													vector<dataformats::TrackMCHMID> &muonTracks)
 	{
 		// processing for each track
-		while (mchReader->Next() && muonReader->Next()) {
-			int id_event = mchReader->GetCurrentEntry();
-			for (const auto &mchROF : mchROFs) {
+		for (const auto &mchROF : mchROFs) {
 
-				for (int iMCHTrack = mchROF.getFirstIdx();
-					iMCHTrack <= mchROF.getLastIdx(); ++iMCHTrack) {
+			for (int iMCHTrack = mchROF.getFirstIdx();
+				iMCHTrack <= mchROF.getLastIdx(); ++iMCHTrack) {
+				tracksAll +=1;
+				// MCH-MID matching
+				if(!FindMuon(iMCHTrack, muonTracks)) continue;
+				trackMCHMID += 1;          
 
-					// MCH-MID matching
-					if(!FindMuon(iMCHTrack, muonTracks)) continue;
-					trackMCHMID += 1;          
+				auto mchTrack = mchTracks.at(iMCHTrack);
+				int id_track = iMCHTrack;
+				int nb_clusters = mchTrack.getNClusters();
 
-					auto mchTrack = mchTracks.at(iMCHTrack);
-					int id_track = iMCHTrack;
-					int nb_clusters = mchTrack.getNClusters();
+				// Track selection, saving only tracks having exactly 10 clusters
+				if(nb_clusters <= 9) continue;
+				tracksGoodwithoutFit += 1;
 
-					// Track selection, saving only tracks having exactly 10 clusters
-					if(nb_clusters <= 9) continue;
-					tracksGoodwithoutFit += 1;
+				// Format conversion from TrackMCH to Track(MCH internal use)
+				mch::Track convertedTrack = MCHFormatConvert(mchTrack, mchClusters, doReAlign);
 
-					// Format conversion from TrackMCH to Track(MCH internal use)
-					mch::Track convertedTrack = MCHFormatConvert(mchTrack, mchClusters, doReAlign);
+				// Erase removable track
+				if(RemoveTrack(convertedTrack, ImproveCut)){
+					continue;
+				}else{
+					tracksGood += 1;
+				}   
 
-					// Erase removable track
-					if(RemoveTrack(convertedTrack, ImproveCut)){
-						continue;
-					}else{
-						tracksGood += 1;
-					}   
+				//  Track processing, saving residuals
+				AliMillePedeRecord *mchRecord = mAlign.ProcessTrack(convertedTrack, transformation,
+															 doAlign, weightRecord);
 
-					//  Track processing, saving residuals
-					AliMillePedeRecord *mchRecord = mAlign.ProcessTrack(convertedTrack, transformation,
-																 doAlign, weightRecord);
-
-				}
 			}
-
 		}
 	}
 
 	//_________________________________________________________________________________________________
-	void processWithOutMatching(vector<ROFRecord> &mchROFs, vector<TrackMCH> &mchTracks, 
-					vector<Cluster> &mchClusters, TTreeReader* mchReader)
+	void processWithOutMatching(vector<ROFRecord> &mchROFs, vector<TrackMCH> &mchTracks, vector<Cluster> &mchClusters)
 	{
 
 		// processing for each track
-		while (mchReader->Next()){
-			int id_event = mchReader->GetCurrentEntry();
-			for (const auto &mchROF : mchROFs) {
+		for (const auto &mchROF : mchROFs) {
 
-				for (int iMCHTrack = mchROF.getFirstIdx();
-					iMCHTrack <= mchROF.getLastIdx(); ++iMCHTrack) {        
+			for (int iMCHTrack = mchROF.getFirstIdx();
+				iMCHTrack <= mchROF.getLastIdx(); ++iMCHTrack) {        
 
-					auto mchTrack = mchTracks.at(iMCHTrack);
-					int id_track = iMCHTrack;
-					int nb_clusters = mchTrack.getNClusters();
+				auto mchTrack = mchTracks.at(iMCHTrack);
+				int id_track = iMCHTrack;
+				int nb_clusters = mchTrack.getNClusters();
+				tracksAll +=1;
 
-					// Track selection, saving only tracks having exactly 10 clusters
-					if(nb_clusters <= 9) continue;
-					tracksGoodwithoutFit += 1;
+				// Track selection, saving only tracks having exactly 10 clusters
+				if(nb_clusters <= 9) continue;
+				tracksGoodwithoutFit += 1;
 
-					// Format conversion from TrackMCH to Track(MCH internal use)
-					Track convertedTrack = MCHFormatConvert(mchTrack, mchClusters, doReAlign);
+				// Format conversion from TrackMCH to Track(MCH internal use)
+				Track convertedTrack = MCHFormatConvert(mchTrack, mchClusters, doReAlign);
 
-					// Erase removable track
-					if(RemoveTrack(convertedTrack, ImproveCut)){
-						continue;
-					}else{
-						tracksGood += 1;
-					}   
+				// Erase removable track
+				if(RemoveTrack(convertedTrack, ImproveCut)){
+					continue;
+				}else{
+					tracksGood += 1;
+				}   
 
-					//  Track processing, saving residuals
-					AliMillePedeRecord *mchRecord = mAlign.ProcessTrack(convertedTrack, transformation,
-																 doAlign, weightRecord);
+				//  Track processing, saving residuals
+				AliMillePedeRecord *mchRecord = mAlign.ProcessTrack(convertedTrack, transformation,
+															 doAlign, weightRecord);
 
-				}
 			}
 		}
 	}
@@ -327,6 +332,7 @@ public:
 	//_________________________________________________________________________________________________
   	void run(framework::ProcessingContext& pc)
   	{
+  		auto tStart = std::chrono::high_resolution_clock::now();
   		LOG(info) << "Starting alignment process";
   		if(doMatched) LOG(info) << "Using MCH-MID matched tracks";
   		if (mCCDBRequest) {
@@ -334,10 +340,6 @@ public:
 			base::GRPGeomHelper::instance().checkUpdates(pc);
 	    }
 
-  		int tracksGood = 0;
-  		int tracksGoodwithoutFit = 0;
-  		int tracksAll = 0;
-  		int trackMCHMID = 0;
 
   		// Loading input data
 		LOG(info) << "Loading MCH tracks";
@@ -358,15 +360,22 @@ public:
 			}
 
   			LOG(info) << "Starting track processing";
-  			processWithMatching(*mchROFs, *mchTracks, *mchClusters, mchReader, *muonTracks, muonReader);
+  			while(mchReader->Next() && muonReader->Next()){
+  				int id_event = mchReader->GetCurrentEntry();
+  				processWithMatching(*mchROFs, *mchTracks, *mchClusters, *muonTracks);
+  			}
   		}else{
   			LOG(info) << "Starting track processing";
-  			processWithOutMatching(*mchROFs, *mchTracks, *mchClusters, mchReader);
+  			while(mchReader->Next()){
+  				int id_event = mchReader->GetCurrentEntry();
+  				processWithOutMatching(*mchROFs, *mchTracks, *mchClusters);
+  			}
   		}
 
-		LOG(info) << "Starting global fit";
+		// Global fit
 		if(doAlign) mAlign.GlobalFit(params, errors, pulls);
-
+		auto tEnd = std::chrono::high_resolution_clock::now();
+		mElapsedTime = tEnd - tStart;
 		// Evaluation for track removing and selection
 		LOG(info) << Form("%s%d", "Number of good tracks used in alignment process: ",tracksGood);
 		LOG(info) << Form("%s%d", "Number of good tracks without fit processing: ",tracksGoodwithoutFit);
@@ -402,10 +411,10 @@ public:
 			// Store param plots
 			drawHisto(params, errors, pulls, *(mAlign.GetResTree()), outFileName);
 
-			// Close files and store all tracks' records
-  			mAlign.terminate();
-
 		}
+
+		pc.services().get<ControlService>().endOfStream();
+    	pc.services().get<ControlService>().readyToQuit(QuitRequest::Me);
 
 
   	}
@@ -631,8 +640,8 @@ private:
 	    case 1:
 	      aHisto->SetYTitle("#delta_{#X} (cm)");
 	      aHisto->GetYaxis()->SetRangeUser(-5.0, 5.0);
-	      aHisto->DrawCopy();
-	      graphAlignX->Draw("Psame");
+	      aHisto->DrawCopy("goff");
+	      graphAlignX->Draw("Psame goff");
 	      limLine.DrawLine(4, -Range[i-1], 4, Range[i-1]);
 	      limLine.DrawLine(8, -Range[i-1], 8, Range[i-1]);
 	      limLine.DrawLine(12, -Range[i-1], 12, Range[i-1]);
@@ -646,8 +655,8 @@ private:
 	    case 2:
 	      aHisto->SetYTitle("#delta_{#Y} (cm)");
 	      aHisto->GetYaxis()->SetRangeUser(-1.0, 1.0);
-	      aHisto->DrawCopy();
-	      graphAlignY->Draw("Psame");
+	      aHisto->DrawCopy("goff");
+	      graphAlignY->Draw("Psame goff");
 	      limLine.DrawLine(4, -Range[i-1], 4, Range[i-1]);
 	      limLine.DrawLine(8, -Range[i-1], 8, Range[i-1]);
 	      limLine.DrawLine(12, -Range[i-1], 12, Range[i-1]);
@@ -661,8 +670,8 @@ private:
 	    case 3:
 	      aHisto->SetYTitle("#delta_{#Z} (cm)");
 	      aHisto->GetYaxis()->SetRangeUser(-5.0, 5.0);
-	      aHisto->DrawCopy();
-	      graphAlignZ->Draw("Psame");
+	      aHisto->DrawCopy("goff");
+	      graphAlignZ->Draw("Psame goff");
 	      limLine.DrawLine(4, -Range[i-1], 4, Range[i-1]);
 	      limLine.DrawLine(8, -Range[i-1], 8, Range[i-1]);
 	      limLine.DrawLine(12, -Range[i-1], 12, Range[i-1]);
@@ -676,8 +685,8 @@ private:
 	    case 4:
 	      aHisto->SetYTitle("#delta_{#varphi} (cm)");
 	      aHisto->GetYaxis()->SetRangeUser(-0.01, 0.01);
-	      aHisto->DrawCopy();
-	      graphAlignPhi->Draw("Psame");
+	      aHisto->DrawCopy("goff");
+	      graphAlignPhi->Draw("Psame goff");
 	      limLine.DrawLine(4, -Range[i-1], 4, Range[i-1]);
 	      limLine.DrawLine(8, -Range[i-1], 8, Range[i-1]);
 	      limLine.DrawLine(12, -Range[i-1], 12, Range[i-1]);
@@ -791,11 +800,11 @@ private:
 	  graphRes->cd(1);
 	  gHisto->SetYTitle("TrackX - ClusterX (cm)");
 	  gHisto->GetYaxis()->SetRangeUser(-5.0, 5.0);
-	  gHisto->DrawCopy();
+	  gHisto->DrawCopy("goff");
 	  graphResX->SetMarkerStyle(8);
 	  graphResX->SetMarkerSize(0.7);
 	  graphResX->SetLineColor(kBlue);
-	  graphResX->Draw("PZsame");
+	  graphResX->Draw("PZsame goff");
 	  limLine.DrawLine(4, -5, 4, 5);
 	  limLine.DrawLine(8, -5, 8, 5);
 	  limLine.DrawLine(12, -5, 12, 5);
@@ -809,11 +818,11 @@ private:
 	  graphRes->cd(2);
 	  gHisto->SetYTitle("TrackY - ClusterY (cm)");
 	  gHisto->GetYaxis()->SetRangeUser(-5.0, 5.0);
-	  gHisto->DrawCopy();
+	  gHisto->DrawCopy("goff");
 	  graphResY->SetMarkerStyle(8);
 	  graphResY->SetMarkerSize(0.7);
 	  graphResY->SetLineColor(kBlue);
-	  graphResY->Draw("PZsame");
+	  graphResY->Draw("PZsame goff");
 	  limLine.DrawLine(4, -5, 4, 5);
 	  limLine.DrawLine(8, -5, 8, 5);
 	  limLine.DrawLine(12, -5, 12, 5);
@@ -926,6 +935,8 @@ private:
 	geo::TransformationCreator transformation{};
 	TrackFitter trackFitter{};
 
+	std::chrono::duration<double> mElapsedTime{};
+
 
 
 };
@@ -954,6 +965,7 @@ o2::framework::DataProcessorSpec getAlignmentSpec(bool disableCCDB)
             {"do-align", VariantType::Bool, false, {"Switch for alignment, otherwise only residuals will be stored"}},
             {"do-realign", VariantType::Bool, false, {"Switch for re-alignment using another geometry"}},
             {"matched", VariantType::Bool, false, {"Switch for using MCH-MID matched tracks"}},
+            {"fix-chamber", VariantType::String, "", {"Chamber fixing, ex 1,2,3"}},
         	{"output", VariantType::String, "Alignment", {"Option for name of output file"}}}} ;
 }
 
