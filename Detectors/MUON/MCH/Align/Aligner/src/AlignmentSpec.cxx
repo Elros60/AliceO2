@@ -946,15 +946,16 @@ private:
 //_________________________________________________________________________________________________
 o2::framework::DataProcessorSpec getAlignmentSpec(bool disableCCDB)
 {
-  vector<framework::InputSpec> inputSpecs{{"STFDist", "FLP", "DISTSUBTIMEFRAME", 0}};
-  vector<framework::OutputSpec> outputSpecs{};
-  auto ccdbRequest = disableCCDB ? nullptr : std::make_shared<base::GRPGeomRequest>(false,                      	// orbitResetTime
-																					false,                      	// GRPECS=true
-																					false,                      	// GRPLHCIF
-																					true,                       	// GRPMagField
-																					false,                      	// askMatLUT
-																					base::GRPGeomRequest::Aligned,	// geometry
-																					inputSpecs);
+	//vector<framework::InputSpec> inputSpecs{{"STFDist", "FLP", "DISTSUBTIMEFRAME", 0}};
+	vector<framework::InputSpec> inputSpecs{};
+	vector<framework::OutputSpec> outputSpecs{};
+	auto ccdbRequest = disableCCDB ? nullptr : std::make_shared<base::GRPGeomRequest>(	false,                      	// orbitResetTime
+																						false,                      	// GRPECS=true
+																						false,                      	// GRPLHCIF
+																						true,                       	// GRPMagField
+																						false,                      	// askMatLUT
+																						base::GRPGeomRequest::Aligned,	// geometry
+																						inputSpecs);
 
   return DataProcessorSpec{
     "mch-alignment",
