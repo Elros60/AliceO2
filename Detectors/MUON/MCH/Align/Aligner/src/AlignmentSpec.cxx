@@ -112,6 +112,7 @@ public:
 	void init(framework::InitContext& ic){
 
 		LOG(info) << "Initializing aligner";
+		// Initialize alignment algorithm
 
 		doAlign = ic.options().get<bool>("do-align");
 		if(doAlign){
@@ -153,6 +154,7 @@ public:
 				const auto grp = parameters::GRPObject::loadFrom(grpFile);
 				base::Propagator::initFieldFromGRP(grp);
 				TrackExtrap::setField();
+				mAlign.SetBFieldOn(TrackExtrap::isFieldON());
 				TrackExtrap::useExtrapV2();
 				trackFitter.initField(grp->getL3Current(), grp->getDipoleCurrent());
 			}else{
@@ -177,22 +179,6 @@ public:
   		trackFitter.setChamberResolution(Reso_X, Reso_Y);
   		trackFitter.useChamberResolution();
 
-  		// Load new geometry if we need to do re-align
-  		if(doReAlign){
-  			if(NewGeoFileName!=""){
-  				LOG(info) << "Loading re-alignment geometry";
-  				base::GeometryManager::loadGeometry(NewGeoFileName.c_str());
-				transformation = geo::transformationFromTGeoManager(*gGeoManager);
-				for (int i = 0; i < 156; i++) {
-					int iDEN = GetDetElemId(i);
-					transformNew[iDEN] = transformation(iDEN);
-				}
-  			}else{
-  				LOG(fatal) << "No re-alignment geometry";
-  			}
-		}
-
-
 		mAlign.SetDoEvaluation(kTRUE);
 	    // Variation range for parameters
 		mAlign.SetAllowedVariation(0, 2.0);
@@ -209,22 +195,15 @@ public:
 			mAlign.FixChamber(chamber);
   		}
 
-  		// Initialize alignment algorithm
-		mAlign.init("recDataFile.root", "recConsFile.root");
-		mAlign.SetBFieldOn(TrackExtrap::isFieldON());
-
 
 		doMatched = ic.options().get<bool>("matched");
 		outFileName = ic.options().get<string>("output");
-
+		
+		mAlign.init("recDataFile.root", "recConsFile.root");
 
 		ic.services().get<CallbackService>().set<CallbackService::Id::Stop>([this](){
 			LOG(info) << "Alignment duration = " << mElapsedTime.count() << " s";
 		});
-
-		auto stop = [this]() {
-			mAlign.terminate();
-		};
 
 
 	}
@@ -232,6 +211,7 @@ public:
 	//_________________________________________________________________________________________________
 	void finaliseCCDB(framework::ConcreteDataMatcher& matcher, void* obj)
 	{
+		LOG(info) << "Finalising CCDB";
 		/// finalize the track extrapolation setting
 		if (mCCDBRequest && base::GRPGeomHelper::instance().finaliseCCDB(matcher, obj)) {
 		  if (matcher == framework::ConcreteDataMatcher("GLO", "GRPMAGFIELD", 0)) {
@@ -239,6 +219,7 @@ public:
 		  	auto grp = base::GRPGeomHelper::instance().getGRPMagField();
 		    base::Propagator::initFieldFromGRP(grp);
 			TrackExtrap::setField();
+			mAlign.SetBFieldOn(TrackExtrap::isFieldON());
 			TrackExtrap::useExtrapV2();
 			trackFitter.initField(grp->getL3Current(), grp->getDipoleCurrent());
 		  }
@@ -342,6 +323,20 @@ public:
 			base::GRPGeomHelper::instance().checkUpdates(pc);
 	    }
 
+	    // Load new geometry if we need to do re-align
+  		if(doReAlign){
+  			if(NewGeoFileName!=""){
+  				LOG(info) << "Loading re-alignment geometry";
+  				base::GeometryManager::loadGeometry(NewGeoFileName.c_str());
+				transformation = geo::transformationFromTGeoManager(*gGeoManager);
+				for (int i = 0; i < 156; i++) {
+					int iDEN = GetDetElemId(i);
+					transformNew[iDEN] = transformation(iDEN);
+				}
+  			}else{
+  				LOG(fatal) << "No re-alignment geometry";
+  			}
+		}
 
   		// Loading input data
 		LOG(info) << "Loading MCH tracks";
@@ -414,6 +409,8 @@ public:
 			drawHisto(params, errors, pulls, *(mAlign.GetResTree()), outFileName);
 
 		}
+
+		mAlign.terminate();
 
 		pc.services().get<ControlService>().endOfStream();
     	pc.services().get<ControlService>().readyToQuit(QuitRequest::Me);
@@ -946,8 +943,8 @@ private:
 //_________________________________________________________________________________________________
 o2::framework::DataProcessorSpec getAlignmentSpec(bool disableCCDB)
 {
-	//vector<framework::InputSpec> inputSpecs{{"STFDist", "FLP", "DISTSUBTIMEFRAME", 0}};
-	vector<framework::InputSpec> inputSpecs{};
+	vector<framework::InputSpec> inputSpecs{{"STFDist", "FLP", "DISTSUBTIMEFRAME", 0}};
+	//vector<framework::InputSpec> inputSpecs{};
 	vector<framework::OutputSpec> outputSpecs{};
 	auto ccdbRequest = disableCCDB ? nullptr : std::make_shared<base::GRPGeomRequest>(	false,                      	// orbitResetTime
 																						false,                      	// GRPECS=true

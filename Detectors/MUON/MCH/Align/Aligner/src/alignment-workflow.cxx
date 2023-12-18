@@ -90,5 +90,5 @@ WorkflowSpec defineDataProcessing(const ConfigContext& configcontext)
 {
   o2::conf::ConfigurableParam::updateFromString(configcontext.options().get<std::string>("configKeyValues"));
   bool disableCCDB = configcontext.options().get<bool>("disable-input-from-ccdb");
-  return WorkflowSpec{o2::mch::getAlignmentSpec(disableCCDB)};
+  return WorkflowSpec{o2::mch::getAlignmentSpec(disableCCDB), getSeederSpec()};
 }
