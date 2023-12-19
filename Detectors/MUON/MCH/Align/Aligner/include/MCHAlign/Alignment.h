@@ -116,7 +116,7 @@ class Alignment : public TObject
   ~Alignment() = default;
 
   // initialize
-  void init(std::string DataRecFName, std::string ConsRecFName);
+  void init(std::string DataRecFName, std::string ConsRecFName, Bool_t read);
 
   // terminate
   void terminate(void);

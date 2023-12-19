@@ -40,12 +40,14 @@
 #include <TGraphErrors.h>
 #include <TLine.h>
 #include <TSystem.h>
+#include <TGeoMatrix.h>
 
 #include "Framework/CallbackService.h"
 #include "Framework/ConcreteDataMatcher.h"
 #include "Framework/ConfigParamRegistry.h"
 #include "Framework/ControlService.h"
 #include "Framework/DataProcessorSpec.h"
+#include "Framework/CCDBParamSpec.h"
 #include "Framework/Lifetime.h"
 #include "Framework/Output.h"
 #include "Framework/Task.h"
@@ -84,7 +86,8 @@ namespace o2{
 namespace mch{
 
 using namespace std;
-using namespace o2::framework; 
+using namespace o2::framework;
+using namespace o2; 
 
 class AlignmentTask
 {
@@ -100,10 +103,50 @@ public:
 
 	const int fgNDetElemCh[10] = {4, 4, 4, 4, 18, 18, 26, 26, 26, 26};
 	const int fgSNDetElemCh[11] = {0, 4, 8, 12, 16, 34, 52, 78, 104, 130, 156};
+	const int fgNDetElemHalfCh[20] = {2, 2, 2, 2, 2, 2, 2, 2, 9,
+									 9, 9, 9, 13, 13, 13, 13, 13, 13, 13, 13};
+	const int fgSNDetElemHalfCh[21] = {0, 3, 6, 9, 12, 15, 18, 21, 24, 34, 44, 54, 64, 
+									 					78, 92, 106, 120, 134, 148, 162, 176};
+	const int fgDetElemHalfCh[20][13] =
+	  {
+	    {100, 103, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	    {101, 102, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+
+	    {200, 203, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	    {201, 202, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+
+	    {300, 303, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	    {301, 302, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+
+	    {400, 403, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	    {401, 402, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+
+	    {500, 501, 502, 503, 504, 514, 515, 516, 517, 0, 0, 0, 0},
+	    {505, 506, 507, 508, 509, 510, 511, 512, 513, 0, 0, 0, 0},
+
+	    {600, 601, 602, 603, 604, 614, 615, 616, 617, 0, 0, 0, 0},
+	    {605, 606, 607, 608, 609, 610, 611, 612, 613, 0, 0, 0, 0},
+
+	    {700, 701, 702, 703, 704, 705, 706, 720, 721, 722, 723, 724, 725},
+	    {707, 708, 709, 710, 711, 712, 713, 714, 715, 716, 717, 718, 719},
+
+	    {800, 801, 802, 803, 804, 805, 806, 820, 821, 822, 823, 824, 825},
+	    {807, 808, 809, 810, 811, 812, 813, 814, 815, 816, 817, 818, 819},
+
+	    {900, 901, 902, 903, 904, 905, 906, 920, 921, 922, 923, 924, 925},
+	    {907, 908, 909, 910, 911, 912, 913, 914, 915, 916, 917, 918, 919},
+
+	    {1000, 1001, 1002, 1003, 1004, 1005, 1006, 1020, 1021, 1022, 1023, 1024, 1025},
+	    {1007, 1008, 1009, 1010, 1011, 1012, 1013, 1014, 1015, 1016, 1017, 1018, 1019}
+
+	};
+
 
 	double params[624];
   	double errors[624];
   	double pulls[624];
+
+  	constexpr double pi() { return 3.14159265358979323846; }
 
 	//_________________________________________________________________________________________________
 	AlignmentTask(shared_ptr<base::GRPGeomRequest> req):mCCDBRequest(req){}
@@ -161,6 +204,18 @@ public:
 				LOG(fatal) << "No GRP file";
 			}
 
+			auto geoIdealFile = ic.options().get<string>("geo-file-ideal");
+			if (filesystem::exists(geoIdealFile)) {
+				base::GeometryManager::loadGeometry(geoIdealFile.c_str());
+				transformation = geo::transformationFromTGeoManager(*gGeoManager);
+				for (int i = 0; i < 156; i++) { 
+					int iDEN = GetDetElemId(i);
+					transformIdeal[iDEN] = transformation(iDEN);
+				}
+			} else {
+				LOG(fatal) << "No ideal geometry";
+			}
+
 
 			auto geoRefFile = ic.options().get<string>("geo-file-ref");
 			if (filesystem::exists(geoRefFile)) {
@@ -169,7 +224,7 @@ public:
 				for (int i = 0; i < 156; i++) { 
 					int iDEN = GetDetElemId(i);
 					transformRef[iDEN] = transformation(iDEN);
-			}
+				}
 			} else {
 				LOG(fatal) << "No reference geometry";
 			}
@@ -198,8 +253,10 @@ public:
 
 		doMatched = ic.options().get<bool>("matched");
 		outFileName = ic.options().get<string>("output");
-		
-		mAlign.init("recDataFile.root", "recConsFile.root");
+		readRec =ic.options().get<bool>("use-record");
+
+		if(readRec) LOG(info) << "Reading records as input";
+		mAlign.init("recDataFile.root", "recConsFile.root", readRec);
 
 		ic.services().get<CallbackService>().set<CallbackService::Id::Stop>([this](){
 			LOG(info) << "Alignment duration = " << mElapsedTime.count() << " s";
@@ -211,9 +268,9 @@ public:
 	//_________________________________________________________________________________________________
 	void finaliseCCDB(framework::ConcreteDataMatcher& matcher, void* obj)
 	{
-		LOG(info) << "Finalising CCDB";
 		/// finalize the track extrapolation setting
 		if (mCCDBRequest && base::GRPGeomHelper::instance().finaliseCCDB(matcher, obj)) {
+
 		  if (matcher == framework::ConcreteDataMatcher("GLO", "GRPMAGFIELD", 0)) {
 		  	LOG(info) << "Loading magnetic field from CCDB";
 		  	auto grp = base::GRPGeomHelper::instance().getGRPMagField();
@@ -223,6 +280,7 @@ public:
 			TrackExtrap::useExtrapV2();
 			trackFitter.initField(grp->getL3Current(), grp->getDipoleCurrent());
 		  }
+
 
 		  if (matcher == framework::ConcreteDataMatcher("GLO", "GEOMALIGN", 0)) {
 		  	LOG(info) << "Loading reference geometry from CCDB";
@@ -319,8 +377,18 @@ public:
   		LOG(info) << "Starting alignment process";
   		if(doMatched) LOG(info) << "Using MCH-MID matched tracks";
   		if (mCCDBRequest) {
+
   			LOG(info) << "Checking CCDB updates with processing context";
 			base::GRPGeomHelper::instance().checkUpdates(pc);
+
+  			auto geoIdeal = pc.inputs().get<TGeoManager*>("geomIdeal");
+		  	LOG(info) << "Loading ideal geometry from CCDB";
+		    transformation = geo::transformationFromTGeoManager(*geoIdeal);
+		    for (int i = 0; i < 156; i++) { 
+			int iDEN = GetDetElemId(i);
+			transformIdeal[iDEN] = transformation(iDEN);
+			}
+
 	    }
 
 	    // Load new geometry if we need to do re-align
@@ -338,36 +406,40 @@ public:
   			}
 		}
 
-  		// Loading input data
-		LOG(info) << "Loading MCH tracks";
-		auto [fMCH, mchReader] = LoadData(mchFileName, "o2sim");
-		TTreeReaderValue<vector<ROFRecord>> mchROFs = {*mchReader, "trackrofs"};
-		TTreeReaderValue<vector<TrackMCH>> mchTracks = {*mchReader,"tracks"};
-		TTreeReaderValue<vector<Cluster>> mchClusters = {*mchReader,"trackclusters"};
+		if(!readRec){
+			// Loading input data
+			LOG(info) << "Loading MCH tracks";
+			auto [fMCH, mchReader] = LoadData(mchFileName, "o2sim");
+			TTreeReaderValue<vector<ROFRecord>> mchROFs = {*mchReader, "trackrofs"};
+			TTreeReaderValue<vector<TrackMCH>> mchTracks = {*mchReader,"tracks"};
+			TTreeReaderValue<vector<Cluster>> mchClusters = {*mchReader,"trackclusters"};
 
 
-  		if(doMatched){
-  			LOG(info) << "Loading MID tracks";
-			auto [fMUON, muonReader] = LoadData(muonFileName.c_str(), "o2sim");
-			TTreeReaderValue<vector<dataformats::TrackMCHMID>> muonTracks = {*muonReader, "tracks"};
-			int nTF = muonReader->GetEntries(false);
-			if (mchReader->GetEntries(false) != nTF) {
-				LOG(error) << mchFileName << " and " << muonFileName << " do not contain the same number of TF";
-				exit(-1);
-			}
+	  		if(doMatched){
+	  			LOG(info) << "Loading MID tracks";
+				auto [fMUON, muonReader] = LoadData(muonFileName.c_str(), "o2sim");
+				TTreeReaderValue<vector<dataformats::TrackMCHMID>> muonTracks = {*muonReader, "tracks"};
+				int nTF = muonReader->GetEntries(false);
+				if (mchReader->GetEntries(false) != nTF) {
+					LOG(error) << mchFileName << " and " << muonFileName << " do not contain the same number of TF";
+					exit(-1);
+				}
 
-  			LOG(info) << "Starting track processing";
-  			while(mchReader->Next() && muonReader->Next()){
-  				int id_event = mchReader->GetCurrentEntry();
-  				processWithMatching(*mchROFs, *mchTracks, *mchClusters, *muonTracks);
-  			}
-  		}else{
-  			LOG(info) << "Starting track processing";
-  			while(mchReader->Next()){
-  				int id_event = mchReader->GetCurrentEntry();
-  				processWithOutMatching(*mchROFs, *mchTracks, *mchClusters);
-  			}
-  		}
+	  			LOG(info) << "Starting track processing";
+	  			while(mchReader->Next() && muonReader->Next()){
+	  				int id_event = mchReader->GetCurrentEntry();
+	  				processWithMatching(*mchROFs, *mchTracks, *mchClusters, *muonTracks);
+	  			}
+	  		}else{
+	  			LOG(info) << "Starting track processing";
+	  			while(mchReader->Next()){
+	  				int id_event = mchReader->GetCurrentEntry();
+	  				processWithOutMatching(*mchROFs, *mchTracks, *mchClusters);
+	  			}
+	  		}
+
+		}
+  		
 
 		// Global fit
 		if(doAlign) mAlign.GlobalFit(params, errors, pulls);
@@ -408,6 +480,10 @@ public:
 			// Store param plots
 			drawHisto(params, errors, pulls, *(mAlign.GetResTree()), outFileName);
 
+			// Export align params in ideal frame
+			TransRef(ParamAligned);
+
+
 		}
 
 		mAlign.terminate();
@@ -420,6 +496,51 @@ public:
 
 
 private:
+	//_________________________________________________________________________________________________
+	void TransRef(vector<detectors::AlignParam> &ParamsTrack)
+	{
+		LOG(info) << "Transforming align params to the frame of ideal geometry";
+		vector<o2::detectors::AlignParam> ParamsRef;
+    	o2::detectors::AlignParam param_Ref;
+
+    	for (int hc = 0; hc < 20; hc++) {
+
+	  		ParamsRef.emplace_back(ParamsTrack.at(fgSNDetElemHalfCh[hc]));
+
+		    for (int de = 0; de < fgNDetElemHalfCh[hc]; de++) {
+
+		    	int iDEN = fgDetElemHalfCh[hc][de];
+		    	o2::detectors::AlignParam param_Track = ParamsTrack.at(fgSNDetElemHalfCh[hc]+1+de);
+
+		    	LOG(debug) << Form("%s%s","Processing DET Elem: ", (param_Track.getSymName()).c_str());
+
+		    	TGeoHMatrix delta_track;
+		    	TGeoRotation r("Rotation/Track", param_Track.getPsi()/pi()*180.0, param_Track.getTheta()/pi()*180.0, param_Track.getPhi()/pi()*180.0);
+		    	delta_track.SetRotation(r.GetRotationMatrix());
+		    	delta_track.SetDx(param_Track.getX());
+		    	delta_track.SetDy(param_Track.getY());
+		    	delta_track.SetDz(param_Track.getZ());
+
+		    	TGeoHMatrix transRef = transformIdeal[iDEN];
+		    	TGeoHMatrix transTrack = doReAlign ? transformNew[iDEN] : transformRef[iDEN];
+		    	TGeoHMatrix transRefTrack = transTrack * transRef.Inverse();
+		    	TGeoHMatrix delta_ref = delta_track * transRefTrack;
+
+		    	param_Ref.setSymName((param_Track.getSymName()).c_str()); 
+		    	param_Ref.setGlobalParams(delta_ref);
+	        	param_Ref.applyToGeometry();
+		    	ParamsRef.emplace_back(param_Ref);
+
+   			}
+   		}
+
+   		TFile *fOut = TFile::Open("AlignParam@ideal.root","RECREATE");
+   		fOut->WriteObjectAny(&ParamsRef, "std::vector<o2::detectors::AlignParam>", "alignment");
+		fOut->Close();
+	}
+
+
+
  	//_________________________________________________________________________________________________
  	Track MCHFormatConvert(TrackMCH &mchTrack, vector<Cluster> &mchClusters, bool doReAlign) 
  	{
@@ -930,11 +1051,13 @@ private:
 
  	map<int, math_utils::Transform3D> transformRef{}; // reference geometry w.r.t track data
 	map<int, math_utils::Transform3D> transformNew{}; // new geometry
+	map<int, math_utils::Transform3D> transformIdeal{}; // Ideal geometry
 
 	geo::TransformationCreator transformation{};
 	TrackFitter trackFitter{};
 
 	std::chrono::duration<double> mElapsedTime{};
+	bool readRec{false};
 
 
 
@@ -943,16 +1066,19 @@ private:
 //_________________________________________________________________________________________________
 o2::framework::DataProcessorSpec getAlignmentSpec(bool disableCCDB)
 {
-	vector<framework::InputSpec> inputSpecs{{"STFDist", "FLP", "DISTSUBTIMEFRAME", 0}};
-	//vector<framework::InputSpec> inputSpecs{};
+	vector<framework::InputSpec> inputSpecs{};
+	inputSpecs.emplace_back("STFDist", "FLP", "DISTSUBTIMEFRAME", 0);
+	inputSpecs.emplace_back("geomIdeal", "GLO", "GEOMIDEAL", 0, Lifetime::Condition, framework::ccdbParamSpec("GLO/Config/Geometry"));
+
 	vector<framework::OutputSpec> outputSpecs{};
 	auto ccdbRequest = disableCCDB ? nullptr : std::make_shared<base::GRPGeomRequest>(	false,                      	// orbitResetTime
 																						false,                      	// GRPECS=true
-																						false,                      	// GRPLHCIF
+																						false,         					// GRPLHCIF
 																						true,                       	// GRPMagField
 																						false,                      	// askMatLUT
 																						base::GRPGeomRequest::Aligned,	// geometry
 																						inputSpecs);
+
 
   return DataProcessorSpec{
     "mch-alignment",
@@ -960,12 +1086,14 @@ o2::framework::DataProcessorSpec getAlignmentSpec(bool disableCCDB)
     outputSpecs,
     AlgorithmSpec{o2::framework::adaptFromTask<AlignmentTask>(ccdbRequest)},
     Options{{"geo-file-ref", VariantType::String, o2::base::NameConf::getAlignedGeomFileName(), {"Name of the reference geometry file"}},
+    		{"geo-file-ideal", VariantType::String, o2::base::NameConf::getGeomFileName(), {"Name of the ideal geometry file"}},
             {"grp-file", VariantType::String, o2::base::NameConf::getGRPFileName(), {"Name of the grp file"}},
             {"fitter-config", VariantType::String, "", {"Option of parameter set for TrackFitter, pp or PbPb"}},
             {"do-align", VariantType::Bool, false, {"Switch for alignment, otherwise only residuals will be stored"}},
             {"do-realign", VariantType::Bool, false, {"Switch for re-alignment using another geometry"}},
             {"matched", VariantType::Bool, false, {"Switch for using MCH-MID matched tracks"}},
             {"fix-chamber", VariantType::String, "", {"Chamber fixing, ex 1,2,3"}},
+            {"use-record", VariantType::Bool, false, {"Option for directly using record in alignment if provided"}},
         	{"output", VariantType::String, "Alignment", {"Option for name of output file"}}}} ;
 }
 

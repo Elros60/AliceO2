@@ -200,7 +200,7 @@ Alignment::Alignment()
 //}
 // Alignment::~Alignment() = default;
 //_____________________________________________________________________
-void Alignment::init(std::string DataRecFName, std::string ConsRecFName)
+void Alignment::init(std::string DataRecFName, std::string ConsRecFName, Bool_t read)
 {
 
   /// initialize
@@ -251,9 +251,9 @@ void Alignment::init(std::string DataRecFName, std::string ConsRecFName)
   // initialize millepedes
   fMillepede->InitMille(fNGlobal, fNLocal, fNStdDev, fResCut, fResCutInitial, fGlobalParameterStatus);
   // fMillepede->InitMille(fNGlobal, fNLocal, fNStdDev, fResCut, fResCutInitial); // AliMillePede2 implementation
-  // fMillepede->InitDataRecStorage(kFALSE);
   fMillepede->SetDataRecFName(DataRecFName);
   fMillepede->SetConsRecFName(ConsRecFName);
+  fMillepede->InitDataRecStorage(read);
 
   fInitialized = kTRUE;
 
