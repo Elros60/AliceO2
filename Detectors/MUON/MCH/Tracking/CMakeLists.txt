@@ -28,7 +28,8 @@ o2_add_library(MCHTracking
 
 o2_target_root_dictionary(
   MCHTracking
-  HEADERS include/MCHTracking/Track.h)           
+  HEADERS include/MCHTracking/Track.h
+          include/MCHTracking/TrackParam.h)           
 
 o2_add_executable(
         clusters-to-tracks-workflow

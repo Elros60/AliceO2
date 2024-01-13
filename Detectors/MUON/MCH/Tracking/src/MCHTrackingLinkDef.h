@@ -16,6 +16,7 @@
 #pragma link off all functions;
 
 #pragma link C++ class o2::mch::Track + ;
+#pragma link C++ class o2::mch::TrackParam + ;
 #pragma link C++ class std::vector < o2::mch::Track> + ;
 
 #endif
