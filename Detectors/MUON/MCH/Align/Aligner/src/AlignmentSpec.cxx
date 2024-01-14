@@ -253,10 +253,13 @@ public:
 
 		doMatched = ic.options().get<bool>("matched");
 		outFileName = ic.options().get<string>("output");
-		readRec =ic.options().get<bool>("use-record");
+		readFromRec = ic.options().get<bool>("use-record");
+		readFromAO2D = ic.options().get<bool>("fromAO2D");
 
-		if(readRec) LOG(info) << "Reading records as input";
-		mAlign.init("recDataFile.root", "recConsFile.root", readRec);
+		if(readFromRec) LOG(info) << "Reading records as input";
+		if(readFromAO2D) LOG(info) << "Reading mchtracks.root converted from AO2D.root as input";
+
+		mAlign.init("recDataFile.root", "recConsFile.root", readFromRec);
 
 		ic.services().get<CallbackService>().set<CallbackService::Id::Stop>([this](){
 			LOG(info) << "Alignment duration = " << mElapsedTime.count() << " s";
@@ -371,6 +374,19 @@ public:
 	}
 
 	//_________________________________________________________________________________________________
+	void processWithMCHTrack(vector<mch::Track> &mchTracks)
+	{
+
+		for(auto& mchTrack : mchTracks){
+
+			AliMillePedeRecord *mchRecord = mAlign.ProcessTrack(mchTrack, transformation, doAlign, weightRecord);
+		}
+	
+	}
+
+
+
+	//_________________________________________________________________________________________________
   	void run(framework::ProcessingContext& pc)
   	{
   		auto tStart = std::chrono::high_resolution_clock::now();
@@ -406,36 +422,43 @@ public:
   			}
 		}
 
-		if(!readRec){
-			// Loading input data
-			LOG(info) << "Loading MCH tracks";
-			auto [fMCH, mchReader] = LoadData(mchFileName, "o2sim");
-			TTreeReaderValue<vector<ROFRecord>> mchROFs = {*mchReader, "trackrofs"};
-			TTreeReaderValue<vector<TrackMCH>> mchTracks = {*mchReader,"tracks"};
-			TTreeReaderValue<vector<Cluster>> mchClusters = {*mchReader,"trackclusters"};
+		if(!readFromRec){
+			if(!readFromAO2D){
+				// Loading input data
+				LOG(info) << "Loading MCH tracks";
+				auto [fMCH, mchReader] = LoadData(mchFileName, "o2sim");
+				TTreeReaderValue<vector<ROFRecord>> mchROFs = {*mchReader, "trackrofs"};
+				TTreeReaderValue<vector<TrackMCH>> mchTracks = {*mchReader,"tracks"};
+				TTreeReaderValue<vector<Cluster>> mchClusters = {*mchReader,"trackclusters"};
 
 
-	  		if(doMatched){
-	  			LOG(info) << "Loading MID tracks";
-				auto [fMUON, muonReader] = LoadData(muonFileName.c_str(), "o2sim");
-				TTreeReaderValue<vector<dataformats::TrackMCHMID>> muonTracks = {*muonReader, "tracks"};
-				int nTF = muonReader->GetEntries(false);
-				if (mchReader->GetEntries(false) != nTF) {
-					LOG(error) << mchFileName << " and " << muonFileName << " do not contain the same number of TF";
-					exit(-1);
-				}
+		  		if(doMatched){
+		  			LOG(info) << "Loading MID tracks";
+					auto [fMUON, muonReader] = LoadData(muonFileName.c_str(), "o2sim");
+					TTreeReaderValue<vector<dataformats::TrackMCHMID>> muonTracks = {*muonReader, "tracks"};
+					int nTF = muonReader->GetEntries(false);
+					if (mchReader->GetEntries(false) != nTF) {
+						LOG(error) << mchFileName << " and " << muonFileName << " do not contain the same number of TF";
+						exit(-1);
+					}
 
-	  			LOG(info) << "Starting track processing";
-	  			while(mchReader->Next() && muonReader->Next()){
-	  				int id_event = mchReader->GetCurrentEntry();
-	  				processWithMatching(*mchROFs, *mchTracks, *mchClusters, *muonTracks);
-	  			}
+		  			LOG(info) << "Starting track processing";
+		  			while(mchReader->Next() && muonReader->Next()){
+		  				int id_event = mchReader->GetCurrentEntry();
+		  				processWithMatching(*mchROFs, *mchTracks, *mchClusters, *muonTracks);
+		  			}
+		  		}else{
+		  			LOG(info) << "Starting track processing";
+		  			while(mchReader->Next()){
+		  				int id_event = mchReader->GetCurrentEntry();
+		  				processWithOutMatching(*mchROFs, *mchTracks, *mchClusters);
+		  			}
+		  		}
 	  		}else{
-	  			LOG(info) << "Starting track processing";
-	  			while(mchReader->Next()){
-	  				int id_event = mchReader->GetCurrentEntry();
-	  				processWithOutMatching(*mchROFs, *mchTracks, *mchClusters);
-	  			}
+	  			TFile *FileTracks = TFile::Open(mchFileName.c_str());
+	  			std::vector<o2::mch::Track> Tracks = *(FileTracks->Get<std::vector<o2::mch::Track>>("mchtracks"));
+	  			processWithMCHTrack(Tracks);
+
 	  		}
 
 		}
@@ -1045,6 +1068,8 @@ private:
  	bool doAlign{false};
  	bool doReAlign{false};
  	bool doMatched{false};
+ 	bool readFromAO2D{false};
+ 	bool readFromRec{false};
  	const Double_t weightRecord{1.0};
  	Alignment mAlign{};
  	shared_ptr<base::GRPGeomRequest> mCCDBRequest{};
@@ -1057,7 +1082,6 @@ private:
 	TrackFitter trackFitter{};
 
 	std::chrono::duration<double> mElapsedTime{};
-	bool readRec{false};
 
 
 
@@ -1092,6 +1116,7 @@ o2::framework::DataProcessorSpec getAlignmentSpec(bool disableCCDB)
             {"do-align", VariantType::Bool, false, {"Switch for alignment, otherwise only residuals will be stored"}},
             {"do-realign", VariantType::Bool, false, {"Switch for re-alignment using another geometry"}},
             {"matched", VariantType::Bool, false, {"Switch for using MCH-MID matched tracks"}},
+            {"fromAO2D", VariantType::Bool, false, {"Switch for using mchtracks.root converted from AO2D.root"}},
             {"fix-chamber", VariantType::String, "", {"Chamber fixing, ex 1,2,3"}},
             {"use-record", VariantType::Bool, false, {"Option for directly using record in alignment if provided"}},
         	{"output", VariantType::String, "Alignment", {"Option for name of output file"}}}} ;
