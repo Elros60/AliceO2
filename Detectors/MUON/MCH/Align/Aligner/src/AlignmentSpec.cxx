@@ -455,8 +455,11 @@ public:
 		  			}
 		  		}
 	  		}else{
+
 	  			TFile *FileTracks = TFile::Open(mchFileName.c_str());
 	  			std::vector<o2::mch::Track> Tracks = *(FileTracks->Get<std::vector<o2::mch::Track>>("mchtracks"));
+	  			LOG(info) << "Number of tracks loaded: " << Tracks.size();
+	  			LOG(info) << "Starting track processing";
 	  			processWithMCHTrack(Tracks);
 
 	  		}
