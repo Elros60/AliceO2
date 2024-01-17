@@ -36,9 +36,9 @@ class Track
   ~Track() = default;
 
   Track(const Track& track);
-  //Track& operator=(const Track& track) = delete;
-  //Track(Track&&) = delete;
-  //Track& operator=(Track&&) = delete;
+  Track& operator=(const Track& track) = delete;
+  Track(Track&&) = delete;
+  Track& operator=(Track&&) = delete;
 
   /// Return the number of attached clusters
   int getNClusters() const { return mParamAtClusters.size(); }
@@ -105,7 +105,6 @@ class Track
   bool mConnected = false;                     ///< flag telling if this track shares cluster(s) with another
   bool mRemovable = false;                     ///< flag telling if this track should be deleted
 
-  ClassDefNV(Track, 1);
 };
 
 } // namespace mch
