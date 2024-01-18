@@ -16,7 +16,7 @@
 
 #include "Framework/Logger.h"
 
-#include "FWDAlign/MilleRecordWriter.h"
+#include "ForwardAlign/MilleRecordWriter.h"
 
 using namespace o2::fwdalign;
 

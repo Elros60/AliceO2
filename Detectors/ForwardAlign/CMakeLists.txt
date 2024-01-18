@@ -17,7 +17,6 @@ o2_add_library(ForwardAlign
                 src/MilleRecordReader.cxx
                 src/MilleRecordWriter.cxx
                 src/MinResSolve.cxx
-                src/RecordsToAlignParams.cxx
                 src/RectMatrix.cxx
                 src/SymBDMatrix.cxx
                 src/SymMatrix.cxx
@@ -34,7 +33,6 @@ o2_target_root_dictionary(ForwardAlign
                 include/ForwardAlign/MilleRecordReader.h
                 include/ForwardAlign/MilleRecordWriter.h
                 include/ForwardAlign/MinResSolve.h
-                include/ForwardAlign/RecordsToAlignParams.h
                 include/ForwardAlign/RectMatrix.h
                 include/ForwardAlign/SymBDMatrix.h
                 include/ForwardAlign/SymMatrix.h

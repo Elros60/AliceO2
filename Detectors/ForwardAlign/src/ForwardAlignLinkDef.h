@@ -22,7 +22,6 @@
 #pragma link C++ class o2::fwdalign::MilleRecordReader + ;
 #pragma link C++ class o2::fwdalign::MilleRecordWriter + ;
 #pragma link C++ class o2::fwdalign::MinResSolve + ;
-#pragma link C++ class o2::fwdalign::RecordsToAlignParams + ;
 #pragma link C++ class o2::fwdalign::RectMatrix + ;
 #pragma link C++ class o2::fwdalign::SymBDMatrix + ;
 #pragma link C++ class o2::fwdalign::SymMatrix + ;
