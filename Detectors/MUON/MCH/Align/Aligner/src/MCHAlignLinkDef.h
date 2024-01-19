@@ -14,15 +14,6 @@
 #pragma link off all globals;
 #pragma link off all classes;
 #pragma link off all functions;
-#pragma link C++ class o2::mch::MatrixSq + ;
-#pragma link C++ class o2::mch::SymMatrix + ;
-#pragma link C++ class o2::mch::MillePede2 + ;
-#pragma link C++ class o2::mch::RectMatrix + ;
-#pragma link C++ class o2::mch::MinResSolve + ;
-#pragma link C++ class o2::mch::SymBDMatrix + ;
-#pragma link C++ class o2::mch::MatrixSparse + ;
-#pragma link C++ class o2::mch::VectorSparse + ;
-#pragma link C++ class o2::mch::MillePedeRecord + ;
-#pragma link C++ class o2::mch::Aligner + ;
+#pragma link C++ class o2::mch::Alignment + ;
 
 #endif

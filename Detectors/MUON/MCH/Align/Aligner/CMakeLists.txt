@@ -11,21 +11,13 @@
 
 o2_add_library(MCHAlign
 	SOURCES
-	  src/Aligner.cxx
-		src/MillePede2.cxx
-		src/MillePedeRecord.cxx
-	 	src/MinResSolve.cxx
-		src/MatrixSparse.cxx
-		src/MatrixSq.cxx
-		src/SymBDMatrix.cxx
-		src/RectMatrix.cxx
-		src/VectorSparse.cxx
-		src/SymMatrix.cxx
+	  src/Alignment.cxx
 		src/AlignmentSpec.cxx			           
 	PUBLIC_LINK_LIBRARIES
 	  O2::MathUtils 
 		O2::CCDB 
 		O2::DataFormatsMCH
+		O2::ForwardAlign
 		O2::MCHTracking
 		O2::MCHGeometryTransformer
 		O2::MCHGeometryCreator
@@ -41,16 +33,7 @@ o2_add_library(MCHAlign
 
 o2_target_root_dictionary(MCHAlign
   HEADERS 
-  	include/MCHAlign/Aligner.h
-	  include/MCHAlign/MillePede2.h
-    include/MCHAlign/MillePedeRecord.h
-    include/MCHAlign/MinResSolve.h
-    include/MCHAlign/MatrixSparse.h
-	  include/MCHAlign/MatrixSq.h
-    include/MCHAlign/SymBDMatrix.h
-	  include/MCHAlign/RectMatrix.h
-	  include/MCHAlign/VectorSparse.h
-	  include/MCHAlign/SymMatrix.h
+  	include/MCHAlign/Alignment.h
 	  include/MCHAlign/AlignmentSpec.h)
 
 o2_add_executable(
@@ -58,7 +41,8 @@ o2_add_executable(
 				SOURCES src/alignment-workflow.cxx
 				COMPONENT_NAME mch
 				PUBLIC_LINK_LIBRARIES
-					O2::MCHAlign
+					O2::ForwardAlign
+				  O2::MCHAlign
 					Boost::program_options)
 
 
