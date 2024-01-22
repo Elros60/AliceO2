@@ -14,15 +14,15 @@
 #pragma link off all globals;
 #pragma link off all classes;
 #pragma link off all functions;
-#pragma link C++ class AliMatrixSq + ;
-#pragma link C++ class AliSymMatrix + ;
-#pragma link C++ class AliMillePede2 + ;
-#pragma link C++ class AliRectMatrix + ;
-#pragma link C++ class AliMinResSolve + ;
-#pragma link C++ class AliSymBDMatrix + ;
-#pragma link C++ class AliMatrixSparse + ;
-#pragma link C++ class AliVectorSparse + ;
-#pragma link C++ class AliMillePedeRecord + ;
-#pragma link C++ class o2::mch::Alignment + ;
+#pragma link C++ class o2::mch::MatrixSq + ;
+#pragma link C++ class o2::mch::SymMatrix + ;
+#pragma link C++ class o2::mch::MillePede2 + ;
+#pragma link C++ class o2::mch::RectMatrix + ;
+#pragma link C++ class o2::mch::MinResSolve + ;
+#pragma link C++ class o2::mch::SymBDMatrix + ;
+#pragma link C++ class o2::mch::MatrixSparse + ;
+#pragma link C++ class o2::mch::VectorSparse + ;
+#pragma link C++ class o2::mch::MillePedeRecord + ;
+#pragma link C++ class o2::mch::Aligner + ;
 
 #endif

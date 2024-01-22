@@ -70,7 +70,7 @@
 #include "MCHTracking/TrackParam.h"
 #include "ReconstructionDataFormats/TrackMCHMID.h"
 #include "DataFormatsMCH/Cluster.h"
-#include "MCHAlign/Alignment.h"
+#include "MCHAlign/Aligner.h"
 #include "MCHTracking/Track.h"
 #include "MCHTracking/TrackExtrap.h"
 #include "MCHTracking/TrackParam.h"
@@ -165,7 +165,9 @@ public:
 		}
 
 		doReAlign = ic.options().get<bool>("do-realign");
-		if(doReAlign) LOG(info) << "Re-alignment mode";
+		if(doReAlign) {
+			LOG(info) << "Re-alignment mode";
+		}
 
 
 		auto param_config = ic.options().get<string>("fitter-config");
@@ -234,7 +236,7 @@ public:
   		trackFitter.setChamberResolution(Reso_X, Reso_Y);
   		trackFitter.useChamberResolution();
 
-		mAlign.SetDoEvaluation(kTRUE);
+		mAlign.SetDoEvaluation(true);
 	    // Variation range for parameters
 		mAlign.SetAllowedVariation(0, 2.0);
 		mAlign.SetAllowedVariation(1, 0.3);
@@ -244,7 +246,9 @@ public:
 		// Fix chambers
 		auto chambers = ic.options().get<string>("fix-chamber");
 		for (int i = 0; i < chambers.length(); ++i) {
-			if(chambers[i]==',') continue;
+			if(chambers[i]==',') {
+				continue;
+			}
 			int chamber = chambers[i] - '0';
 			LOG(info) << Form("%s%d","Fixing chamber: ",chamber);
 			mAlign.FixChamber(chamber);
@@ -255,7 +259,9 @@ public:
 		outFileName = ic.options().get<string>("output");
 		readFromRec = ic.options().get<bool>("use-record");
 
-		if(readFromRec) LOG(info) << "Reading records as input";
+		if(readFromRec) {
+			LOG(info) << "Reading records as input";
+		}
 		mAlign.init("recDataFile.root", "recConsFile.root", readFromRec);
 
 		ic.services().get<CallbackService>().set<CallbackService::Id::Stop>([this](){
@@ -304,7 +310,9 @@ public:
 				iMCHTrack <= mchROF.getLastIdx(); ++iMCHTrack) {
 				tracksAll +=1;
 				// MCH-MID matching
-				if(!FindMuon(iMCHTrack, muonTracks)) continue;
+				if(!FindMuon(iMCHTrack, muonTracks)) {
+					continue;
+				}
 				trackMCHMID += 1;          
 
 				auto mchTrack = mchTracks.at(iMCHTrack);
@@ -312,7 +320,9 @@ public:
 				int nb_clusters = mchTrack.getNClusters();
 
 				// Track selection, saving only tracks having exactly 10 clusters
-				if(nb_clusters <= 9) continue;
+				if(nb_clusters <= 9) {
+					continue;
+				}
 				tracksGoodwithoutFit += 1;
 
 				// Format conversion from TrackMCH to Track(MCH internal use)
@@ -326,8 +336,7 @@ public:
 				}   
 
 				//  Track processing, saving residuals
-				AliMillePedeRecord *mchRecord = mAlign.ProcessTrack(convertedTrack, transformation,
-															 doAlign, weightRecord);
+				mAlign.ProcessTrack(convertedTrack, transformation, doAlign, weightRecord);
 
 			}
 		}
@@ -349,7 +358,9 @@ public:
 				tracksAll +=1;
 
 				// Track selection, saving only tracks having exactly 10 clusters
-				if(nb_clusters <= 9) continue;
+				if(nb_clusters <= 9) {
+					continue;
+				}
 				tracksGoodwithoutFit += 1;
 
 				// Format conversion from TrackMCH to Track(MCH internal use)
@@ -363,8 +374,7 @@ public:
 				}   
 
 				//  Track processing, saving residuals
-				AliMillePedeRecord *mchRecord = mAlign.ProcessTrack(convertedTrack, transformation,
-															 doAlign, weightRecord);
+				mAlign.ProcessTrack(convertedTrack, transformation, doAlign, weightRecord);
 
 			}
 		}
@@ -375,7 +385,9 @@ public:
   	{
   		auto tStart = std::chrono::high_resolution_clock::now();
   		LOG(info) << "Starting alignment process";
-  		if(doMatched) LOG(info) << "Using MCH-MID matched tracks";
+  		if(doMatched) {
+  			LOG(info) << "Using MCH-MID matched tracks";
+  		}
   		if (mCCDBRequest) {
 
   			LOG(info) << "Checking CCDB updates with processing context";
@@ -442,7 +454,9 @@ public:
   		
 
 		// Global fit
-		if(doAlign) mAlign.GlobalFit(params, errors, pulls);
+		if(doAlign) {
+			mAlign.GlobalFit(params, errors, pulls);
+		}
 		auto tEnd = std::chrono::high_resolution_clock::now();
 		mElapsedTime = tEnd - tStart;
 		// Evaluation for track removing and selection
@@ -469,9 +483,9 @@ public:
 			string Geo_file;
 
 			if(doReAlign){
-			Geo_file = Form("%s%s","o2sim_geometry_ReAlign",".root");
+				Geo_file = Form("%s%s","o2sim_geometry_ReAlign",".root");
 			}else{
-			Geo_file = Form("%s%s","o2sim_geometry_Align",".root");
+				Geo_file = Form("%s%s","o2sim_geometry_Align",".root");
 			}
 
 			// Store aligned geometry
@@ -623,7 +637,9 @@ private:
 	      }
 	    }
 
-	    if(worstLocalChi2 < maxChi2Cluster) break;
+	    if(worstLocalChi2 < maxChi2Cluster) {
+	    	break;
+	    }
 
 	    if(!itWorstParam->isRemovable()){
 	        removeTrack = true;
@@ -820,14 +836,14 @@ private:
 	    }
 	  }
 
-	  Int_t RefClDetElem;
-	  Int_t RefClDetElemNumber;
-	  Float_t RefClusterX;
-	  Float_t RefClusterY;
-	  Float_t RefTrackX;
-	  Float_t RefTrackY;
-	  Float_t RefTrackSlopeX;
-	  Float_t RefTrackSlopeY;
+	  int RefClDetElem;
+	  int RefClDetElemNumber;
+	  float RefClusterX;
+	  float RefClusterY;
+	  float RefTrackX;
+	  float RefTrackY;
+	  float RefTrackSlopeX;
+	  float RefTrackSlopeY;
 	  Res_Tree.SetBranchAddress("fClusterX",&RefClusterX);
 	  Res_Tree.SetBranchAddress("fClusterY",&RefClusterY);
 	  Res_Tree.SetBranchAddress("fTrackX",&RefTrackX);
@@ -854,8 +870,12 @@ private:
 	  TH1F *Histos_DETRes[2][156];
 	  for(int i=0;i<2;i++){
 	    for(int j=0;j<156;j++){
-	      if(i==0) Histos_DETRes[i][j] = new TH1F(Form("%s%d","Hist_x_DET",j+1),Form("%s%d","Hist_x_DET",j+1),200,-5,5);
-	      if(i==1) Histos_DETRes[i][j] = new TH1F(Form("%s%d","Hist_y_DET",j+1),Form("%s%d","Hist_y_DET",j+1),200,-5,5);
+	      if(i==0) {
+	      	Histos_DETRes[i][j] = new TH1F(Form("%s%d","Hist_x_DET",j+1),Form("%s%d","Hist_x_DET",j+1),200,-5,5);
+	      }
+	      if(i==1) {
+	      	Histos_DETRes[i][j] = new TH1F(Form("%s%d","Hist_y_DET",j+1),Form("%s%d","Hist_y_DET",j+1),200,-5,5);
+	      }
 	    }
 	  }
 
@@ -890,8 +910,12 @@ private:
 
 	  for(int i=0;i<2;i++){
 	    for(int j=0;j<11;j++){
-	      if(i==0) PlotFiles->WriteObjectAny(Histos_Res[i][j],"TH1F",Form("%s%d","Residual_X_Ch",j));
-	      if(i==1) PlotFiles->WriteObjectAny(Histos_Res[i][j],"TH1F",Form("%s%d","Residual_Y_Ch",j));
+	      if(i==0) {
+	      	PlotFiles->WriteObjectAny(Histos_Res[i][j],"TH1F",Form("%s%d","Residual_X_Ch",j));
+	      }
+	      if(i==1) {
+	      	PlotFiles->WriteObjectAny(Histos_Res[i][j],"TH1F",Form("%s%d","Residual_Y_Ch",j));
+	      }
 	    }
 	  }
 
@@ -993,11 +1017,11 @@ private:
 	}
 
 	//_________________________________________________________________________________________________
-	Int_t GetDetElemNumber(Int_t iDetElemId) {
+	int GetDetElemNumber(int iDetElemId) {
 	  /// get det element number from ID
 	  // get chamber and element number in chamber
-	  const Int_t iCh = iDetElemId / 100;
-	  const Int_t iDet = iDetElemId % 100;
+	  const int iCh = iDetElemId / 100;
+	  const int iDet = iDetElemId % 100;
 
 	  // make sure detector index is valid
 	  if (!(iCh > 0 && iCh <= 10 && iDet < fgNDetElemCh[iCh - 1])) {
@@ -1009,7 +1033,7 @@ private:
 	}
 
 	//_________________________________________________________________________________________________
-	Int_t GetDetElemId(Int_t iDetElemNumber) {
+	int GetDetElemId(int iDetElemNumber) {
 	  // make sure detector number is valid
 	  if (!(iDetElemNumber >= fgSNDetElemCh[0] &&
 	        iDetElemNumber < fgSNDetElemCh[10])) {
@@ -1046,8 +1070,8 @@ private:
  	bool doReAlign{false};
  	bool doMatched{false};
  	bool readFromRec{false};
- 	const Double_t weightRecord{1.0};
- 	Alignment mAlign{};
+ 	const double weightRecord{1.0};
+ 	Aligner mAlign{};
  	shared_ptr<base::GRPGeomRequest> mCCDBRequest{};
 
  	map<int, math_utils::Transform3D> transformRef{}; // reference geometry w.r.t track data

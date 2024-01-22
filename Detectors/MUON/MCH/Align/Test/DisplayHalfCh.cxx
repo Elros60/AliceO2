@@ -31,10 +31,10 @@
 #include <TColor.h>
 
 //using namespace o2;
-const Int_t NDetElemCh[10] = {4, 4, 4, 4, 18, 18, 26, 26, 26, 26};
+const int NDetElemCh[10] = {4, 4, 4, 4, 18, 18, 26, 26, 26, 26};
 
-const Int_t colorsR[13] = {kRed+2,kRed+1,kOrange+10,kOrange+9,kOrange+8,kOrange+7,kOrange+6,kOrange+5,kOrange+4,kOrange+3,kOrange+2,kOrange+1,kOrange};
-const Int_t colorsL[13] = {kAzure+2,kAzure+1,kViolet+10,kViolet+9,kViolet+8,kViolet+7,kViolet+6,kViolet+5,kViolet+4,kViolet+3,kViolet+2,kViolet+1,kViolet};
+const int colorsR[13] = {kRed+2,kRed+1,kOrange+10,kOrange+9,kOrange+8,kOrange+7,kOrange+6,kOrange+5,kOrange+4,kOrange+3,kOrange+2,kOrange+1,kOrange};
+const int colorsL[13] = {kAzure+2,kAzure+1,kViolet+10,kViolet+9,kViolet+8,kViolet+7,kViolet+6,kViolet+5,kViolet+4,kViolet+3,kViolet+2,kViolet+1,kViolet};
 
 //________________________________________________________________________________
 void DisplayHalfCh(string ResFileName, string Axe){

@@ -11,20 +11,19 @@
 
 o2_add_library(MCHAlign
 	SOURCES
-	  src/Alignment.cxx
-		src/AliMillePede2.cxx
-		src/AliMillePedeRecord.cxx
-	 	src/AliMinResSolve.cxx
-		src/AliMatrixSparse.cxx
-		src/AliMatrixSq.cxx
-		src/AliSymBDMatrix.cxx
-		src/AliRectMatrix.cxx
-		src/AliVectorSparse.cxx
-		src/AliSymMatrix.cxx
+	  src/Aligner.cxx
+		src/MillePede2.cxx
+		src/MillePedeRecord.cxx
+	 	src/MinResSolve.cxx
+		src/MatrixSparse.cxx
+		src/MatrixSq.cxx
+		src/SymBDMatrix.cxx
+		src/RectMatrix.cxx
+		src/VectorSparse.cxx
+		src/SymMatrix.cxx
 		src/AlignmentSpec.cxx			           
 	PUBLIC_LINK_LIBRARIES
 	  O2::MathUtils 
-		O2::Align
 		O2::CCDB 
 		O2::DataFormatsMCH
 		O2::MCHTracking
@@ -42,16 +41,16 @@ o2_add_library(MCHAlign
 
 o2_target_root_dictionary(MCHAlign
   HEADERS 
-  	include/MCHAlign/Alignment.h
-	  include/MCHAlign/AliMillePede2.h
-    include/MCHAlign/AliMillePedeRecord.h
-    include/MCHAlign/AliMinResSolve.h
-    include/MCHAlign/AliMatrixSparse.h
-	  include/MCHAlign/AliMatrixSq.h
-    include/MCHAlign/AliSymBDMatrix.h
-	  include/MCHAlign/AliRectMatrix.h
-	  include/MCHAlign/AliVectorSparse.h
-	  include/MCHAlign/AliSymMatrix.h
+  	include/MCHAlign/Aligner.h
+	  include/MCHAlign/MillePede2.h
+    include/MCHAlign/MillePedeRecord.h
+    include/MCHAlign/MinResSolve.h
+    include/MCHAlign/MatrixSparse.h
+	  include/MCHAlign/MatrixSq.h
+    include/MCHAlign/SymBDMatrix.h
+	  include/MCHAlign/RectMatrix.h
+	  include/MCHAlign/VectorSparse.h
+	  include/MCHAlign/SymMatrix.h
 	  include/MCHAlign/AlignmentSpec.h)
 
 o2_add_executable(

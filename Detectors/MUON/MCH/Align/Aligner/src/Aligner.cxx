@@ -10,46 +10,30 @@
 // or submit itself to any jurisdiction.
 
 //-----------------------------------------------------------------------------
-/// \file Alignment
-/// Alignment class for the ALICE DiMuon spectrometer
+/// \file Aligner
+/// Aligner class for the ALICE DiMuon spectrometer
 ///
-/// MUON specific alignment class which interface to AliMillepede.
+/// MUON specific alignment class which interface to Millepede.
 /// For each track ProcessTrack calculates the local and global derivatives
 /// at each cluster and fill the corresponding local equations. Provide methods
 /// for fixing or constraining detection elements for best results.
 ///
 /// \author Javier Castillo Castellanos
 //-----------------------------------------------------------------------------
-
-#include "MCHAlign/Alignment.h"
-#include "MCHAlign/AliMillePede2.h"
-#include "MCHAlign/AliMillePedeRecord.h"
 #include <iostream>
 #include <ctime>
+
+#include "MCHAlign/Aligner.h"
+#include "MCHAlign/MillePede2.h"
+#include "MCHAlign/MillePedeRecord.h"
 
 #include "MCHTracking/Track.h"
 #include "MCHTracking/TrackParam.h"
 #include "DataFormatsMCH/Cluster.h"
-#include "TGeoManager.h"
 
-// #include "DataFormatsMCH/ROFRecord.h"
-// #include "DataFormatsMCH/TrackMCH.h"
-// #include "DataFormatsMCH/Cluster.h"
-// #include "DataFormatsMCH/Digit.h"
-
-// #include "AliMUONGeometryTransformer.h"
-// #include "AliMUONGeometryModuleTransformer.h"
-// #include "MCHAlign/AliMUONGeometryDetElement.h"
-// #include "AliMUONGeometryBuilder.h"
 #include "MCHGeometryCreator/Geometry.h"
 #include "MCHGeometryTest/Helpers.h"
 #include "MCHGeometryTransformer/Transformations.h"
-#include "TGeoManager.h"
-#include <TGeoGlobalMagField.h>
-
-// #include "Align/Millepede2Record.h" //to be replaced
-// #include "AliMpExMap.h"
-// #include "AliMpExMapIterator.h"
 
 #include "DetectorsCommonDataFormats/AlignParam.h"
 #include "Framework/Logger.h"
@@ -60,6 +44,8 @@
 #include <TClonesArray.h>
 #include <TGraphErrors.h>
 #include <TObject.h>
+#include <TGeoManager.h>
+#include <TGeoGlobalMagField.h>
 
 namespace o2
 {
@@ -70,14 +56,14 @@ using namespace std;
 
 //_____________________________________________________________________
 // static variables
-const Int_t Alignment::fgNDetElemCh[Alignment::fgNCh] = {4, 4, 4, 4, 18, 18, 26, 26, 26, 26};
-const Int_t Alignment::fgSNDetElemCh[Alignment::fgNCh + 1] = {0, 4, 8, 12, 16, 34, 52, 78, 104, 130, 156};
+const int Aligner::fgNDetElemCh[Aligner::fgNCh] = {4, 4, 4, 4, 18, 18, 26, 26, 26, 26};
+const int Aligner::fgSNDetElemCh[Aligner::fgNCh + 1] = {0, 4, 8, 12, 16, 34, 52, 78, 104, 130, 156};
 
 // number of detector elements in each half-chamber
-const Int_t Alignment::fgNDetElemHalfCh[Alignment::fgNHalfCh] = {2, 2, 2, 2, 2, 2, 2, 2, 9, 9, 9, 9, 13, 13, 13, 13, 13, 13, 13, 13};
+const int Aligner::fgNDetElemHalfCh[Aligner::fgNHalfCh] = {2, 2, 2, 2, 2, 2, 2, 2, 9, 9, 9, 9, 13, 13, 13, 13, 13, 13, 13, 13};
 
 // list of detector elements for each half chamber
-const Int_t Alignment::fgDetElemHalfCh[Alignment::fgNHalfCh][Alignment::fgNDetHalfChMax] =
+const int Aligner::fgDetElemHalfCh[Aligner::fgNHalfCh][Aligner::fgNDetHalfChMax] =
   {
     {100, 103, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     {101, 102, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -120,13 +106,13 @@ class Array
   /// contructor
   Array(void)
   {
-    for (Int_t i = 0; i < Alignment::fNGlobal; ++i) {
+    for (int i = 0; i < Aligner::fNGlobal; ++i) {
       values[i] = 0;
     }
   }
 
   /// array
-  Double_t values[Alignment::fNGlobal];
+  double values[Aligner::fNGlobal];
 
  private:
   /// Not implemented
@@ -137,15 +123,15 @@ class Array
 };
 
 //________________________________________________________________________
-Double_t Square(Double_t x) { return x * x; }
+double Square(double x) { return x * x; }
 
 //_____________________________________________________________________
-Alignment::Alignment()
+Aligner::Aligner()
   : TObject(),
-    fInitialized(kFALSE),
+    fInitialized(false),
     fRunNumber(0),
-    fBFieldOn(kFALSE),
-    fRefitStraightTracks(kFALSE),
+    fBFieldOn(false),
+    fRefitStraightTracks(false),
     fStartFac(65536),
     fResCutInitial(1000),
     fResCut(100),
@@ -156,7 +142,7 @@ Alignment::Alignment()
     fTrackRecord(),
     fTransformCreator(),
     // fGeoCombiTransInverse(),
-    fDoEvaluation(kFALSE),
+    fDoEvaluation(false),
     fTrackParamOrig(0),
     fTrackParamNew(0),
     fTrkClRes(0),
@@ -174,12 +160,11 @@ Alignment::Alignment()
   fAllowVar[3] = 5;    // z
 
   // initialize millepede
-  fMillepede = new AliMillePede2();
-  // fMillepede = new o2::align::Mille("theMilleFile.txt"); // To be replaced by AliMillepede2
+  fMillepede = new MillePede2();
 
   // initialize degrees of freedom
   // by default all parameters are free
-  for (Int_t iPar = 0; iPar < fNGlobal; ++iPar) {
+  for (int iPar = 0; iPar < fNGlobal; ++iPar) {
     fGlobalParameterStatus[iPar] = kFreeParId;
   }
 
@@ -194,13 +179,7 @@ Alignment::Alignment()
 }
 
 //_____________________________________________________________________
-// Alignment::~Alignment()
-//{
-//  /// destructor
-//}
-// Alignment::~Alignment() = default;
-//_____________________________________________________________________
-void Alignment::init(std::string DataRecFName, std::string ConsRecFName, Bool_t read)
+void Aligner::init(std::string DataRecFName, std::string ConsRecFName, bool read)
 {
 
   /// initialize
@@ -214,8 +193,8 @@ void Alignment::init(std::string DataRecFName, std::string ConsRecFName, Bool_t 
   }
 
   // assign proper groupID to free parameters
-  Int_t nGlobal = 0;
-  for (Int_t iPar = 0; iPar < fNGlobal; ++iPar) {
+  int nGlobal = 0;
+  for (int iPar = 0; iPar < fNGlobal; ++iPar) {
 
     if (fGlobalParameterStatus[iPar] == kFixedParId) {
       // fixed parameters are left unchanged
@@ -230,8 +209,8 @@ void Alignment::init(std::string DataRecFName, std::string ConsRecFName, Bool_t 
     } else if (fGlobalParameterStatus[iPar] < kGroupBaseId) {
 
       // get detector element id from status, get chamber parameter id
-      const Int_t iDeBase(kGroupBaseId - 1 - fGlobalParameterStatus[iPar]);
-      const Int_t iParBase = iPar % fgNParCh;
+      const int iDeBase(kGroupBaseId - 1 - fGlobalParameterStatus[iPar]);
+      const int iParBase = iPar % fgNParCh;
 
       // check
       if (iDeBase < 0 || iDeBase >= iPar / fgNParCh) {
@@ -250,21 +229,20 @@ void Alignment::init(std::string DataRecFName, std::string ConsRecFName, Bool_t 
 
   // initialize millepedes
   fMillepede->InitMille(fNGlobal, fNLocal, fNStdDev, fResCut, fResCutInitial, fGlobalParameterStatus);
-  // fMillepede->InitMille(fNGlobal, fNLocal, fNStdDev, fResCut, fResCutInitial); // AliMillePede2 implementation
   fMillepede->SetDataRecFName(DataRecFName);
   fMillepede->SetConsRecFName(ConsRecFName);
   fMillepede->InitDataRecStorage(read);
 
-  fInitialized = kTRUE;
+  fInitialized = true;
 
   // some debug output
-  for (Int_t iPar = 0; iPar < fgNParCh; ++iPar) {
+  for (int iPar = 0; iPar < fgNParCh; ++iPar) {
     LOG(info) << "fAllowVar[" << iPar << "]= " << fAllowVar[iPar];
   }
 
   // set allowed variations for all parameters
-  for (Int_t iDet = 0; iDet < fgNDetElem; ++iDet) {
-    for (Int_t iPar = 0; iPar < fgNParCh; ++iPar) {
+  for (int iDet = 0; iDet < fgNDetElem; ++iDet) {
+    for (int iPar = 0; iPar < fgNParCh; ++iPar) {
       fMillepede->SetParSigma(iDet * fgNParCh + iPar, fAllowVar[iPar]);
     }
   }
@@ -281,8 +259,8 @@ void Alignment::init(std::string DataRecFName, std::string ConsRecFName, Bool_t 
     fTFile = new TFile(Path_file.c_str(), "RECREATE");
     fTTree = new TTree("TreeE", "Evaluation");
 
-    const Int_t kSplitlevel = 98;
-    const Int_t kBufsize = 32000;
+    const int kSplitlevel = 98;
+    const int kBufsize = 32000;
 
     // fTrackParamOrig = new LocalTrackParam();
     // fTTree->Branch("fTrackParamOrig", "LocalTrackParam", &fTrackParamOrig, kBufsize, kSplitlevel);
@@ -319,10 +297,10 @@ void Alignment::init(std::string DataRecFName, std::string ConsRecFName, Bool_t 
 }
 
 //_____________________________________________________
-void Alignment::terminate(void)
+void Aligner::terminate(void)
 {
   fMillepede->CloseDataRecStorage();
-  fInitialized = kFALSE;
+  fInitialized = false;
   LOG(info) << "Closing Evaluation TFile";
   if (fTFile && fTTree) {
     fTFile->cd();
@@ -332,16 +310,10 @@ void Alignment::terminate(void)
 }
 
 //_____________________________________________________
-AliMillePedeRecord* Alignment::ProcessTrack(Track& track, const o2::mch::geo::TransformationCreator& transformation, Bool_t doAlignment, Double_t weight)
+MillePedeRecord* Aligner::ProcessTrack(Track& track, const o2::mch::geo::TransformationCreator& transformation, bool doAlignment, double weight)
 {
 
   /// process track for alignment minimization
-  /**
-  returns the alignment records for this track.
-  They can be stored in some output for later reprocessing.
-  */
-
-  // cout << track.getNClusters() << " clusters loaded"<<endl;
 
   // reset track records
   fTrackRecord.Reset();
@@ -350,21 +322,20 @@ AliMillePedeRecord* Alignment::ProcessTrack(Track& track, const o2::mch::geo::Tr
   }
 
   // loop over clusters to get starting values
-  Bool_t first(kTRUE);
-  // if (!trackParam)
-  // continue;
+  bool first(true);
+
   auto itTrackParam = track.begin();
   for (; itTrackParam != track.end(); ++itTrackParam) {
 
     // get cluster
     const Cluster* cluster = itTrackParam->getClusterPtr();
-    if (!cluster)
+    if (!cluster) {
       continue;
-    // cout << "current cluster's detector ID: " << cluster->getDEId() <<endl;
+    }
     //  for first valid cluster, save track position as "starting" values
     if (first) {
 
-      first = kFALSE;
+      first = false;
       FillTrackParamData(&*itTrackParam);
       fTrackPos0[0] = fTrackPos[0];
       fTrackPos0[1] = fTrackPos[1];
@@ -381,27 +352,6 @@ AliMillePedeRecord* Alignment::ProcessTrack(Track& track, const o2::mch::geo::Tr
 
     // refit straight track
     const LocalTrackParam trackParam(RefitStraightTrack(track, fTrackPos0[2]));
-
-    // fill evaluation tree
-    // if (fTrackParamOrig) {
-    //   fTrackParamOrig->fTrackX = fTrackPos0[0];
-    //   fTrackParamOrig->fTrackY = fTrackPos0[1];
-    //   fTrackParamOrig->fTrackZ = fTrackPos0[2];
-    //   fTrackParamOrig->fTrackSlopeX = fTrackSlope0[0];
-    //   fTrackParamOrig->fTrackSlopeY = fTrackSlope0[1];
-    // }
-
-    // // new ones
-    // if (fTrackParamNew) {
-    //   fTrackParamNew->fTrackX = trackParam.fTrackX;
-    //   fTrackParamNew->fTrackY = trackParam.fTrackY;
-    //   fTrackParamNew->fTrackZ = trackParam.fTrackZ;
-    //   fTrackParamNew->fTrackSlopeX = trackParam.fTrackSlopeX;
-    //   fTrackParamNew->fTrackSlopeY = trackParam.fTrackSlopeY;
-    // }
-
-    // if (fTTree)
-    //   fTTree->Fill();
 
     /*
     copy new parameters to stored ones for derivatives calculation
@@ -421,13 +371,15 @@ AliMillePedeRecord* Alignment::ProcessTrack(Track& track, const o2::mch::geo::Tr
   for (; itTrackParam != track.end(); ++itTrackParam) {
 
     // get track parameters
-    if (!&*itTrackParam)
+    if (!&*itTrackParam) {
       continue;
+    }
 
     // get cluster
     const Cluster* cluster = itTrackParam->getClusterPtr();
-    if (!cluster)
+    if (!cluster) {
       continue;
+    }
 
     // fill local variables for this position --> one measurement
 
@@ -436,14 +388,14 @@ AliMillePedeRecord* Alignment::ProcessTrack(Track& track, const o2::mch::geo::Tr
     FillTrackParamData(&*itTrackParam);
 
     // 'inverse' (GlobalToLocal) rotation matrix
-    // const Double_t* r(fGeoCombiTransInverse.GetRotationMatrix());
+    // const double* r(fGeoCombiTransInverse.GetRotationMatrix());
 
     auto trans = transformation(cluster->getDEId());
     // LOG(info) << Form("cluster ID: %i", cluster->getDEId());
     TMatrixD transMat(3, 4);
     trans.GetTransformMatrix(transMat);
     // transMat.Print();
-    Double_t r[12];
+    double r[12];
     r[0] = transMat(0, 0);
     r[1] = transMat(0, 1);
     r[2] = transMat(0, 2);
@@ -473,15 +425,15 @@ AliMillePedeRecord* Alignment::ProcessTrack(Track& track, const o2::mch::geo::Tr
 
     if (fDoEvaluation) {
 
-      const Float_t InvBendingMom = itTrackParam->getInverseBendingMomentum();
-      const Float_t TrackCharge = itTrackParam->getCharge();
+      const float InvBendingMom = itTrackParam->getInverseBendingMomentum();
+      const float TrackCharge = itTrackParam->getCharge();
 
       double B[3] = {0.0, 0.0, 0.0};
       double x[3] = {fTrackPos[0], fTrackPos[1], fTrackPos[2]};
       TGeoGlobalMagField::Instance()->Field(x, B);
-      const Float_t Bx = B[0];
-      const Float_t By = B[1];
-      const Float_t Bz = B[2];
+      const float Bx = B[0];
+      const float By = B[1];
+      const float Bz = B[2];
 
       fTrkClRes->fClDetElem = cluster->getDEId();
       fTrkClRes->fClDetElemNumber = GetDetElemNumber(cluster->getDEId());
@@ -520,7 +472,9 @@ AliMillePedeRecord* Alignment::ProcessTrack(Track& track, const o2::mch::geo::Tr
       fTrkClRes->fBy = By;
       fTrkClRes->fBz = Bz;
 
-      if (fTTree) fTTree->Fill();
+      if (fTTree) {
+        fTTree->Fill();
+      }
     }
     // Set local equations
     LocalEquationX(r);
@@ -543,17 +497,18 @@ AliMillePedeRecord* Alignment::ProcessTrack(Track& track, const o2::mch::geo::Tr
 }
 
 //______________________________________________________________________________
-void Alignment::ProcessTrack(AliMillePedeRecord* trackRecord)
+void Aligner::ProcessTrack(MillePedeRecord* trackRecord)
 {
   LOG(fatal) << __PRETTY_FUNCTION__ << " is disabled";
 
   /// process track record
-  if (!trackRecord)
+  if (!trackRecord) {
     return;
+  }
 
   // // make sure record storage is initialized
   if (!fMillepede->GetRecord()) {
-    fMillepede->InitDataRecStorage(kFALSE);
+    fMillepede->InitDataRecStorage(false);
   }
   // // copy content
   *fMillepede->GetRecord() = *trackRecord;
@@ -567,26 +522,30 @@ void Alignment::ProcessTrack(AliMillePedeRecord* trackRecord)
 }
 
 //_____________________________________________________________________
-void Alignment::FixAll(UInt_t mask)
+void Aligner::FixAll(unsigned int mask)
 {
   /// fix parameters matching mask, for all chambers
   LOG(info) << "Fixing " << GetParameterMaskString(mask).Data() << " for all detector elements";
 
   // fix all stations
-  for (Int_t i = 0; i < fgNDetElem; ++i) {
-    if (mask & ParX)
+  for (int i = 0; i < fgNDetElem; ++i) {
+    if (mask & ParX) {
       FixParameter(i, 0);
-    if (mask & ParY)
+    }
+    if (mask & ParY) {
       FixParameter(i, 1);
-    if (mask & ParTZ)
+    }
+    if (mask & ParTZ) {
       FixParameter(i, 2);
-    if (mask & ParZ)
+    }
+    if (mask & ParZ) {
       FixParameter(i, 3);
+    }
   }
 }
 
 //_____________________________________________________________________
-void Alignment::FixChamber(Int_t iCh, UInt_t mask)
+void Aligner::FixChamber(int iCh, unsigned int mask)
 {
   /// fix parameters matching mask, for all detector elements in a given chamber, counting from 1
 
@@ -596,9 +555,9 @@ void Alignment::FixChamber(Int_t iCh, UInt_t mask)
   }
 
   // get first and last element
-  const Int_t iDetElemFirst = fgSNDetElemCh[iCh - 1];
-  const Int_t iDetElemLast = fgSNDetElemCh[iCh];
-  for (Int_t i = iDetElemFirst; i < iDetElemLast; ++i) {
+  const int iDetElemFirst = fgSNDetElemCh[iCh - 1];
+  const int iDetElemLast = fgSNDetElemCh[iCh];
+  for (int i = iDetElemFirst; i < iDetElemLast; ++i) {
 
     LOG(info) << "Fixing " << GetParameterMaskString(mask).Data() << " for detector element " << i;
 
@@ -614,10 +573,10 @@ void Alignment::FixChamber(Int_t iCh, UInt_t mask)
 }
 
 //_____________________________________________________________________
-void Alignment::FixDetElem(Int_t iDetElemId, UInt_t mask)
+void Aligner::FixDetElem(int iDetElemId, unsigned int mask)
 {
   /// fix parameters matching mask, for a given detector element, counting from 0
-  const Int_t iDet(GetDetElemNumber(iDetElemId));
+  const int iDet(GetDetElemNumber(iDetElemId));
   if (mask & ParX)
     FixParameter(iDet, 0);
   if (mask & ParY)
@@ -629,55 +588,68 @@ void Alignment::FixDetElem(Int_t iDetElemId, UInt_t mask)
 }
 
 //_____________________________________________________________________
-void Alignment::FixHalfSpectrometer(const Bool_t* lChOnOff, UInt_t sidesMask, UInt_t mask)
+void Aligner::FixHalfSpectrometer(const bool* lChOnOff, unsigned int sidesMask, unsigned int mask)
 {
 
   /// Fix parameters matching mask for all detectors in selected chambers and selected sides of the spectrometer
-  for (Int_t i = 0; i < fgNDetElem; ++i) {
+  for (int i = 0; i < fgNDetElem; ++i) {
 
     // get chamber matching detector
-    const Int_t iCh(GetChamberId(i));
-    if (!lChOnOff[iCh - 1])
+    const int iCh(GetChamberId(i));
+    if (!lChOnOff[iCh - 1]) {
       continue;
+    }
 
     // get detector element in chamber
-    Int_t lDetElemNumber = i - fgSNDetElemCh[iCh - 1];
+    int lDetElemNumber = i - fgSNDetElemCh[iCh - 1];
 
     // skip detector if its side is off
     // stations 1 and 2
     if (iCh >= 1 && iCh <= 4) {
-      if (lDetElemNumber == 0 && !(sidesMask & SideTopRight))
+      if (lDetElemNumber == 0 && !(sidesMask & SideTopRight)) {
         continue;
-      if (lDetElemNumber == 1 && !(sidesMask & SideTopLeft))
+      }
+      if (lDetElemNumber == 1 && !(sidesMask & SideTopLeft)) {
         continue;
-      if (lDetElemNumber == 2 && !(sidesMask & SideBottomLeft))
+      }
+      if (lDetElemNumber == 2 && !(sidesMask & SideBottomLeft)) {
         continue;
-      if (lDetElemNumber == 3 && !(sidesMask & SideBottomRight))
+      }
+      if (lDetElemNumber == 3 && !(sidesMask & SideBottomRight)) {
         continue;
+      }
     }
 
     // station 3
     if (iCh >= 5 && iCh <= 6) {
-      if (lDetElemNumber >= 0 && lDetElemNumber <= 4 && !(sidesMask & SideTopRight))
+      if (lDetElemNumber >= 0 && lDetElemNumber <= 4 && !(sidesMask & SideTopRight)) {
         continue;
-      if (lDetElemNumber >= 5 && lDetElemNumber <= 10 && !(sidesMask & SideTopLeft))
+      }
+      if (lDetElemNumber >= 5 && lDetElemNumber <= 10 && !(sidesMask & SideTopLeft)) {
         continue;
-      if (lDetElemNumber >= 11 && lDetElemNumber <= 13 && !(sidesMask & SideBottomLeft))
+      }
+      if (lDetElemNumber >= 11 && lDetElemNumber <= 13 && !(sidesMask & SideBottomLeft)) {
         continue;
-      if (lDetElemNumber >= 14 && lDetElemNumber <= 17 && !(sidesMask & SideBottomRight))
+      }
+      if (lDetElemNumber >= 14 && lDetElemNumber <= 17 && !(sidesMask & SideBottomRight)) {
         continue;
+      }
     }
 
     // stations 4 and 5
     if (iCh >= 7 && iCh <= 10) {
-      if (lDetElemNumber >= 0 && lDetElemNumber <= 6 && !(sidesMask & SideTopRight))
+      if (lDetElemNumber >= 0 && lDetElemNumber <= 6 && !(sidesMask & SideTopRight)) {
         continue;
-      if (lDetElemNumber >= 7 && lDetElemNumber <= 13 && !(sidesMask & SideTopLeft))
+      }
+      if (lDetElemNumber >= 7 && lDetElemNumber <= 13 && !(sidesMask & SideTopLeft)) {
         continue;
-      if (lDetElemNumber >= 14 && lDetElemNumber <= 19 && !(sidesMask & SideBottomLeft))
+      }
+      if (lDetElemNumber >= 14 && lDetElemNumber <= 19 && !(sidesMask & SideBottomLeft)) {
         continue;
-      if (lDetElemNumber >= 20 && lDetElemNumber <= 25 && !(sidesMask & SideBottomRight))
+      }
+      if (lDetElemNumber >= 20 && lDetElemNumber <= 25 && !(sidesMask & SideBottomRight)) {
         continue;
+      }
     }
 
     // detector is accepted, fix it
@@ -686,7 +658,7 @@ void Alignment::FixHalfSpectrometer(const Bool_t* lChOnOff, UInt_t sidesMask, UI
 }
 
 //______________________________________________________________________
-void Alignment::FixParameter(Int_t iPar)
+void Aligner::FixParameter(int iPar)
 {
 
   /// fix a given parameter, counting from 0
@@ -698,7 +670,7 @@ void Alignment::FixParameter(Int_t iPar)
 }
 
 //_____________________________________________________________________
-void Alignment::ReleaseChamber(Int_t iCh, UInt_t mask)
+void Aligner::ReleaseChamber(int iCh, unsigned int mask)
 {
   /// release parameters matching mask, for all detector elements in a given chamber, counting from 1
 
@@ -708,40 +680,48 @@ void Alignment::ReleaseChamber(Int_t iCh, UInt_t mask)
   }
 
   // get first and last element
-  const Int_t iDetElemFirst = fgSNDetElemCh[iCh - 1];
-  const Int_t iDetElemLast = fgSNDetElemCh[iCh];
-  for (Int_t i = iDetElemFirst; i < iDetElemLast; ++i) {
+  const int iDetElemFirst = fgSNDetElemCh[iCh - 1];
+  const int iDetElemLast = fgSNDetElemCh[iCh];
+  for (int i = iDetElemFirst; i < iDetElemLast; ++i) {
 
     LOG(info) << "Releasing " << GetParameterMaskString(mask).Data() << " for detector element " << i;
 
-    if (mask & ParX)
+    if (mask & ParX) {
       ReleaseParameter(i, 0);
-    if (mask & ParY)
+    }
+    if (mask & ParY) {
       ReleaseParameter(i, 1);
-    if (mask & ParTZ)
+    }
+    if (mask & ParTZ) {
       ReleaseParameter(i, 2);
-    if (mask & ParZ)
+    }
+    if (mask & ParZ) {
       ReleaseParameter(i, 3);
+    }
   }
 }
 
 //_____________________________________________________________________
-void Alignment::ReleaseDetElem(Int_t iDetElemId, UInt_t mask)
+void Aligner::ReleaseDetElem(int iDetElemId, unsigned int mask)
 {
   /// release parameters matching mask, for a given detector element, counting from 0
-  const Int_t iDet(GetDetElemNumber(iDetElemId));
-  if (mask & ParX)
+  const int iDet(GetDetElemNumber(iDetElemId));
+  if (mask & ParX) {
     ReleaseParameter(iDet, 0);
-  if (mask & ParY)
+  }
+  if (mask & ParY) {
     ReleaseParameter(iDet, 1);
-  if (mask & ParTZ)
+  }
+  if (mask & ParTZ) {
     ReleaseParameter(iDet, 2);
-  if (mask & ParZ)
+  }
+  if (mask & ParZ) {
     ReleaseParameter(iDet, 3);
+  }
 }
 
 //______________________________________________________________________
-void Alignment::ReleaseParameter(Int_t iPar)
+void Aligner::ReleaseParameter(int iPar)
 {
 
   /// release a given parameter, counting from 0
@@ -753,20 +733,20 @@ void Alignment::ReleaseParameter(Int_t iPar)
 }
 
 //_____________________________________________________________________
-void Alignment::GroupChamber(Int_t iCh, UInt_t mask)
+void Aligner::GroupChamber(int iCh, unsigned int mask)
 {
   /// group parameters matching mask for all detector elements in a given chamber, counting from 1
   if (iCh < 1 || iCh > fgNCh) {
     LOG(fatal) << "Invalid chamber index " << iCh;
   }
 
-  const Int_t detElemMin = 100 * iCh;
-  const Int_t detElemMax = 100 * iCh + fgNDetElemCh[iCh] - 1;
+  const int detElemMin = 100 * iCh;
+  const int detElemMax = 100 * iCh + fgNDetElemCh[iCh] - 1;
   GroupDetElems(detElemMin, detElemMax, mask);
 }
 
 //_____________________________________________________________________
-void Alignment::GroupHalfChamber(Int_t iCh, Int_t iHalf, UInt_t mask)
+void Aligner::GroupHalfChamber(int iCh, int iHalf, unsigned int mask)
 {
   /// group parameters matching mask for all detector elements in a given tracking module (= half chamber), counting from 0
   if (iCh < 1 || iCh > fgNCh) {
@@ -777,23 +757,23 @@ void Alignment::GroupHalfChamber(Int_t iCh, Int_t iHalf, UInt_t mask)
     LOG(fatal) << "Invalid half chamber index " << iHalf;
   }
 
-  const Int_t iHalfCh = 2 * (iCh - 1) + iHalf;
+  const int iHalfCh = 2 * (iCh - 1) + iHalf;
   GroupDetElems(&fgDetElemHalfCh[iHalfCh][0], fgNDetElemHalfCh[iHalfCh], mask);
 }
 
 //_____________________________________________________________________
-void Alignment::GroupDetElems(Int_t detElemMin, Int_t detElemMax, UInt_t mask)
+void Aligner::GroupDetElems(int detElemMin, int detElemMax, unsigned int mask)
 {
   /// group parameters matching mask for all detector elements between min and max
   // check number of detector elements
-  const Int_t nDetElem = detElemMax - detElemMin + 1;
+  const int nDetElem = detElemMax - detElemMin + 1;
   if (nDetElem < 2) {
     LOG(fatal) << "Requested group of DEs " << detElemMin << "-" << detElemMax << " contains less than 2 DE's";
   }
 
   // create list
-  Int_t* detElemList = new int[nDetElem];
-  for (Int_t i = 0; i < nDetElem; ++i) {
+  int* detElemList = new int[nDetElem];
+  for (int i = 0; i < nDetElem; ++i) {
     detElemList[i] = detElemMin + i;
   }
 
@@ -803,68 +783,81 @@ void Alignment::GroupDetElems(Int_t detElemMin, Int_t detElemMax, UInt_t mask)
 }
 
 //_____________________________________________________________________
-void Alignment::GroupDetElems(const Int_t* detElemList, Int_t nDetElem, UInt_t mask)
+void Aligner::GroupDetElems(const int* detElemList, int nDetElem, unsigned int mask)
 {
   /// group parameters matching mask for all detector elements in list
   if (fInitialized) {
     LOG(fatal) << "Millepede already initialized";
   }
 
-  const Int_t iDeBase(GetDetElemNumber(detElemList[0]));
-  for (Int_t i = 0; i < nDetElem; ++i) {
-    const Int_t iDeCurrent(GetDetElemNumber(detElemList[i]));
-    if (mask & ParX)
+  const int iDeBase(GetDetElemNumber(detElemList[0]));
+  for (int i = 0; i < nDetElem; ++i) {
+    const int iDeCurrent(GetDetElemNumber(detElemList[i]));
+    if (mask & ParX) {
       fGlobalParameterStatus[iDeCurrent * fgNParCh + 0] = (i == 0) ? kGroupBaseId : (kGroupBaseId - iDeBase - 1);
-    if (mask & ParY)
+    }
+    if (mask & ParY) {
       fGlobalParameterStatus[iDeCurrent * fgNParCh + 1] = (i == 0) ? kGroupBaseId : (kGroupBaseId - iDeBase - 1);
-    if (mask & ParTZ)
+    }
+    if (mask & ParTZ) {
       fGlobalParameterStatus[iDeCurrent * fgNParCh + 2] = (i == 0) ? kGroupBaseId : (kGroupBaseId - iDeBase - 1);
-    if (mask & ParZ)
+    }
+    if (mask & ParZ) {
       fGlobalParameterStatus[iDeCurrent * fgNParCh + 3] = (i == 0) ? kGroupBaseId : (kGroupBaseId - iDeBase - 1);
+    }
 
-    if (i == 0)
+    if (i == 0) {
       LOG(info) << "Creating new group for detector " << detElemList[i] << " and variable " << GetParameterMaskString(mask).Data();
-    else
+    } else {
       LOG(info) << "Adding detector element " << detElemList[i] << " to current group";
+    }
   }
 }
 
 //______________________________________________________________________
-void Alignment::SetChamberNonLinear(Int_t iCh, UInt_t mask)
+void Aligner::SetChamberNonLinear(int iCh, unsigned int mask)
 {
   /// Set parameters matching mask as non linear, for all detector elements in a given chamber, counting from 1
-  const Int_t iDetElemFirst = fgSNDetElemCh[iCh - 1];
-  const Int_t iDetElemLast = fgSNDetElemCh[iCh];
-  for (Int_t i = iDetElemFirst; i < iDetElemLast; ++i) {
+  const int iDetElemFirst = fgSNDetElemCh[iCh - 1];
+  const int iDetElemLast = fgSNDetElemCh[iCh];
+  for (int i = iDetElemFirst; i < iDetElemLast; ++i) {
 
-    if (mask & ParX)
+    if (mask & ParX) {
       SetParameterNonLinear(i, 0);
-    if (mask & ParY)
+    }
+    if (mask & ParY) {
       SetParameterNonLinear(i, 1);
-    if (mask & ParTZ)
+    }
+    if (mask & ParTZ) {
       SetParameterNonLinear(i, 2);
-    if (mask & ParZ)
+    }
+    if (mask & ParZ) {
       SetParameterNonLinear(i, 3);
+    }
   }
 }
 
 //_____________________________________________________________________
-void Alignment::SetDetElemNonLinear(Int_t iDetElemId, UInt_t mask)
+void Aligner::SetDetElemNonLinear(int iDetElemId, unsigned int mask)
 {
   /// Set parameters matching mask as non linear, for a given detector element, counting from 0
-  const Int_t iDet(GetDetElemNumber(iDetElemId));
-  if (mask & ParX)
+  const int iDet(GetDetElemNumber(iDetElemId));
+  if (mask & ParX) {
     SetParameterNonLinear(iDet, 0);
-  if (mask & ParY)
+  }
+  if (mask & ParY) {
     SetParameterNonLinear(iDet, 1);
-  if (mask & ParTZ)
+  }
+  if (mask & ParTZ) {
     SetParameterNonLinear(iDet, 2);
-  if (mask & ParZ)
+  }
+  if (mask & ParZ) {
     SetParameterNonLinear(iDet, 3);
+  }
 }
 
 //______________________________________________________________________
-void Alignment::SetParameterNonLinear(Int_t iPar)
+void Aligner::SetParameterNonLinear(int iPar)
 {
   /// Set nonlinear flag for parameter iPar
   if (!fInitialized) {
@@ -876,7 +869,7 @@ void Alignment::SetParameterNonLinear(Int_t iPar)
 }
 
 //______________________________________________________________________
-void Alignment::AddConstraints(const Bool_t* lChOnOff, UInt_t mask)
+void Aligner::AddConstraints(const bool* lChOnOff, unsigned int mask)
 {
   /// Add constraint equations for selected chambers and degrees of freedom
 
@@ -885,35 +878,43 @@ void Alignment::AddConstraints(const Bool_t* lChOnOff, UInt_t mask)
   Array fConstraintTZ;
   Array fConstraintZ;
 
-  for (Int_t i = 0; i < fgNDetElem; ++i) {
+  for (int i = 0; i < fgNDetElem; ++i) {
 
     // get chamber matching detector
-    const Int_t iCh(GetChamberId(i));
+    const int iCh(GetChamberId(i));
     if (lChOnOff[iCh - 1]) {
 
-      if (mask & ParX)
+      if (mask & ParX) {
         fConstraintX.values[i * fgNParCh + 0] = 1.0;
-      if (mask & ParY)
+      }
+      if (mask & ParY) {
         fConstraintY.values[i * fgNParCh + 1] = 1.0;
-      if (mask & ParTZ)
+      }
+      if (mask & ParTZ) {
         fConstraintTZ.values[i * fgNParCh + 2] = 1.0;
-      if (mask & ParZ)
+      }
+      if (mask & ParZ) {
         fConstraintTZ.values[i * fgNParCh + 3] = 1.0;
+      }
     }
   }
 
-  if (mask & ParX)
+  if (mask & ParX) {
     AddConstraint(fConstraintX.values, 0.0);
-  if (mask & ParY)
+  }
+  if (mask & ParY) {
     AddConstraint(fConstraintY.values, 0.0);
-  if (mask & ParTZ)
+  }
+  if (mask & ParTZ) {
     AddConstraint(fConstraintTZ.values, 0.0);
-  if (mask & ParZ)
+  }
+  if (mask & ParZ) {
     AddConstraint(fConstraintZ.values, 0.0);
+  }
 }
 
 //______________________________________________________________________
-void Alignment::AddConstraints(const Bool_t* lChOnOff, const Bool_t* lVarXYT, UInt_t sidesMask)
+void Aligner::AddConstraints(const bool* lChOnOff, const bool* lVarXYT, unsigned int sidesMask)
 {
   /*
   questions:
@@ -923,66 +924,79 @@ void Alignment::AddConstraints(const Bool_t* lChOnOff, const Bool_t* lVarXYT, UI
   */
 
   /// Add constraint equations for selected chambers, degrees of freedom and detector half
-  Double_t lMeanY = 0.;
-  Double_t lSigmaY = 0.;
-  Double_t lMeanZ = 0.;
-  Double_t lSigmaZ = 0.;
-  Int_t lNDetElem = 0;
+  double lMeanY = 0.;
+  double lSigmaY = 0.;
+  double lMeanZ = 0.;
+  double lSigmaZ = 0.;
+  int lNDetElem = 0;
 
-  for (Int_t i = 0; i < fgNDetElem; ++i) {
+  for (int i = 0; i < fgNDetElem; ++i) {
 
     // get chamber matching detector
-    const Int_t iCh(GetChamberId(i));
+    const int iCh(GetChamberId(i));
 
     // skip detector if chamber is off
-    if (lChOnOff[iCh - 1])
+    if (lChOnOff[iCh - 1]) {
       continue;
+    }
 
     // get detector element id from detector element number
-    const Int_t lDetElemNumber = i - fgSNDetElemCh[iCh - 1];
-    const Int_t lDetElemId = iCh * 100 + lDetElemNumber;
+    const int lDetElemNumber = i - fgSNDetElemCh[iCh - 1];
+    const int lDetElemId = iCh * 100 + lDetElemNumber;
 
     // skip detector if its side is off
     // stations 1 and 2
     if (iCh >= 1 && iCh <= 4) {
-      if (lDetElemNumber == 0 && !(sidesMask & SideTopRight))
+      if (lDetElemNumber == 0 && !(sidesMask & SideTopRight)) {
         continue;
-      if (lDetElemNumber == 1 && !(sidesMask & SideTopLeft))
+      }
+      if (lDetElemNumber == 1 && !(sidesMask & SideTopLeft)) {
         continue;
-      if (lDetElemNumber == 2 && !(sidesMask & SideBottomLeft))
+      }
+      if (lDetElemNumber == 2 && !(sidesMask & SideBottomLeft)) {
         continue;
-      if (lDetElemNumber == 3 && !(sidesMask & SideBottomRight))
+      }
+      if (lDetElemNumber == 3 && !(sidesMask & SideBottomRight)) {
         continue;
+      }
     }
 
     // station 3
     if (iCh >= 5 && iCh <= 6) {
-      if (lDetElemNumber >= 0 && lDetElemNumber <= 4 && !(sidesMask & SideTopRight))
+      if (lDetElemNumber >= 0 && lDetElemNumber <= 4 && !(sidesMask & SideTopRight)) {
         continue;
-      if (lDetElemNumber >= 5 && lDetElemNumber <= 10 && !(sidesMask & SideTopLeft))
+      }
+      if (lDetElemNumber >= 5 && lDetElemNumber <= 10 && !(sidesMask & SideTopLeft)) {
         continue;
-      if (lDetElemNumber >= 11 && lDetElemNumber <= 13 && !(sidesMask & SideBottomLeft))
+      }
+      if (lDetElemNumber >= 11 && lDetElemNumber <= 13 && !(sidesMask & SideBottomLeft)) {
         continue;
-      if (lDetElemNumber >= 14 && lDetElemNumber <= 17 && !(sidesMask & SideBottomRight))
+      }
+      if (lDetElemNumber >= 14 && lDetElemNumber <= 17 && !(sidesMask & SideBottomRight)) {
         continue;
+      }
     }
 
     // stations 4 and 5
     if (iCh >= 7 && iCh <= 10) {
-      if (lDetElemNumber >= 0 && lDetElemNumber <= 6 && !(sidesMask & SideTopRight))
+      if (lDetElemNumber >= 0 && lDetElemNumber <= 6 && !(sidesMask & SideTopRight)) {
         continue;
-      if (lDetElemNumber >= 7 && lDetElemNumber <= 13 && !(sidesMask & SideTopLeft))
+      }
+      if (lDetElemNumber >= 7 && lDetElemNumber <= 13 && !(sidesMask & SideTopLeft)) {
         continue;
-      if (lDetElemNumber >= 14 && lDetElemNumber <= 19 && !(sidesMask & SideBottomLeft))
+      }
+      if (lDetElemNumber >= 14 && lDetElemNumber <= 19 && !(sidesMask & SideBottomLeft)) {
         continue;
-      if (lDetElemNumber >= 20 && lDetElemNumber <= 25 && !(sidesMask & SideBottomRight))
+      }
+      if (lDetElemNumber >= 20 && lDetElemNumber <= 25 && !(sidesMask & SideBottomRight)) {
         continue;
+      }
     }
 
     // get global x, y and z position
-    Double_t lDetElemGloX = 0.;
-    Double_t lDetElemGloY = 0.;
-    Double_t lDetElemGloZ = 0.;
+    double lDetElemGloX = 0.;
+    double lDetElemGloY = 0.;
+    double lDetElemGloZ = 0.;
 
     auto fTransform = fTransformCreator(lDetElemId);
     o2::math_utils::Point3D<double> SlatPos{0.0, 0.0, 0.0};
@@ -1024,30 +1038,31 @@ void Alignment::AddConstraints(const Bool_t* lChOnOff, const Bool_t* lVarXYT, UI
   Array fConstraintYY[4]; // Array for constraint equation Y vs Y
   Array fConstraintPY[4]; // Array for constraint equation P vs Y
 
-  // fill Bool_t sides array based on masks, for convenience
-  Bool_t lDetTLBR[4];
+  // fill bool sides array based on masks, for convenience
+  bool lDetTLBR[4];
   lDetTLBR[0] = sidesMask & SideTop;
   lDetTLBR[1] = sidesMask & SideLeft;
   lDetTLBR[2] = sidesMask & SideBottom;
   lDetTLBR[3] = sidesMask & SideRight;
 
-  for (Int_t i = 0; i < fgNDetElem; ++i) {
+  for (int i = 0; i < fgNDetElem; ++i) {
 
     // get chamber matching detector
-    const Int_t iCh(GetChamberId(i));
+    const int iCh(GetChamberId(i));
 
     // skip detector if chamber is off
-    if (!lChOnOff[iCh - 1])
+    if (!lChOnOff[iCh - 1]) {
       continue;
+    }
 
     // get detector element id from detector element number
-    const Int_t lDetElemNumber = i - fgSNDetElemCh[iCh - 1];
-    const Int_t lDetElemId = iCh * 100 + lDetElemNumber;
+    const int lDetElemNumber = i - fgSNDetElemCh[iCh - 1];
+    const int lDetElemId = iCh * 100 + lDetElemNumber;
 
     // get global x, y and z position
-    Double_t lDetElemGloX = 0.;
-    Double_t lDetElemGloY = 0.;
-    Double_t lDetElemGloZ = 0.;
+    double lDetElemGloX = 0.;
+    double lDetElemGloY = 0.;
+    double lDetElemGloZ = 0.;
 
     auto fTransform = fTransformCreator(lDetElemId);
     o2::math_utils::Point3D<double> SlatPos{0.0, 0.0, 0.0};
@@ -1060,116 +1075,148 @@ void Alignment::AddConstraints(const Bool_t* lChOnOff, const Bool_t* lVarXYT, UI
     // fTransform->Local2Global(lDetElemId, 0, 0, 0, lDetElemGloX, lDetElemGloY, lDetElemGloZ);
 
     // loop over sides
-    for (Int_t iSide = 0; iSide < 4; iSide++) {
+    for (int iSide = 0; iSide < 4; iSide++) {
 
       // skip if side is not selected
-      if (!lDetTLBR[iSide])
+      if (!lDetTLBR[iSide]) {
         continue;
+      }
 
       // skip detector if it is not in the selected side
       // stations 1 and 2
       if (iCh >= 1 && iCh <= 4) {
-        if (lDetElemNumber == 0 && !(iSide == 0 || iSide == 3))
+        if (lDetElemNumber == 0 && !(iSide == 0 || iSide == 3)) {
           continue; // top-right
-        if (lDetElemNumber == 1 && !(iSide == 0 || iSide == 1))
+        }
+        if (lDetElemNumber == 1 && !(iSide == 0 || iSide == 1)) {
           continue; // top-left
-        if (lDetElemNumber == 2 && !(iSide == 2 || iSide == 1))
+        }
+        if (lDetElemNumber == 2 && !(iSide == 2 || iSide == 1)) {
           continue; // bottom-left
-        if (lDetElemNumber == 3 && !(iSide == 2 || iSide == 3))
+        }
+        if (lDetElemNumber == 3 && !(iSide == 2 || iSide == 3)) {
           continue; // bottom-right
+        }
       }
 
       // station 3
       if (iCh >= 5 && iCh <= 6) {
-        if (lDetElemNumber >= 0 && lDetElemNumber <= 4 && !(iSide == 0 || iSide == 3))
+        if (lDetElemNumber >= 0 && lDetElemNumber <= 4 && !(iSide == 0 || iSide == 3)) {
           continue; // top-right
-        if (lDetElemNumber >= 5 && lDetElemNumber <= 9 && !(iSide == 0 || iSide == 1))
+        }
+        if (lDetElemNumber >= 5 && lDetElemNumber <= 9 && !(iSide == 0 || iSide == 1)) {
           continue; // top-left
-        if (lDetElemNumber >= 10 && lDetElemNumber <= 13 && !(iSide == 2 || iSide == 1))
+        }
+        if (lDetElemNumber >= 10 && lDetElemNumber <= 13 && !(iSide == 2 || iSide == 1)) {
           continue; // bottom-left
-        if (lDetElemNumber >= 14 && lDetElemNumber <= 17 && !(iSide == 2 || iSide == 3))
+        }
+        if (lDetElemNumber >= 14 && lDetElemNumber <= 17 && !(iSide == 2 || iSide == 3)) {
           continue; // bottom-right
+        }
       }
 
       // stations 4 and 5
       if (iCh >= 7 && iCh <= 10) {
-        if (lDetElemNumber >= 0 && lDetElemNumber <= 6 && !(iSide == 0 || iSide == 3))
+        if (lDetElemNumber >= 0 && lDetElemNumber <= 6 && !(iSide == 0 || iSide == 3)) {
           continue; // top-right
-        if (lDetElemNumber >= 7 && lDetElemNumber <= 13 && !(iSide == 0 || iSide == 1))
+        }
+        if (lDetElemNumber >= 7 && lDetElemNumber <= 13 && !(iSide == 0 || iSide == 1)) {
           continue; // top-left
-        if (lDetElemNumber >= 14 && lDetElemNumber <= 19 && !(iSide == 2 || iSide == 1))
+        }
+        if (lDetElemNumber >= 14 && lDetElemNumber <= 19 && !(iSide == 2 || iSide == 1)) {
           continue; // bottom-left
-        if (lDetElemNumber >= 20 && lDetElemNumber <= 25 && !(iSide == 2 || iSide == 3))
+        }
+        if (lDetElemNumber >= 20 && lDetElemNumber <= 25 && !(iSide == 2 || iSide == 3)) {
           continue; // bottom-right
+        }
       }
 
       // constrain x
-      if (lVarXYT[0])
+      if (lVarXYT[0]) {
         fConstraintX[iSide].values[i * fgNParCh + 0] = 1;
+      }
 
       // constrain y
-      if (lVarXYT[1])
+      if (lVarXYT[1]) {
         fConstraintY[iSide].values[i * fgNParCh + 1] = 1;
+      }
 
       // constrain phi (rotation around z)
-      if (lVarXYT[2])
+      if (lVarXYT[2]) {
         fConstraintP[iSide].values[i * fgNParCh + 2] = 1;
+      }
 
       // x-z shearing
-      if (lVarXYT[3])
+      if (lVarXYT[3]) {
         fConstraintXZ[iSide].values[i * fgNParCh + 0] = (lDetElemGloZ - lMeanZ) / lSigmaZ;
+      }
 
       // y-z shearing
-      if (lVarXYT[4])
+      if (lVarXYT[4]) {
         fConstraintYZ[iSide].values[i * fgNParCh + 1] = (lDetElemGloZ - lMeanZ) / lSigmaZ;
+      }
 
       // phi-z shearing
-      if (lVarXYT[5])
+      if (lVarXYT[5]) {
         fConstraintPZ[iSide].values[i * fgNParCh + 2] = (lDetElemGloZ - lMeanZ) / lSigmaZ;
+      }
 
       // x-y shearing
-      if (lVarXYT[6])
+      if (lVarXYT[6]) {
         fConstraintXY[iSide].values[i * fgNParCh + 0] = (lDetElemGloY - lMeanY) / lSigmaY;
+      }
 
       // y-y shearing
-      if (lVarXYT[7])
+      if (lVarXYT[7]) {
         fConstraintYY[iSide].values[i * fgNParCh + 1] = (lDetElemGloY - lMeanY) / lSigmaY;
+      }
 
       // phi-y shearing
-      if (lVarXYT[8])
+      if (lVarXYT[8]) {
         fConstraintPY[iSide].values[i * fgNParCh + 2] = (lDetElemGloY - lMeanY) / lSigmaY;
+      }
     }
   }
 
   // pass constraints to millepede
-  for (Int_t iSide = 0; iSide < 4; iSide++) {
+  for (int iSide = 0; iSide < 4; iSide++) {
     // skip if side is not selected
-    if (!lDetTLBR[iSide])
+    if (!lDetTLBR[iSide]) {
       continue;
+    }
 
-    if (lVarXYT[0])
+    if (lVarXYT[0]) {
       AddConstraint(fConstraintX[iSide].values, 0.0);
-    if (lVarXYT[1])
+    }
+    if (lVarXYT[1]) {
       AddConstraint(fConstraintY[iSide].values, 0.0);
-    if (lVarXYT[2])
+    }
+    if (lVarXYT[2]) {
       AddConstraint(fConstraintP[iSide].values, 0.0);
-    if (lVarXYT[3])
+    }
+    if (lVarXYT[3]) {
       AddConstraint(fConstraintXZ[iSide].values, 0.0);
-    if (lVarXYT[4])
+    }
+    if (lVarXYT[4]) {
       AddConstraint(fConstraintYZ[iSide].values, 0.0);
-    if (lVarXYT[5])
+    }
+    if (lVarXYT[5]) {
       AddConstraint(fConstraintPZ[iSide].values, 0.0);
-    if (lVarXYT[6])
+    }
+    if (lVarXYT[6]) {
       AddConstraint(fConstraintXY[iSide].values, 0.0);
-    if (lVarXYT[7])
+    }
+    if (lVarXYT[7]) {
       AddConstraint(fConstraintYY[iSide].values, 0.0);
-    if (lVarXYT[8])
+    }
+    if (lVarXYT[8]) {
       AddConstraint(fConstraintPY[iSide].values, 0.0);
+    }
   }
 }
 
 //______________________________________________________________________
-void Alignment::InitGlobalParameters(Double_t* par)
+void Aligner::InitGlobalParameters(double* par)
 {
   /// Initialize global parameters with par array
   if (!fInitialized) {
@@ -1180,7 +1227,7 @@ void Alignment::InitGlobalParameters(Double_t* par)
 }
 
 //______________________________________________________________________
-void Alignment::SetAllowedVariation(Int_t iPar, Double_t value)
+void Aligner::SetAllowedVariation(int iPar, double value)
 {
   /// "Encouraged" variation for degrees of freedom
   // check initialization
@@ -1197,7 +1244,7 @@ void Alignment::SetAllowedVariation(Int_t iPar, Double_t value)
 }
 
 //______________________________________________________________________
-void Alignment::SetSigmaXY(Double_t sigmaX, Double_t sigmaY)
+void Aligner::SetSigmaXY(double sigmaX, double sigmaY)
 {
 
   /// Set expected measurement resolution
@@ -1205,13 +1252,13 @@ void Alignment::SetSigmaXY(Double_t sigmaX, Double_t sigmaY)
   fSigma[1] = sigmaY;
 
   // print
-  for (Int_t i = 0; i < 2; ++i) {
+  for (int i = 0; i < 2; ++i) {
     LOG(info) << "fSigma[" << i << "] =" << fSigma[i];
   }
 }
 
 //_____________________________________________________
-void Alignment::GlobalFit(Double_t* parameters, Double_t* errors, Double_t* pulls)
+void Aligner::GlobalFit(double* parameters, double* errors, double* pulls)
 {
   /// Call global fit; Global parameters are stored in parameters
   fMillepede->GlobalFit(parameters, errors, pulls);
@@ -1223,19 +1270,19 @@ void Alignment::GlobalFit(Double_t* parameters, Double_t* errors, Double_t* pull
 }
 
 //_____________________________________________________
-void Alignment::PrintGlobalParameters() const
+void Aligner::PrintGlobalParameters() const
 {
   fMillepede->PrintGlobalParameters();
 }
 
 //_____________________________________________________
-Double_t Alignment::GetParError(Int_t iPar) const
+double Aligner::GetParError(int iPar) const
 {
   return fMillepede->GetParError(iPar);
 }
 
 //______________________________________________________________________
-void Alignment::ReAlign(
+void Aligner::ReAlign(
   std::vector<o2::detectors::AlignParam>& params,
   const double* misAlignments)
 {
@@ -1254,15 +1301,13 @@ void Alignment::ReAlign(
   // Adds the new module transformer to a new geometry transformer
   // Returns the new geometry transformer
 
-  Double_t lModuleMisAlignment[fgNParCh] = {0};
-  Double_t lDetElemMisAlignment[fgNParCh] = {0};
+  double lModuleMisAlignment[fgNParCh] = {0};
+  double lDetElemMisAlignment[fgNParCh] = {0};
 
   o2::detectors::AlignParam lAP;
   for (int hc = 0; hc < 20; hc++) {
 
     TGeoCombiTrans localDeltaTransform;
-    // localDeltaTransform.SetTranslation({0., 0., 0.});
-    // localDeltaTransform.SetRotation(TGeoRotation());
     localDeltaTransform = DeltaTransform(lModuleMisAlignment);
 
     std::string sname = fmt::format("MCH/HC{}", hc);
@@ -1282,10 +1327,10 @@ void Alignment::ReAlign(
     for (int de = 0; de < fgNDetElemHalfCh[hc]; de++) {
 
       // store detector element id and number
-      const Int_t iDetElemId = fgDetElemHalfCh[hc][de];
+      const int iDetElemId = fgDetElemHalfCh[hc][de];
       if (DetElemIsValid(iDetElemId)) {
 
-        const Int_t iDetElemNumber(GetDetElemNumber(iDetElemId));
+        const int iDetElemNumber(GetDetElemNumber(iDetElemId));
 
         for (int i = 0; i < fgNParCh; ++i) {
           lDetElemMisAlignment[i] = 0.0;
@@ -1320,7 +1365,7 @@ void Alignment::ReAlign(
 }
 
 //______________________________________________________________________
-void Alignment::SetAlignmentResolution(const TClonesArray* misAlignArray, Int_t rChId, Double_t chResX, Double_t chResY, Double_t deResX, Double_t deResY)
+void Aligner::SetAlignmentResolution(const TClonesArray* misAlignArray, int rChId, double chResX, double chResY, double deResX, double deResY)
 {
 
   /// Set alignment resolution to misalign objects to be stored in CDB
@@ -1335,11 +1380,12 @@ void Alignment::SetAlignmentResolution(const TClonesArray* misAlignArray, Int_t 
 
   o2::detectors::AlignParam* alignMat = 0x0;
 
-  for (Int_t chId = 0; chId <= 9; ++chId) {
+  for (int chId = 0; chId <= 9; ++chId) {
 
     // skip chamber if selection is valid, and does not match
-    if (rChId > 0 && chId + 1 != rChId)
+    if (rChId > 0 && chId + 1 != rChId) {
       continue;
+    }
 
     TString chName1;
     TString chName2;
@@ -1366,18 +1412,14 @@ void Alignment::SetAlignmentResolution(const TClonesArray* misAlignArray, Int_t 
             (volName.Length() == volName.Index(chName2) + chName2.Length())))) {
 
         volName.Remove(0, volName.Last('/') + 1);
-        // if (volName.Contains("GM")){
-        //   alignMat->SetCorrMatrix(mChCorrMatrix);
-        // }else if (volName.Contains("DE")){
-        //   alignMat->SetCorrMatrix(mDECorrMatrix);
-        // }
+
       }
     }
   }
 }
 
 //_____________________________________________________
-LocalTrackParam Alignment::RefitStraightTrack(Track& track, Double_t z0) const
+LocalTrackParam Aligner::RefitStraightTrack(Track& track, double z0) const
 {
 
   // initialize matrices
@@ -1391,13 +1433,15 @@ LocalTrackParam Alignment::RefitStraightTrack(Track& track, Double_t z0) const
   for (auto itTrackParam(track.begin()); itTrackParam != track.end(); ++itTrackParam) {
 
     // get track parameters
-    if (!&*itTrackParam)
+    if (!&*itTrackParam) {
       continue;
+    }
 
     // get cluster
     const Cluster* cluster = itTrackParam->getClusterPtr();
-    if (!cluster)
+    if (!cluster) {
       continue;
+    }
 
     // projection matrix
     TMatrixD A(2, 4);
@@ -1431,12 +1475,6 @@ LocalTrackParam Alignment::RefitStraightTrack(Track& track, Double_t z0) const
   TMatrixD AtGASumInv(TMatrixD::kInverted, AtGASum);
   TMatrixD X(AtGASumInv, TMatrixD::kMult, AtGMSum);
 
-  //   // TODO: compare with initial track parameters
-  //   Aliinfo( Form( "x: %.3f vs %.3f", fTrackPos0[0], X(0,0) ) );
-  //   Aliinfo( Form( "y: %.3f vs %.3f", fTrackPos0[1], X(1,0) ) );
-  //   Aliinfo( Form( "dxdz: %.6g vs %.6g", fTrackSlope0[0], X(2,0) ) );
-  //   Aliinfo( Form( "dydz: %.6g vs %.6g\n", fTrackSlope0[1], X(3,0) ) );
-
   // fill output parameters
   LocalTrackParam out;
   out.fTrackX = X(0, 0);
@@ -1449,30 +1487,17 @@ LocalTrackParam Alignment::RefitStraightTrack(Track& track, Double_t z0) const
 }
 
 //_____________________________________________________
-void Alignment::FillDetElemData(const Cluster* cluster)
+void Aligner::FillDetElemData(const Cluster* cluster)
 {
-  // LOG(fatal) << __PRETTY_FUNCTION__ << " is disabled";
-  // LOG(info) << __PRETTY_FUNCTION__ << " is enabled";
 
   /// Get information of current detection element
   // get detector element number from Alice ID
-  const Int_t detElemId = cluster->getDEId();
+  const int detElemId = cluster->getDEId();
   fDetElemNumber = GetDetElemNumber(detElemId);
-  // cout << "Detector element ID: " << detElemId << "   Detector element number: " << fDetElemNumber << endl;
-  // get detector element
-  // const AliMUONGeometryDetElement detElement(detElemId);
-  // auto fTransform = fTransformCreator(detElemId);
-  /*
-  get the global transformation matrix and store its inverse, in order to manually perform
-  the global to Local transformations needed to calculate the derivatives
-  */
-  // fTransform = fTransform.Inverse();
-  // fTransform.GetTransformMatrix(fGeoCombiTransInverse);
-  // cout << "done with FillDetElemData" << endl;
 }
 
 //______________________________________________________________________
-void Alignment::FillRecPointData(const Cluster* cluster)
+void Aligner::FillRecPointData(const Cluster* cluster)
 {
 
   /// Get information of current cluster
@@ -1482,7 +1507,7 @@ void Alignment::FillRecPointData(const Cluster* cluster)
 }
 
 //______________________________________________________________________
-void Alignment::FillTrackParamData(const TrackParam* trackParam)
+void Aligner::FillTrackParamData(const TrackParam* trackParam)
 {
 
   /// Get information of current track at current cluster
@@ -1494,12 +1519,12 @@ void Alignment::FillTrackParamData(const TrackParam* trackParam)
 }
 
 //______________________________________________________________________
-void Alignment::LocalEquationX(const Double_t* r)
+void Aligner::LocalEquationX(const double* r)
 {
   /// local equation along X
 
   // 'inverse' (GlobalToLocal) rotation matrix
-  // const Double_t* r(fGeoCombiTransInverse.GetRotationMatrix());
+  // const double* r(fGeoCombiTransInverse.GetRotationMatrix());
 
   // local derivatives
   SetLocalDerivative(0, r[0]);
@@ -1533,8 +1558,8 @@ void Alignment::LocalEquationX(const Double_t* r)
   } else {
 
     // local copy of extrapolated track positions
-    const Double_t trackPosX = fTrackPos0[0] + fTrackSlope0[0] * (fTrackPos[2] - fTrackPos0[2]);
-    const Double_t trackPosY = fTrackPos0[1] + fTrackSlope0[1] * (fTrackPos[2] - fTrackPos0[2]);
+    const double trackPosX = fTrackPos0[0] + fTrackSlope0[0] * (fTrackPos[2] - fTrackPos0[2]);
+    const double trackPosY = fTrackPos0[1] + fTrackSlope0[1] * (fTrackPos[2] - fTrackPos0[2]);
 
     // use properly extrapolated position for derivatives vs 'delta_phi_z'
     SetGlobalDerivative(fDetElemNumber * fgNParCh + 2, -r[1] * trackPosX + r[0] * trackPosY);
@@ -1549,12 +1574,12 @@ void Alignment::LocalEquationX(const Double_t* r)
 }
 
 //______________________________________________________________________
-void Alignment::LocalEquationY(const Double_t* r)
+void Aligner::LocalEquationY(const double* r)
 {
   /// local equation along Y
 
   // 'inverse' (GlobalToLocal) rotation matrix
-  // const Double_t* r(fGeoCombiTransInverse.GetRotationMatrix());
+  // const double* r(fGeoCombiTransInverse.GetRotationMatrix());
 
   // store local derivatives
   SetLocalDerivative(0, r[3]);
@@ -1580,8 +1605,8 @@ void Alignment::LocalEquationY(const Double_t* r)
   } else {
 
     // local copy of extrapolated track positions
-    const Double_t trackPosX = fTrackPos0[0] + fTrackSlope0[0] * (fTrackPos[2] - fTrackPos0[2]);
-    const Double_t trackPosY = fTrackPos0[1] + fTrackSlope0[1] * (fTrackPos[2] - fTrackPos0[2]);
+    const double trackPosX = fTrackPos0[0] + fTrackSlope0[0] * (fTrackPos[2] - fTrackPos0[2]);
+    const double trackPosY = fTrackPos0[1] + fTrackSlope0[1] * (fTrackPos[2] - fTrackPos0[2]);
 
     // use properly extrapolated position for derivatives vs 'delta_phi'
     SetGlobalDerivative(fDetElemNumber * fgNParCh + 2, -r[4] * trackPosX + r[3] * trackPosY);
@@ -1595,7 +1620,7 @@ void Alignment::LocalEquationY(const Double_t* r)
 }
 
 //_________________________________________________________________________
-TGeoCombiTrans Alignment::DeltaTransform(const double* lMisAlignment) const
+TGeoCombiTrans Aligner::DeltaTransform(const double* lMisAlignment) const
 {
   /// Get Delta Transformation, based on alignment parameters
 
@@ -1610,7 +1635,7 @@ TGeoCombiTrans Alignment::DeltaTransform(const double* lMisAlignment) const
   return TGeoCombiTrans(deltaTrans, deltaRot);
 }
 
-bool Alignment::isMatrixConvertedToAngles(const double* rot, double& psi, double& theta, double& phi) const
+bool Aligner::isMatrixConvertedToAngles(const double* rot, double& psi, double& theta, double& phi) const
 {
   /// Calculates the Euler angles in "x y z" notation
   /// using the rotation matrix
@@ -1628,7 +1653,7 @@ bool Alignment::isMatrixConvertedToAngles(const double* rot, double& psi, double
 }
 
 //______________________________________________________________________
-void Alignment::AddConstraint(Double_t* par, Double_t value)
+void Aligner::AddConstraint(double* par, double value)
 {
   /// Constrain equation defined by par to value
   if (!fInitialized) {
@@ -1639,21 +1664,21 @@ void Alignment::AddConstraint(Double_t* par, Double_t value)
 }
 
 //______________________________________________________________________
-Bool_t Alignment::DetElemIsValid(Int_t iDetElemId) const
+bool Aligner::DetElemIsValid(int iDetElemId) const
 {
   /// return true if given detector element is valid (and belongs to muon tracker)
-  const Int_t iCh = iDetElemId / 100;
-  const Int_t iDet = iDetElemId % 100;
+  const int iCh = iDetElemId / 100;
+  const int iDet = iDetElemId % 100;
   return (iCh > 0 && iCh <= fgNCh && iDet < fgNDetElemCh[iCh - 1]);
 }
 
 //______________________________________________________________________
-Int_t Alignment::GetDetElemNumber(Int_t iDetElemId) const
+int Aligner::GetDetElemNumber(int iDetElemId) const
 {
   /// get det element number from ID
   // get chamber and element number in chamber
-  const Int_t iCh = iDetElemId / 100;
-  const Int_t iDet = iDetElemId % 100;
+  const int iCh = iDetElemId / 100;
+  const int iDet = iDetElemId % 100;
 
   // make sure detector index is valid
   if (!(iCh > 0 && iCh <= fgNCh && iDet < fgNDetElemCh[iCh - 1])) {
@@ -1665,45 +1690,54 @@ Int_t Alignment::GetDetElemNumber(Int_t iDetElemId) const
 }
 
 //______________________________________________________________________
-Int_t Alignment::GetChamberId(Int_t iDetElemNumber) const
+int Aligner::GetChamberId(int iDetElemNumber) const
 {
   /// get chamber (counting from 1) matching a given detector element id
-  Int_t iCh(0);
+  int iCh(0);
   for (iCh = 0; iCh < fgNCh; iCh++) {
-    if (iDetElemNumber < fgSNDetElemCh[iCh])
+    if (iDetElemNumber < fgSNDetElemCh[iCh]) {
       break;
+    }
   }
 
   return iCh;
 }
 
 //______________________________________________________________________
-TString Alignment::GetParameterMaskString(UInt_t mask) const
+TString Aligner::GetParameterMaskString(unsigned int mask) const
 {
   TString out;
-  if (mask & ParX)
+  if (mask & ParX) {
     out += "X";
-  if (mask & ParY)
+  }
+  if (mask & ParY) {
     out += "Y";
-  if (mask & ParZ)
+  }
+  if (mask & ParZ) {
     out += "Z";
-  if (mask & ParTZ)
+  }
+  if (mask & ParTZ) {
     out += "T";
+  }
   return out;
 }
 
 //______________________________________________________________________
-TString Alignment::GetSidesMaskString(UInt_t mask) const
+TString Aligner::GetSidesMaskString(unsigned int mask) const
 {
   TString out;
-  if (mask & SideTop)
+  if (mask & SideTop) {
     out += "T";
-  if (mask & SideLeft)
+  }
+  if (mask & SideLeft) {
     out += "L";
-  if (mask & SideBottom)
+  }
+  if (mask & SideBottom) {
     out += "B";
-  if (mask & SideRight)
+  }
+  if (mask & SideRight) {
     out += "R";
+  }
   return out;
 }
 

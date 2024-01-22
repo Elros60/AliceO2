@@ -14,16 +14,14 @@
  * @author  Javier Castillo Castellanos
  */
 
-#ifndef ALICEO2_MCH_ALIGNMENT
-#define ALICEO2_MCH_ALIGNMENT
+#ifndef ALICEO2_MCH_ALIGNER
+#define ALICEO2_MCH_ALIGNER
 
 #include <string>
 #include <vector>
 
-#include "Align/Millepede2Record.h"
-#include "Align/Mille.h"
-#include "MCHAlign/AliMillePede2.h"
-#include "MCHAlign/AliMillePedeRecord.h"
+#include "MCHAlign/MillePede2.h"
+#include "MCHAlign/MillePedeRecord.h"
 #include "TGeoManager.h"
 
 #include "MCHGeometryCreator/Geometry.h"
@@ -73,50 +71,50 @@ class LocalTrackClusterResidual
 
   // private:
   //* y and z
-  Int_t fClDetElem = 0.0;
-  Int_t fClDetElemNumber = 0.0;
+  int fClDetElem = 0.0;
+  int fClDetElemNumber = 0.0;
 
-  Float_t fClusterX = 0.0;
-  Float_t fClusterY = 0.0;
-  Float_t fClusterZ = 0.0;
-  Float_t fClusterXloc = 0.0;
-  Float_t fClusterYloc = 0.0;
+  float fClusterX = 0.0;
+  float fClusterY = 0.0;
+  float fClusterZ = 0.0;
+  float fClusterXloc = 0.0;
+  float fClusterYloc = 0.0;
 
-  Float_t fTrackX = 0.0;
-  Float_t fTrackY = 0.0;
-  Float_t fTrackZ = 0.0;
-  Float_t fTrackXloc = 0.0;
-  Float_t fTrackYloc = 0.0;
+  float fTrackX = 0.0;
+  float fTrackY = 0.0;
+  float fTrackZ = 0.0;
+  float fTrackXloc = 0.0;
+  float fTrackYloc = 0.0;
 
-  Float_t fTrackSlopeX = 0.0;
-  Float_t fTrackSlopeY = 0.0;
+  float fTrackSlopeX = 0.0;
+  float fTrackSlopeY = 0.0;
 
-  Float_t fBendingMomentum = 0.0;
+  float fBendingMomentum = 0.0;
 
-  Float_t fResiduXGlobal = 0.0;
-  Float_t fResiduYGlobal = 0.0;
+  float fResiduXGlobal = 0.0;
+  float fResiduYGlobal = 0.0;
 
-  Float_t fResiduXLocal = 0.0;
-  Float_t fResiduYLocal = 0.0;
+  float fResiduXLocal = 0.0;
+  float fResiduYLocal = 0.0;
 
-  Float_t fCharge = 0.0;
+  float fCharge = 0.0;
 
-  Float_t fBx = 0.0;
-  Float_t fBy = 0.0;
-  Float_t fBz = 0.0;
+  float fBx = 0.0;
+  float fBy = 0.0;
+  float fBz = 0.0;
 
 }; // class LocalTrackClusterResidual
 
-class Alignment : public TObject
+class Aligner : public TObject
 {
 
  public:
-  Alignment();
+  Aligner();
 
-  ~Alignment() = default;
+  ~Aligner() = default;
 
   // initialize
-  void init(std::string DataRecFName, std::string ConsRecFName, Bool_t read);
+  void init(std::string DataRecFName, std::string ConsRecFName, bool read);
 
   // terminate
   void terminate(void);
@@ -153,16 +151,16 @@ class Alignment : public TObject
   };
 
   /// Number of detection elements per chamber
-  static const Int_t fgNDetElemCh[fgNCh];
+  static const int fgNDetElemCh[fgNCh];
 
   /// Sum of detection elements up to this chamber
-  static const Int_t fgSNDetElemCh[fgNCh + 1];
+  static const int fgSNDetElemCh[fgNCh + 1];
 
   /// Number of detection element per tracking module
-  static const Int_t fgNDetElemHalfCh[fgNHalfCh];
+  static const int fgNDetElemHalfCh[fgNHalfCh];
 
   /// list of detection elements per tracking module
-  static const Int_t fgDetElemHalfCh[fgNHalfCh][fgNDetHalfChMax];
+  static const int fgDetElemHalfCh[fgNHalfCh][fgNDetHalfChMax];
 
   /// global parameter bit set, used for masks
   enum ParameterMask {
@@ -190,63 +188,52 @@ class Alignment : public TObject
     AllSides = SideTop | SideBottom | SideLeft | SideRight
   };
 
-  AliMillePedeRecord* ProcessTrack(Track& track, const o2::mch::geo::TransformationCreator& transformation, Bool_t doAlignment, Double_t weight = 1);
+  MillePedeRecord* ProcessTrack(Track& track, const o2::mch::geo::TransformationCreator& transformation, bool doAlignment, double weight = 1);
 
-  void ProcessTrack(AliMillePedeRecord*);
+  void ProcessTrack(MillePedeRecord*);
 
   //@name modifiers
   //@{
 
   /// run number
-  void SetRunNumber(Int_t id)
+  void SetRunNumber(int id)
   {
     fRunNumber = id;
   }
 
   /// Set flag for Magnetic field On/Off
-  void SetBFieldOn(Bool_t value)
+  void SetBFieldOn(bool value)
   {
     fBFieldOn = value;
   }
 
   /// set to true to do refit evaluation
-  void SetDoEvaluation(Bool_t value)
+  void SetDoEvaluation(bool value)
   {
     fDoEvaluation = value;
   }
 
   /// set to true to refit tracks
-  void SetRefitStraightTracks(Bool_t value)
+  void SetRefitStraightTracks(bool value)
   {
     fRefitStraightTracks = value;
   }
 
-  void SetAllowedVariation(Int_t iPar, Double_t value);
+  void SetAllowedVariation(int iPar, double value);
 
-  void SetSigmaXY(Double_t sigmaX, Double_t sigmaY);
+  void SetSigmaXY(double sigmaX, double sigmaY);
 
-  /// Set geometry transformer
-  // void SetGeometryTransformer(AliMUONGeometryTransformer* transformer)
-  //{
-  //    fTransform = transformer;
-  // }
+  void FixAll(unsigned int parameterMask = ParAll);
 
-  //@}
+  void FixChamber(int iCh, unsigned int parameterMask = ParAll);
 
-  //@name fixing detectors
-  //@{
+  void FixDetElem(int iDetElemId, unsigned int parameterMask = ParAll);
 
-  void FixAll(UInt_t parameterMask = ParAll);
+  void FixHalfSpectrometer(const bool* bChOnOff, unsigned int sidesMask = AllSides, unsigned int parameterMask = ParAll);
 
-  void FixChamber(Int_t iCh, UInt_t parameterMask = ParAll);
+  void FixParameter(int iPar);
 
-  void FixDetElem(Int_t iDetElemId, UInt_t parameterMask = ParAll);
-
-  void FixHalfSpectrometer(const Bool_t* bChOnOff, UInt_t sidesMask = AllSides, UInt_t parameterMask = ParAll);
-
-  void FixParameter(Int_t iPar);
-
-  void FixParameter(Int_t iDetElem, Int_t iPar)
+  void FixParameter(int iDetElem, int iPar)
   {
     FixParameter(iDetElem * fgNParCh + iPar);
   }
@@ -256,13 +243,13 @@ class Alignment : public TObject
   //@name releasing detectors
   //@{
 
-  void ReleaseChamber(Int_t iCh, UInt_t parameterMask = ParAll);
+  void ReleaseChamber(int iCh, unsigned int parameterMask = ParAll);
 
-  void ReleaseDetElem(Int_t iDetElemId, UInt_t parameterMask = ParAll);
+  void ReleaseDetElem(int iDetElemId, unsigned int parameterMask = ParAll);
 
-  void ReleaseParameter(Int_t iPar);
+  void ReleaseParameter(int iPar);
 
-  void ReleaseParameter(Int_t iDetElem, Int_t iPar)
+  void ReleaseParameter(int iDetElem, int iPar)
   {
     ReleaseParameter(iDetElem * fgNParCh + iPar);
   }
@@ -272,26 +259,26 @@ class Alignment : public TObject
   //@name grouping detectors
   //@{
 
-  void GroupChamber(Int_t iCh, UInt_t parameterMask = ParAll);
+  void GroupChamber(int iCh, unsigned int parameterMask = ParAll);
 
-  void GroupHalfChamber(Int_t iCh, Int_t iHalf, UInt_t parameterMask = ParAll);
+  void GroupHalfChamber(int iCh, int iHalf, unsigned int parameterMask = ParAll);
 
-  void GroupDetElems(Int_t detElemMin, Int_t detElemMax, UInt_t parameterMask = ParAll);
+  void GroupDetElems(int detElemMin, int detElemMax, unsigned int parameterMask = ParAll);
 
-  void GroupDetElems(const Int_t* detElemList, Int_t nDetElem, UInt_t parameterMask = ParAll);
+  void GroupDetElems(const int* detElemList, int nDetElem, unsigned int parameterMask = ParAll);
 
   //@}
 
   //@name define non linearity
   //@{
 
-  void SetChamberNonLinear(Int_t iCh, UInt_t parameterMask);
+  void SetChamberNonLinear(int iCh, unsigned int parameterMask);
 
-  void SetDetElemNonLinear(Int_t iSt, UInt_t parameterMask);
+  void SetDetElemNonLinear(int iSt, unsigned int parameterMask);
 
-  void SetParameterNonLinear(Int_t iPar);
+  void SetParameterNonLinear(int iPar);
 
-  void SetParameterNonLinear(Int_t iDetElem, Int_t iPar)
+  void SetParameterNonLinear(int iDetElem, int iPar)
   {
     SetParameterNonLinear(iDetElem * fgNParCh + iPar);
   }
@@ -301,27 +288,27 @@ class Alignment : public TObject
   //@name constraints
   //@{
 
-  void AddConstraints(const Bool_t* bChOnOff, UInt_t parameterMask);
+  void AddConstraints(const bool* bChOnOff, unsigned int parameterMask);
 
-  void AddConstraints(const Bool_t* bChOnOff, const Bool_t* lVarXYT, UInt_t sidesMask = AllSides);
+  void AddConstraints(const bool* bChOnOff, const bool* lVarXYT, unsigned int sidesMask = AllSides);
 
   //@}
 
   /// initialize global parameters to a give set of values
-  void InitGlobalParameters(Double_t* par);
+  void InitGlobalParameters(double* par);
 
   /// perform global fit
-  void GlobalFit(Double_t* parameters, Double_t* errors, Double_t* pulls);
+  void GlobalFit(double* parameters, double* errors, double* pulls);
 
   /// print global parameters
   void PrintGlobalParameters(void) const;
 
   /// get error on a given parameter
-  Double_t GetParError(Int_t iPar) const;
+  double GetParError(int iPar) const;
 
   void ReAlign(std::vector<o2::detectors::AlignParam>& params, const double* misAlignments);
 
-  void SetAlignmentResolution(const TClonesArray* misAlignArray, Int_t chId, Double_t chResX, Double_t chResY, Double_t deResX, Double_t deResY);
+  void SetAlignmentResolution(const TClonesArray* misAlignArray, int chId, double chResX, double chResY, double deResX, double deResY);
 
   TTree* GetResTree(){
     return fTTree;
@@ -329,25 +316,25 @@ class Alignment : public TObject
 
  private:
   /// Not implemented
-  Alignment(const Alignment& right);
+  Aligner(const Aligner& right);
 
   /// Not implemented
-  Alignment& operator=(const Alignment& right);
+  Aligner& operator=(const Aligner& right);
 
   /// Set array of local derivatives
-  void SetLocalDerivative(Int_t index, Double_t value)
+  void SetLocalDerivative(int index, double value)
   {
     fLocalDerivatives[index] = value;
   }
 
   /// Set array of global derivatives
-  void SetGlobalDerivative(Int_t index, Double_t value)
+  void SetGlobalDerivative(int index, double value)
   {
     fGlobalDerivatives[index] = value;
   }
 
   /// refit track using straight track model
-  LocalTrackParam RefitStraightTrack(Track&, Double_t) const;
+  LocalTrackParam RefitStraightTrack(Track&, double) const;
 
   void FillDetElemData(const Cluster*);
 
@@ -355,9 +342,9 @@ class Alignment : public TObject
 
   void FillTrackParamData(const TrackParam*);
 
-  void LocalEquationX(const Double_t* r);
+  void LocalEquationX(const double* r);
 
-  void LocalEquationY(const Double_t* r);
+  void LocalEquationY(const double* r);
 
   TGeoCombiTrans DeltaTransform(const double* detElemMisAlignment) const;
 
@@ -366,75 +353,73 @@ class Alignment : public TObject
   ///@name utilities
   //@{
 
-  void AddConstraint(Double_t* parameters, Double_t value);
+  void AddConstraint(double* parameters, double value);
 
-  Int_t GetChamberId(Int_t iDetElemNumber) const;
+  int GetChamberId(int iDetElemNumber) const;
 
-  Bool_t DetElemIsValid(Int_t iDetElemId) const;
+  bool DetElemIsValid(int iDetElemId) const;
 
-  Int_t GetDetElemNumber(Int_t iDetElemId) const;
+  int GetDetElemNumber(int iDetElemId) const;
 
-  TString GetParameterMaskString(UInt_t parameterMask) const;
+  TString GetParameterMaskString(unsigned int parameterMask) const;
 
-  TString GetSidesMaskString(UInt_t sidesMask) const;
+  TString GetSidesMaskString(unsigned int sidesMask) const;
 
   //@}
 
   /// true when initialized
-  Bool_t fInitialized;
+  bool fInitialized;
 
   /// current run id
-  Int_t fRunNumber;
+  int fRunNumber;
 
   /// Flag for Magnetic filed On/Off
-  Bool_t fBFieldOn;
+  bool fBFieldOn;
 
   /// true if straight track refit is to be performed
-  Bool_t fRefitStraightTracks;
+  bool fRefitStraightTracks;
 
   /// "Encouraged" variation for degrees of freedom
-  Double_t fAllowVar[fgNParCh];
+  double fAllowVar[fgNParCh];
 
   /// Initial value for chi2 cut
-  /** if > 1 Iterations in AliMillepede are turned on */
-  Double_t fStartFac;
+  double fStartFac;
 
   /// Cut on residual for first iteration
-  Double_t fResCutInitial;
+  double fResCutInitial;
 
   /// Cut on residual for other iterations
-  Double_t fResCut;
+  double fResCut;
 
   /// Detector independent alignment class
-  // o2::align::Mille* fMillepede;
-  AliMillePede2* fMillepede; // AliMillePede2 implementation
+  MillePede2* fMillepede;
 
-  /// running AliMUONVCluster
+  /// MCH cluster class
   o2::mch::Cluster* fCluster;
 
   /// Number of standard deviations for chi2 cut
-  Int_t fNStdDev;
+  int fNStdDev;
 
   /// Cluster (global) position
-  Double_t fClustPos[3];
+  double fClustPos[3];
 
   /// Track slope at reference point
-  Double_t fTrackSlope0[2];
+  double fTrackSlope0[2];
 
   /// Track slope at current point
-  Double_t fTrackSlope[2];
+  double fTrackSlope[2];
 
   /// Track intersection at reference point
-  Double_t fTrackPos0[3];
+  double fTrackPos0[3];
 
   /// Track intersection at current point
-  Double_t fTrackPos[3];
+  double fTrackPos[3];
 
   /// Current measurement (depend on B field On/Off)
-  Double_t fMeas[2];
+  double fMeas[2];
 
   /// Estimated resolution on measurement
-  Double_t fSigma[2];
+  double fSigma[2];
 
   /// degrees of freedom
   enum {
@@ -445,28 +430,25 @@ class Alignment : public TObject
 
   /// Array of effective degrees of freedom
   /// it is used to fix detectors, parameters, etc.
-  Int_t fGlobalParameterStatus[fNGlobal];
+  int fGlobalParameterStatus[fNGlobal];
 
   /// Array of global derivatives
-  Double_t fGlobalDerivatives[fNGlobal];
+  double fGlobalDerivatives[fNGlobal];
 
   /// Array of local derivatives
-  Double_t fLocalDerivatives[fNLocal];
+  double fLocalDerivatives[fNLocal];
 
   /// current detection element number
-  Int_t fDetElemNumber;
+  int fDetElemNumber;
 
   /// running Track record
-  // o2::align::Millepede2Record fTrackRecord;
-  AliMillePedeRecord fTrackRecord;
+  MillePedeRecord fTrackRecord;
 
   /// Geometry transformation
-  // AliMUONGeometryTransformer* fTransform;
   o2::mch::geo::TransformationCreator fTransformCreator;
-  // TGeoCombiTrans fGeoCombiTransInverse;
 
   /// preform evaluation
-  Bool_t fDoEvaluation;
+  bool fDoEvaluation;
 
   /// original local track params
   LocalTrackParam* fTrackParamOrig;
@@ -480,8 +462,8 @@ class Alignment : public TObject
   /// output TTree
   TTree* fTTree;
 
-}; // class Alignment
+}; // class Aligner
 
 } // namespace mch
 } // namespace o2
-#endif // ALICEO2_MCH_ALIGNMENT_H_
+#endif // ALICEO2_MCH_ALIGNER_H_

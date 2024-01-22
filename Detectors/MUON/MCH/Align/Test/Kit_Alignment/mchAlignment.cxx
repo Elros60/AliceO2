@@ -104,9 +104,9 @@ std::map<int, o2::math_utils::Transform3D> transformNew; // new geometry
 
 static const double muMass =
     TDatabasePDG::Instance()->GetParticle("mu-")->Mass();
-uint16_t minNSamplesSignal = 17;
+unsigned int16_t minNSamplesSignal = 17;
 double signalParam[4] = {80., 16., 12., 1.2};
-uint16_t minNSamplesBackground = 14;
+unsigned int16_t minNSamplesBackground = 14;
 double backgroundParam[4] = {18., 24., -20., 7.};
 int bcIntegrationRange = 6; // time window ([-range, range]) to integrate digits
 int minNDigitsSignal = 10;  // minimum number of digits passing the signal cuts
@@ -153,8 +153,8 @@ mch::Track MCHFormatConvert(mch::TrackMCH &mchTrack,
 bool RemoveTrack(mch::Track &track, double ImproveCut);
 void drawHisto(double *params, double *errors, double *pulls, TTree &Res_Tree, std::string outFileName);
 
-Int_t GetDetElemNumber(Int_t iDetElemId);
-Int_t GetDetElemId(Int_t iDetElemNumber);
+int GetDetElemNumber(int iDetElemId);
+int GetDetElemId(int iDetElemNumber);
 
 
 // Load gSystem->Load("libO2MCHMappingImpl4"); in ROOT before compile the marco.
@@ -169,7 +169,7 @@ void mchAlignment(std::string prefix, std::string mchFileName,
                      bool doAlign = false,
                      bool doReAlign = false,
                      std::string param_config = "pp",
-                     Double_t weightRecord = 1) {
+                     double weightRecord = 1) {
 
 
 
@@ -320,12 +320,12 @@ void mchAlignment(std::string prefix, std::string mchFileName,
   // Configurations for alignment process //
   //////////////////////////////////////////
 
-  test_align->SetDoEvaluation(kTRUE);
+  test_align->SetDoEvaluation(true);
 
 
   // Fix chambers
-  const Int_t chambers[] = {5,10,0};
-  for (Int_t i = 0; chambers[i] > 0; ++i) {
+  const int chambers[] = {5,10,0};
+  for (int i = 0; chambers[i] > 0; ++i) {
     std::cout << "Fixing chamber " << chambers[i] << std::endl;
     test_align->FixChamber(chambers[i]);
   }
@@ -347,8 +347,8 @@ void mchAlignment(std::string prefix, std::string mchFileName,
   // 3 branches: params, errors, pulls                                   //
   /////////////////////////////////////////////////////////////////////////
 
-  const Int_t kSplitlevel = 98;
-  const Int_t kBufsize = 32000;
+  const int kSplitlevel = 98;
+  const int kBufsize = 32000;
 
   int NGlobalPar = test_align->fNGlobal;
 
@@ -822,14 +822,14 @@ void drawHisto(double *params, double *errors, double *pulls, TTree &Res_Tree, s
     }
   }
 
-  Int_t RefClDetElem;
-  Int_t RefClDetElemNumber;
-  Float_t RefClusterX;
-  Float_t RefClusterY;
-  Float_t RefTrackX;
-  Float_t RefTrackY;
-  Float_t RefTrackSlopeX;
-  Float_t RefTrackSlopeY;
+  int RefClDetElem;
+  int RefClDetElemNumber;
+  float RefClusterX;
+  float RefClusterY;
+  float RefTrackX;
+  float RefTrackY;
+  float RefTrackSlopeX;
+  float RefTrackSlopeY;
   Res_Tree.SetBranchAddress("fClusterX",&RefClusterX);
   Res_Tree.SetBranchAddress("fClusterY",&RefClusterY);
   Res_Tree.SetBranchAddress("fTrackX",&RefTrackX);
@@ -1011,7 +1011,7 @@ void LoadDigits(TrackInfo &trackInfo, const std::vector<mch::Cluster> &clusters,
     }
 
     bool digitFound(false);
-    for (uint32_t iDig = 0; iDig < cluster.nDigits; ++iDig) {
+    for (unsigned int32_t iDig = 0; iDig < cluster.nDigits; ++iDig) {
       const auto &digit = digits[cluster.firstDigit + iDig];
       if (selectSignal) {
         double nSample = digit.getNofSamples();
@@ -1519,7 +1519,7 @@ void FillCorrelationHistos(const std::vector<const mch::Digit *> &digits,
   /// fill correlation histograms between number of digits and total
   /// charge
 
-  uint32_t charge(0);
+  unsigned int32_t charge(0);
   int nDigits(0);
 
   for (const auto digit : digits) {
@@ -1587,11 +1587,11 @@ void WriteHistos(TFile *f, const char *dirName,
 }
 
 //_________________________________________________________________________________________________
-Int_t GetDetElemNumber(Int_t iDetElemId) {
+int GetDetElemNumber(int iDetElemId) {
   /// get det element number from ID
   // get chamber and element number in chamber
-  const Int_t iCh = iDetElemId / 100;
-  const Int_t iDet = iDetElemId % 100;
+  const int iCh = iDetElemId / 100;
+  const int iDet = iDetElemId % 100;
 
   // make sure detector index is valid
   if (!(iCh > 0 && iCh <= fgNCh && iDet < fgNDetElemCh[iCh - 1])) {
@@ -1603,7 +1603,7 @@ Int_t GetDetElemNumber(Int_t iDetElemId) {
 }
 
 //_________________________________________________________________________________________________
-Int_t GetDetElemId(Int_t iDetElemNumber) {
+int GetDetElemId(int iDetElemNumber) {
   // make sure detector number is valid
   if (!(iDetElemNumber >= fgSNDetElemCh[0] &&
         iDetElemNumber < fgSNDetElemCh[fgNCh])) {

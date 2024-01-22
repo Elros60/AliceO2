@@ -114,8 +114,8 @@ std::map<int, o2::math_utils::Transform3D> transformRef;
 std::map<int, o2::math_utils::Transform3D> transformRefFit;
 std::map<int, o2::math_utils::Transform3D> transformTracks;
 
-Int_t GetDetElemNumber(Int_t iDetElemId);
-Int_t GetDetElemId(Int_t iDetElemNumber);
+int GetDetElemNumber(int iDetElemId);
+int GetDetElemId(int iDetElemNumber);
 constexpr double pi() { return 3.14159265358979323846; }
 
 
@@ -421,11 +421,11 @@ void NormCompare(){
 
 
 //_________________________________________________________________________________________________
-Int_t GetDetElemNumber(Int_t iDetElemId) {
+int GetDetElemNumber(int iDetElemId) {
   /// get det element number from ID
   // get chamber and element number in chamber
-  const Int_t iCh = iDetElemId / 100;
-  const Int_t iDet = iDetElemId % 100;
+  const int iCh = iDetElemId / 100;
+  const int iDet = iDetElemId % 100;
 
   // make sure detector index is valid
   if (!(iCh > 0 && iCh <= fgNCh && iDet < fgNDetElemCh[iCh - 1])) {
@@ -438,7 +438,7 @@ Int_t GetDetElemNumber(Int_t iDetElemId) {
 
 
 //_________________________________________________________________________________________________
-Int_t GetDetElemId(Int_t iDetElemNumber) {
+int GetDetElemId(int iDetElemNumber) {
   // make sure detector number is valid
   if (!(iDetElemNumber >= fgSNDetElemCh[0] &&
         iDetElemNumber < fgSNDetElemCh[fgNCh])) {
