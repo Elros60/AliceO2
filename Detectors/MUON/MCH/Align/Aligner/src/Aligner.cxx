@@ -24,8 +24,8 @@
 #include <ctime>
 
 #include "MCHAlign/Aligner.h"
-#include "MCHAlign/MillePede2.h"
-#include "MCHAlign/MillePedeRecord.h"
+#include "ForwardAlign/MillePede2.h"
+#include "ForwardAlign/MillePedeRecord.h"
 
 #include "MCHTracking/Track.h"
 #include "MCHTracking/TrackParam.h"
