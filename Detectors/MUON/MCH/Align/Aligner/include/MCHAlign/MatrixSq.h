@@ -10,39 +10,40 @@ namespace mch
 {
 
 /// \class MatrixSq
-class MatrixSq : public TMatrixDBase {
+class MatrixSq : public TMatrixDBase
+{
 
  public:
-  MatrixSq(): fSymmetric(false) {}
-  MatrixSq(const MatrixSq &src);
+  MatrixSq() : fSymmetric(false) {}
+  MatrixSq(const MatrixSq& src);
   ~MatrixSq() override = default;
 
-  MatrixSq& operator=(const MatrixSq &src);
+  MatrixSq& operator=(const MatrixSq& src);
 
   virtual int GetSize() const { return fNcols; }
   virtual float GetDensity() const = 0;
-  
-  void  Clear(Option_t* option="") override = 0;
-  
-  virtual double Query(int rown, int coln) const { return operator()(rown,coln); }
+
+  void Clear(Option_t* option = "") override = 0;
+
+  virtual double Query(int rown, int coln) const { return operator()(rown, coln); }
   double operator()(int rown, int coln) const override = 0;
   double& operator()(int rown, int coln) override = 0;
-  
+
   virtual double QueryDiag(int rc) const { return DiagElem(rc); }
   virtual double DiagElem(int r) const = 0;
   virtual double& DiagElem(int r) = 0;
-  virtual void AddToRow(int r, double *valc,int *indc,int n) = 0;
-  
-  virtual void  Print(Option_t* option="") const override = 0;
-  virtual void  Reset() = 0;
-  virtual void  PrintCOO() const;
-  
-  virtual void  MultiplyByVec(const double* vecIn, double* vecOut) const;
-  virtual void  MultiplyByVec(const TVectorD &vecIn, TVectorD &vecOut) const;
-  
+  virtual void AddToRow(int r, double* valc, int* indc, int n) = 0;
+
+  virtual void Print(Option_t* option = "") const override = 0;
+  virtual void Reset() = 0;
+  virtual void PrintCOO() const;
+
+  virtual void MultiplyByVec(const double* vecIn, double* vecOut) const;
+  virtual void MultiplyByVec(const TVectorD& vecIn, TVectorD& vecOut) const;
+
   bool IsSymmetric() const override { return fSymmetric; }
-  void SetSymmetric(bool v=true) { fSymmetric = v; }
-  
+  void SetSymmetric(bool v = true) { fSymmetric = v; }
+
   // ---------------------------------- Dummy methods of MatrixBase
   const double* GetMatrixArray() const override
   {

@@ -310,7 +310,8 @@ class Aligner : public TObject
 
   void SetAlignmentResolution(const TClonesArray* misAlignArray, int chId, double chResX, double chResY, double deResX, double deResY);
 
-  TTree* GetResTree(){
+  TTree* GetResTree()
+  {
     return fTTree;
   }
 

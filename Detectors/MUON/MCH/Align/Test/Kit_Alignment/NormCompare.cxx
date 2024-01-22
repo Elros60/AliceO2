@@ -421,7 +421,8 @@ void NormCompare(){
 
 
 //_________________________________________________________________________________________________
-int GetDetElemNumber(int iDetElemId) {
+int GetDetElemNumber(int iDetElemId)
+{
   /// get det element number from ID
   // get chamber and element number in chamber
   const int iCh = iDetElemId / 100;
@@ -436,9 +437,9 @@ int GetDetElemNumber(int iDetElemId) {
   return iDet + fgSNDetElemCh[iCh - 1];
 }
 
-
 //_________________________________________________________________________________________________
-int GetDetElemId(int iDetElemNumber) {
+int GetDetElemId(int iDetElemNumber)
+{
   // make sure detector number is valid
   if (!(iDetElemNumber >= fgSNDetElemCh[0] &&
         iDetElemNumber < fgSNDetElemCh[fgNCh])) {
@@ -464,5 +465,3 @@ int GetDetElemId(int iDetElemNumber) {
   // add number of detectors up to this chamber
   return 100 * iCh + iDet;
 }
-
-

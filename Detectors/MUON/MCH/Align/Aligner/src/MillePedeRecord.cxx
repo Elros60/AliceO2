@@ -7,27 +7,27 @@ using namespace o2::mch;
 ClassImp(MillePedeRecord);
 
 //_____________________________________________________________________________________________
-MillePedeRecord::MillePedeRecord() 
-  : fSize(0), 
-    fNGroups(0), 
-    fRunID(0), 
-    fGroupID(nullptr), 
-    fIndex(nullptr), 
-    fValue(nullptr), 
+MillePedeRecord::MillePedeRecord()
+  : fSize(0),
+    fNGroups(0),
+    fRunID(0),
+    fGroupID(nullptr),
+    fIndex(nullptr),
+    fValue(nullptr),
     fWeight(1)
 {
   SetUniqueID(0);
 }
 
 //_____________________________________________________________________________________________
-MillePedeRecord::MillePedeRecord(const MillePedeRecord& src) 
-  : TObject(src), 
-    fSize(src.fSize), 
-    fNGroups(src.fNGroups), 
-    fRunID(src.fRunID), 
-    fGroupID(nullptr), 
-    fIndex(nullptr), 
-    fValue(nullptr), 
+MillePedeRecord::MillePedeRecord(const MillePedeRecord& src)
+  : TObject(src),
+    fSize(src.fSize),
+    fNGroups(src.fNGroups),
+    fRunID(src.fRunID),
+    fGroupID(nullptr),
+    fIndex(nullptr),
+    fValue(nullptr),
     fWeight(src.fWeight)
 {
   // copy ct-r

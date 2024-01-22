@@ -165,12 +165,11 @@ public:
 		}
 
 		doReAlign = ic.options().get<bool>("do-realign");
-		if(doReAlign) {
-			LOG(info) << "Re-alignment mode";
-		}
+    if (doReAlign) {
+      LOG(info) << "Re-alignment mode";
+    }
 
-
-		auto param_config = ic.options().get<string>("fitter-config");
+    auto param_config = ic.options().get<string>("fitter-config");
 		if(param_config == "PbPb"){
 			Reso_X = 0.2;
 			Reso_Y = 0.2;
@@ -236,8 +235,8 @@ public:
   		trackFitter.setChamberResolution(Reso_X, Reso_Y);
   		trackFitter.useChamberResolution();
 
-		mAlign.SetDoEvaluation(true);
-	    // Variation range for parameters
+      mAlign.SetDoEvaluation(true);
+      // Variation range for parameters
 		mAlign.SetAllowedVariation(0, 2.0);
 		mAlign.SetAllowedVariation(1, 0.3);
 		mAlign.SetAllowedVariation(2, 0.002);
@@ -246,10 +245,10 @@ public:
 		// Fix chambers
 		auto chambers = ic.options().get<string>("fix-chamber");
 		for (int i = 0; i < chambers.length(); ++i) {
-			if(chambers[i]==',') {
-				continue;
-			}
-			int chamber = chambers[i] - '0';
+      if (chambers[i] == ',') {
+        continue;
+      }
+      int chamber = chambers[i] - '0';
 			LOG(info) << Form("%s%d","Fixing chamber: ",chamber);
 			mAlign.FixChamber(chamber);
   		}
@@ -259,10 +258,10 @@ public:
 		outFileName = ic.options().get<string>("output");
 		readFromRec = ic.options().get<bool>("use-record");
 
-		if(readFromRec) {
-			LOG(info) << "Reading records as input";
-		}
-		mAlign.init("recDataFile.root", "recConsFile.root", readFromRec);
+    if (readFromRec) {
+      LOG(info) << "Reading records as input";
+    }
+    mAlign.init("recDataFile.root", "recConsFile.root", readFromRec);
 
 		ic.services().get<CallbackService>().set<CallbackService::Id::Stop>([this](){
 			LOG(info) << "Alignment duration = " << mElapsedTime.count() << " s";
@@ -310,20 +309,20 @@ public:
 				iMCHTrack <= mchROF.getLastIdx(); ++iMCHTrack) {
 				tracksAll +=1;
 				// MCH-MID matching
-				if(!FindMuon(iMCHTrack, muonTracks)) {
-					continue;
-				}
-				trackMCHMID += 1;          
+        if (!FindMuon(iMCHTrack, muonTracks)) {
+          continue;
+        }
+        trackMCHMID += 1;          
 
 				auto mchTrack = mchTracks.at(iMCHTrack);
 				int id_track = iMCHTrack;
 				int nb_clusters = mchTrack.getNClusters();
 
 				// Track selection, saving only tracks having exactly 10 clusters
-				if(nb_clusters <= 9) {
-					continue;
-				}
-				tracksGoodwithoutFit += 1;
+        if (nb_clusters <= 9) {
+          continue;
+        }
+        tracksGoodwithoutFit += 1;
 
 				// Format conversion from TrackMCH to Track(MCH internal use)
 				mch::Track convertedTrack = MCHFormatConvert(mchTrack, mchClusters, doReAlign);
@@ -336,9 +335,8 @@ public:
 				}   
 
 				//  Track processing, saving residuals
-				mAlign.ProcessTrack(convertedTrack, transformation, doAlign, weightRecord);
-
-			}
+        mAlign.ProcessTrack(convertedTrack, transformation, doAlign, weightRecord);
+      }
 		}
 	}
 
@@ -358,10 +356,10 @@ public:
 				tracksAll +=1;
 
 				// Track selection, saving only tracks having exactly 10 clusters
-				if(nb_clusters <= 9) {
-					continue;
-				}
-				tracksGoodwithoutFit += 1;
+        if (nb_clusters <= 9) {
+          continue;
+        }
+        tracksGoodwithoutFit += 1;
 
 				// Format conversion from TrackMCH to Track(MCH internal use)
 				Track convertedTrack = MCHFormatConvert(mchTrack, mchClusters, doReAlign);
@@ -374,9 +372,8 @@ public:
 				}   
 
 				//  Track processing, saving residuals
-				mAlign.ProcessTrack(convertedTrack, transformation, doAlign, weightRecord);
-
-			}
+        mAlign.ProcessTrack(convertedTrack, transformation, doAlign, weightRecord);
+      }
 		}
 	}
 
@@ -385,10 +382,10 @@ public:
   	{
   		auto tStart = std::chrono::high_resolution_clock::now();
   		LOG(info) << "Starting alignment process";
-  		if(doMatched) {
-  			LOG(info) << "Using MCH-MID matched tracks";
-  		}
-  		if (mCCDBRequest) {
+      if (doMatched) {
+        LOG(info) << "Using MCH-MID matched tracks";
+      }
+      if (mCCDBRequest) {
 
   			LOG(info) << "Checking CCDB updates with processing context";
 			base::GRPGeomHelper::instance().checkUpdates(pc);
@@ -454,10 +451,10 @@ public:
   		
 
 		// Global fit
-		if(doAlign) {
-			mAlign.GlobalFit(params, errors, pulls);
-		}
-		auto tEnd = std::chrono::high_resolution_clock::now();
+    if (doAlign) {
+      mAlign.GlobalFit(params, errors, pulls);
+    }
+    auto tEnd = std::chrono::high_resolution_clock::now();
 		mElapsedTime = tEnd - tStart;
 		// Evaluation for track removing and selection
 		LOG(info) << Form("%s%d", "Number of good tracks used in alignment process: ",tracksGood);
@@ -483,10 +480,10 @@ public:
 			string Geo_file;
 
 			if(doReAlign){
-				Geo_file = Form("%s%s","o2sim_geometry_ReAlign",".root");
-			}else{
-				Geo_file = Form("%s%s","o2sim_geometry_Align",".root");
-			}
+        Geo_file = Form("%s%s", "o2sim_geometry_ReAlign", ".root");
+      }else{
+        Geo_file = Form("%s%s", "o2sim_geometry_Align", ".root");
+      }
 
 			// Store aligned geometry
 			gGeoManager->Export(Geo_file.c_str());
@@ -637,11 +634,11 @@ private:
 	      }
 	    }
 
-	    if(worstLocalChi2 < maxChi2Cluster) {
-	    	break;
-	    }
+      if (worstLocalChi2 < maxChi2Cluster) {
+        break;
+      }
 
-	    if(!itWorstParam->isRemovable()){
+      if(!itWorstParam->isRemovable()){
 	        removeTrack = true;
 	        track.removable();
 	        break;
@@ -836,15 +833,15 @@ private:
 	    }
 	  }
 
-	  int RefClDetElem;
-	  int RefClDetElemNumber;
-	  float RefClusterX;
-	  float RefClusterY;
-	  float RefTrackX;
-	  float RefTrackY;
-	  float RefTrackSlopeX;
-	  float RefTrackSlopeY;
-	  Res_Tree.SetBranchAddress("fClusterX",&RefClusterX);
+    int RefClDetElem;
+    int RefClDetElemNumber;
+    float RefClusterX;
+    float RefClusterY;
+    float RefTrackX;
+    float RefTrackY;
+    float RefTrackSlopeX;
+    float RefTrackSlopeY;
+    Res_Tree.SetBranchAddress("fClusterX",&RefClusterX);
 	  Res_Tree.SetBranchAddress("fClusterY",&RefClusterY);
 	  Res_Tree.SetBranchAddress("fTrackX",&RefTrackX);
 	  Res_Tree.SetBranchAddress("fTrackY",&RefTrackY);
@@ -870,13 +867,13 @@ private:
 	  TH1F *Histos_DETRes[2][156];
 	  for(int i=0;i<2;i++){
 	    for(int j=0;j<156;j++){
-	      if(i==0) {
-	      	Histos_DETRes[i][j] = new TH1F(Form("%s%d","Hist_x_DET",j+1),Form("%s%d","Hist_x_DET",j+1),200,-5,5);
-	      }
-	      if(i==1) {
-	      	Histos_DETRes[i][j] = new TH1F(Form("%s%d","Hist_y_DET",j+1),Form("%s%d","Hist_y_DET",j+1),200,-5,5);
-	      }
-	    }
+        if (i == 0) {
+          Histos_DETRes[i][j] = new TH1F(Form("%s%d", "Hist_x_DET", j + 1), Form("%s%d", "Hist_x_DET", j + 1), 200, -5, 5);
+        }
+        if (i == 1) {
+          Histos_DETRes[i][j] = new TH1F(Form("%s%d", "Hist_y_DET", j + 1), Form("%s%d", "Hist_y_DET", j + 1), 200, -5, 5);
+        }
+      }
 	  }
 
 	  int Ref_NbEntries = Res_Tree.GetEntries();
@@ -910,13 +907,13 @@ private:
 
 	  for(int i=0;i<2;i++){
 	    for(int j=0;j<11;j++){
-	      if(i==0) {
-	      	PlotFiles->WriteObjectAny(Histos_Res[i][j],"TH1F",Form("%s%d","Residual_X_Ch",j));
-	      }
-	      if(i==1) {
-	      	PlotFiles->WriteObjectAny(Histos_Res[i][j],"TH1F",Form("%s%d","Residual_Y_Ch",j));
-	      }
-	    }
+        if (i == 0) {
+          PlotFiles->WriteObjectAny(Histos_Res[i][j], "TH1F", Form("%s%d", "Residual_X_Ch", j));
+        }
+        if (i == 1) {
+          PlotFiles->WriteObjectAny(Histos_Res[i][j], "TH1F", Form("%s%d", "Residual_Y_Ch", j));
+        }
+      }
 	  }
 
 	  double ResX_mean[156]={};
@@ -1017,24 +1014,26 @@ private:
 	}
 
 	//_________________________________________________________________________________________________
-	int GetDetElemNumber(int iDetElemId) {
-	  /// get det element number from ID
+  int GetDetElemNumber(int iDetElemId)
+  {
+    /// get det element number from ID
 	  // get chamber and element number in chamber
-	  const int iCh = iDetElemId / 100;
-	  const int iDet = iDetElemId % 100;
+    const int iCh = iDetElemId / 100;
+    const int iDet = iDetElemId % 100;
 
-	  // make sure detector index is valid
+    // make sure detector index is valid
 	  if (!(iCh > 0 && iCh <= 10 && iDet < fgNDetElemCh[iCh - 1])) {
 	    LOG(fatal) << "Invalid detector element id: " << iDetElemId;
 	  }
 
 	  // add number of detectors up to this chamber
 	  return iDet + fgSNDetElemCh[iCh - 1];
-	}
+  }
 
-	//_________________________________________________________________________________________________
-	int GetDetElemId(int iDetElemNumber) {
-	  // make sure detector number is valid
+  //_________________________________________________________________________________________________
+  int GetDetElemId(int iDetElemNumber)
+  {
+    // make sure detector number is valid
 	  if (!(iDetElemNumber >= fgSNDetElemCh[0] &&
 	        iDetElemNumber < fgSNDetElemCh[10])) {
 	    LOG(fatal) << "Invalid detector element number: " << iDetElemNumber;
@@ -1058,10 +1057,9 @@ private:
 
 	  // add number of detectors up to this chamber
 	  return 100 * iCh + iDet;
-	}
+  }
 
-
- 	const string mchFileName{"mchtracks.root"};
+  const string mchFileName{"mchtracks.root"};
  	const string muonFileName{"muontracks.root"};
  	string outFileName{"Alignment"};
  	string RefGeoFileName{""};
@@ -1070,9 +1068,9 @@ private:
  	bool doReAlign{false};
  	bool doMatched{false};
  	bool readFromRec{false};
- 	const double weightRecord{1.0};
- 	Aligner mAlign{};
- 	shared_ptr<base::GRPGeomRequest> mCCDBRequest{};
+  const double weightRecord{1.0};
+  Aligner mAlign{};
+  shared_ptr<base::GRPGeomRequest> mCCDBRequest{};
 
  	map<int, math_utils::Transform3D> transformRef{}; // reference geometry w.r.t track data
 	map<int, math_utils::Transform3D> transformNew{}; // new geometry

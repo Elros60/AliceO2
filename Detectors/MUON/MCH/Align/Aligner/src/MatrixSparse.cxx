@@ -8,36 +8,37 @@ ClassImp(MatrixSparse);
 
 //___________________________________________________________
 MatrixSparse::MatrixSparse(int sz)
-    : MatrixSq(), 
-      fVecs(nullptr) 
+  : MatrixSq(),
+    fVecs(nullptr)
 {
 
   // constructor
   fNcols = fNrows = sz;
   //
-  fVecs = new VectorSparse *[sz];
+  fVecs = new VectorSparse*[sz];
   for (int i = GetSize(); i--;) {
     fVecs[i] = new VectorSparse();
   }
 }
 
 //___________________________________________________________
-MatrixSparse::MatrixSparse(const MatrixSparse &src)
- :  MatrixSq(src), 
-    fVecs(nullptr) 
+MatrixSparse::MatrixSparse(const MatrixSparse& src)
+  : MatrixSq(src),
+    fVecs(nullptr)
 {
   // copy c-tor
-  fVecs = new VectorSparse *[src.GetSize()];
+  fVecs = new VectorSparse*[src.GetSize()];
   for (int i = GetSize(); i--;) {
     fVecs[i] = new VectorSparse(*src.GetRow(i));
   }
 }
 
 //___________________________________________________________
-VectorSparse *MatrixSparse::GetRowAdd(int ir) {
+VectorSparse* MatrixSparse::GetRowAdd(int ir)
+{
   // get row, add if needed
   if (ir >= fNrows) {
-    VectorSparse **arrv = new VectorSparse *[ir + 1];
+    VectorSparse** arrv = new VectorSparse*[ir + 1];
     for (int i = GetSize(); i--;) {
       arrv[i] = fVecs[i];
     }
@@ -55,7 +56,8 @@ VectorSparse *MatrixSparse::GetRowAdd(int ir) {
 }
 
 //___________________________________________________________
-MatrixSparse &MatrixSparse::operator=(const MatrixSparse &src) {
+MatrixSparse& MatrixSparse::operator=(const MatrixSparse& src)
+{
   // assignment op-r
   if (this == &src) {
     return *this;
@@ -66,7 +68,7 @@ MatrixSparse &MatrixSparse::operator=(const MatrixSparse &src) {
   fNcols = src.GetNCols();
   fNrows = src.GetNRows();
   SetSymmetric(src.IsSymmetric());
-  fVecs = new VectorSparse *[fNrows];
+  fVecs = new VectorSparse*[fNrows];
   for (int i = fNrows; i--;) {
     fVecs[i] = new VectorSparse(*src.GetRow(i));
   }
@@ -74,7 +76,8 @@ MatrixSparse &MatrixSparse::operator=(const MatrixSparse &src) {
 }
 
 //___________________________________________________________
-void MatrixSparse::Clear(Option_t *) {
+void MatrixSparse::Clear(Option_t*)
+{
   // clear
   for (int i = fNrows; i--;) {
     delete GetRow(i);
@@ -84,12 +87,13 @@ void MatrixSparse::Clear(Option_t *) {
 }
 
 //___________________________________________________________
-void MatrixSparse::Print(Option_t *opt) const {
+void MatrixSparse::Print(Option_t* opt) const
+{
   // print itself
   printf("Sparse Matrix of size %d x %d %s\n", fNrows, fNcols,
          IsSymmetric() ? " (Symmetric)" : "");
   for (int i = 0; i < fNrows; i++) {
-    VectorSparse *row = GetRow(i);
+    VectorSparse* row = GetRow(i);
     if (!row->GetNElems()) {
       continue;
     }
@@ -99,22 +103,23 @@ void MatrixSparse::Print(Option_t *opt) const {
 }
 
 //___________________________________________________________
-void MatrixSparse::MultiplyByVec(const double *vecIn,
-                                 double *vecOut) const {
+void MatrixSparse::MultiplyByVec(const double* vecIn,
+                                 double* vecOut) const
+{
   // fill vecOut by matrix*vecIn
   // vector should be of the same size as the matrix
   //
   memset(vecOut, 0, GetSize() * sizeof(double));
   //
   for (int rw = GetSize(); rw--;) { // loop over rows >>>
-    const VectorSparse *rowV = GetRow(rw);
+    const VectorSparse* rowV = GetRow(rw);
     int nel = rowV->GetNElems();
     if (!nel) {
       continue;
     }
     //
-    unsigned short int *indV = rowV->GetIndices();
-    double *elmV = rowV->GetElems();
+    unsigned short int* indV = rowV->GetIndices();
+    double* elmV = rowV->GetElems();
     //
     if (IsSymmetric()) {
       // treat diagonal term separately. If filled, it should be the last one
@@ -143,7 +148,8 @@ void MatrixSparse::MultiplyByVec(const double *vecIn,
 }
 
 //___________________________________________________________
-void MatrixSparse::SortIndices(bool valuesToo) {
+void MatrixSparse::SortIndices(bool valuesToo)
+{
   // sort columns in increasing order. Used to fix the matrix after ILUk
   // decompostion
   TStopwatch sw;
@@ -157,7 +163,8 @@ void MatrixSparse::SortIndices(bool valuesToo) {
 }
 
 //___________________________________________________________
-void MatrixSparse::AddToRow(int r, double *valc, int *indc, int n) {
+void MatrixSparse::AddToRow(int r, double* valc, int* indc, int n)
+{
   // for sym. matrix count how many elems to add have row>=col and assign
   // excplicitly those which have row<col
   //
@@ -189,18 +196,19 @@ void MatrixSparse::AddToRow(int r, double *valc, int *indc, int n) {
   if (ni < 0) {
     return;
   }
-  VectorSparse *row = GetRowAdd(r);
+  VectorSparse* row = GetRowAdd(r);
   row->Add(valc, indc, ni + 1);
 }
 
 //___________________________________________________________
-float MatrixSparse::GetDensity() const {
+float MatrixSparse::GetDensity() const
+{
   // get fraction of non-zero elements
   int nel = 0;
   for (int i = GetSize(); i--;) {
     nel += GetRow(i)->GetNElems();
   }
   int den =
-      IsSymmetric() ? (GetSize() + 1) * GetSize() / 2 : GetSize() * GetSize();
+    IsSymmetric() ? (GetSize() + 1) * GetSize() / 2 : GetSize() * GetSize();
   return float(nel) / den;
 }

@@ -6,73 +6,73 @@
 
 namespace o2
 {
-namespace mch  
+namespace mch
 {
 
 /// \class MatrixSparse
-class MatrixSparse : public MatrixSq 
+class MatrixSparse : public MatrixSq
 {
  public:
   MatrixSparse() = default;
 
   MatrixSparse(int size);
 
-  MatrixSparse(const MatrixSparse &mat);
+  MatrixSparse(const MatrixSparse& mat);
 
   ~MatrixSparse() override { Clear(); }
-  
-  VectorSparse* GetRow(int ir) const {return (ir < fNcols) ? fVecs[ir] : nullptr;}
+
+  VectorSparse* GetRow(int ir) const { return (ir < fNcols) ? fVecs[ir] : nullptr; }
   VectorSparse* GetRowAdd(int ir);
-  
+
   int GetSize() const override { return fNrows; }
   virtual int GetNRows() const { return fNrows; }
   virtual int GetNCols() const { return fNcols; }
-  
-  void Clear(Option_t* option="") override;
-  void Reset() override                  
+
+  void Clear(Option_t* option = "") override;
+  void Reset() override
   {
     for (int i = fNcols; i--;) {
       GetRow(i)->Reset();
     }
   }
-  void Print(Option_t* option="") const override;
+  void Print(Option_t* option = "") const override;
   MatrixSparse& operator=(const MatrixSparse& src);
-  double& operator()(int row,int col) override; 
-  double operator()(int row,int col) const override;
-  void SetToZero(int row,int col);
+  double& operator()(int row, int col) override;
+  double operator()(int row, int col) const override;
+  void SetToZero(int row, int col);
 
   float GetDensity() const override;
-  
+
   double DiagElem(int r) const override;
   double& DiagElem(int r) override;
 
-  void SortIndices(bool valuesToo=false);
+  void SortIndices(bool valuesToo = false);
 
-  void MultiplyByVec(const TVectorD &vecIn, TVectorD &vecOut) const override; 
-  
+  void MultiplyByVec(const TVectorD& vecIn, TVectorD& vecOut) const override;
+
   void MultiplyByVec(const double* vecIn, double* vecOut) const override;
-  
-  void AddToRow(int r, double *valc,int *indc,int n) override;
+
+  void AddToRow(int r, double* valc, int* indc, int n) override;
 
  protected:
   VectorSparse** fVecs = nullptr;
 
-  ClassDefOverride(MatrixSparse,0)
+  ClassDefOverride(MatrixSparse, 0)
 };
 
 //___________________________________________________
-inline void MatrixSparse::MultiplyByVec(const TVectorD &vecIn, TVectorD &vecOut) const 
+inline void MatrixSparse::MultiplyByVec(const TVectorD& vecIn, TVectorD& vecOut) const
 {
   // multiplication
-  MultiplyByVec((double*)vecIn.GetMatrixArray(),(double*)vecOut.GetMatrixArray());
+  MultiplyByVec((double*)vecIn.GetMatrixArray(), (double*)vecOut.GetMatrixArray());
 }
 
 //___________________________________________________
-inline void MatrixSparse::SetToZero(int row,int col)
+inline void MatrixSparse::SetToZero(int row, int col)
 {
   //  set existing element to 0
-  if (IsSymmetric() && col>row) {
-    Swap(row,col);
+  if (IsSymmetric() && col > row) {
+    Swap(row, col);
   }
 
   VectorSparse* rowv = GetRow(row);
@@ -83,10 +83,10 @@ inline void MatrixSparse::SetToZero(int row,int col)
 }
 
 //___________________________________________________
-inline double MatrixSparse::operator()(int row,int col) const
+inline double MatrixSparse::operator()(int row, int col) const
 {
-  if (IsSymmetric() && col>row) {
-    Swap(row,col);
+  if (IsSymmetric() && col > row) {
+    Swap(row, col);
   }
 
   VectorSparse* rowv = GetRow(row);
@@ -98,16 +98,16 @@ inline double MatrixSparse::operator()(int row,int col) const
 }
 
 //___________________________________________________
-inline double& MatrixSparse::operator()(int row,int col)
+inline double& MatrixSparse::operator()(int row, int col)
 {
-  if (IsSymmetric() && col>row) {
-    Swap(row,col); 
+  if (IsSymmetric() && col > row) {
+    Swap(row, col);
   }
 
   VectorSparse* rowv = GetRowAdd(row);
 
-  if (col>=fNcols) {
-    fNcols = col+1;
+  if (col >= fNcols) {
+    fNcols = col + 1;
   }
   return rowv->FindIndexAdd(col);
 }
@@ -121,22 +121,22 @@ inline double MatrixSparse::DiagElem(int row) const
     return 0;
   }
   if (IsSymmetric()) {
-    return (rowv->GetNElems()>0 && rowv->GetLastIndex()==row) ? rowv->GetLastElem() : 0.;
+    return (rowv->GetNElems() > 0 && rowv->GetLastIndex() == row) ? rowv->GetLastElem() : 0.;
   } else {
     return rowv->FindIndex(row);
   }
 }
 
 //___________________________________________________
-inline double &MatrixSparse::DiagElem(int row)
+inline double& MatrixSparse::DiagElem(int row)
 {
   // get diag elem
   VectorSparse* rowv = GetRowAdd(row);
-  if (row>=fNcols) {
-    fNcols = row+1;
+  if (row >= fNcols) {
+    fNcols = row + 1;
   }
   if (IsSymmetric()) {
-    return (rowv->GetNElems()>0 && rowv->GetLastIndex()==row) ? rowv->GetLastElem() : rowv->FindIndexAdd(row);
+    return (rowv->GetNElems() > 0 && rowv->GetLastIndex() == row) ? rowv->GetLastElem() : rowv->FindIndexAdd(row);
   } else {
     return rowv->FindIndexAdd(row);
   }
@@ -146,4 +146,3 @@ inline double &MatrixSparse::DiagElem(int row)
 } // namespace o2
 
 #endif
-

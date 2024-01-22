@@ -254,7 +254,7 @@ void Aligner::init(std::string DataRecFName, std::string ConsRecFName, bool read
   // setup monitoring TFile
   if (fDoEvaluation) {
     // if (fDoEvaluation && fRefitStraightTracks) {
-    string Path_file = Form("%s%s","Residual",".root");
+    string Path_file = Form("%s%s", "Residual", ".root");
 
     fTFile = new TFile(Path_file.c_str(), "RECREATE");
     fTTree = new TTree("TreeE", "Evaluation");
@@ -292,7 +292,6 @@ void Aligner::init(std::string DataRecFName, std::string ConsRecFName, bool read
     fTTree->Branch("fBx", &(fTrkClRes->fBx), "fBx/F");
     fTTree->Branch("fBy", &(fTrkClRes->fBy), "fBy/F");
     fTTree->Branch("fBz", &(fTrkClRes->fBz), "fBz/F");
-
   }
 }
 
@@ -440,31 +439,31 @@ MillePedeRecord* Aligner::ProcessTrack(Track& track, const o2::mch::geo::Transfo
       fTrkClRes->fClusterX = fClustPos[0];
       fTrkClRes->fClusterY = fClustPos[1];
       fTrkClRes->fClusterZ = fClustPos[2];
-    
-      //fTrkClRes->fTrackX = fTrackPos0[0] + fTrackSlope0[0] * (fTrackPos[2] - fTrackPos0[2]); // fTrackPos[0];
-      //fTrkClRes->fTrackY = fTrackPos0[1] + fTrackSlope0[1] * (fTrackPos[2] - fTrackPos0[2]); // fTrackPos[1];
-      //fTrkClRes->fTrackSlopeX = fTrackSlope0[0];
-      //fTrkClRes->fTrackSlopeY = fTrackSlope0[1];
+
+      // fTrkClRes->fTrackX = fTrackPos0[0] + fTrackSlope0[0] * (fTrackPos[2] - fTrackPos0[2]); // fTrackPos[0];
+      // fTrkClRes->fTrackY = fTrackPos0[1] + fTrackSlope0[1] * (fTrackPos[2] - fTrackPos0[2]); // fTrackPos[1];
+      // fTrkClRes->fTrackSlopeX = fTrackSlope0[0];
+      // fTrkClRes->fTrackSlopeY = fTrackSlope0[1];
 
       fTrkClRes->fTrackX = fTrackPos[0];
       fTrkClRes->fTrackY = fTrackPos[1];
       fTrkClRes->fTrackZ = fTrackPos[2];
 
-      fTrkClRes->fClusterXloc = r[0]*fClustPos[0] + r[1]*fClustPos[1];
-      fTrkClRes->fClusterYloc = r[3]*fClustPos[0] + r[4]*fClustPos[1];
+      fTrkClRes->fClusterXloc = r[0] * fClustPos[0] + r[1] * fClustPos[1];
+      fTrkClRes->fClusterYloc = r[3] * fClustPos[0] + r[4] * fClustPos[1];
 
-      fTrkClRes->fTrackXloc = r[0]*fTrackPos[0] + r[1]*fTrackPos[1];
-      fTrkClRes->fTrackYloc = r[3]*fTrackPos[0] + r[4]*fTrackPos[1];
+      fTrkClRes->fTrackXloc = r[0] * fTrackPos[0] + r[1] * fTrackPos[1];
+      fTrkClRes->fTrackYloc = r[3] * fTrackPos[0] + r[4] * fTrackPos[1];
 
       fTrkClRes->fTrackSlopeX = fTrackSlope[0];
       fTrkClRes->fTrackSlopeY = fTrackSlope[1];
 
-      fTrkClRes->fBendingMomentum = TrackCharge/InvBendingMom;
+      fTrkClRes->fBendingMomentum = TrackCharge / InvBendingMom;
 
       fTrkClRes->fResiduXGlobal = fClustPos[0] - fTrackPos[0];
       fTrkClRes->fResiduYGlobal = fClustPos[1] - fTrackPos[1];
-      fTrkClRes->fResiduXLocal = r[0]*(fClustPos[0] - fTrackPos[0]) + r[1]*(fClustPos[1] - fTrackPos[1]);
-      fTrkClRes->fResiduYLocal = r[3]*(fClustPos[0] - fTrackPos[0]) + r[4]*(fClustPos[1] - fTrackPos[1]);
+      fTrkClRes->fResiduXLocal = r[0] * (fClustPos[0] - fTrackPos[0]) + r[1] * (fClustPos[1] - fTrackPos[1]);
+      fTrkClRes->fResiduYLocal = r[3] * (fClustPos[0] - fTrackPos[0]) + r[4] * (fClustPos[1] - fTrackPos[1]);
 
       fTrkClRes->fCharge = TrackCharge;
 
@@ -1348,11 +1347,10 @@ void Aligner::ReAlign(
           LOG(error) << "Problem extracting angles for " << sname.c_str();
         }
 
-
         lAP.setGlobalParams(localDeltaTransform);
         lAP.applyToGeometry();
         params.emplace_back(lAP);
-        
+
       } else {
 
         // "invalid" detector elements come from MTR and are left unchanged
@@ -1412,7 +1410,6 @@ void Aligner::SetAlignmentResolution(const TClonesArray* misAlignArray, int rChI
             (volName.Length() == volName.Index(chName2) + chName2.Length())))) {
 
         volName.Remove(0, volName.Last('/') + 1);
-
       }
     }
   }
@@ -1529,11 +1526,11 @@ void Aligner::LocalEquationX(const double* r)
   // local derivatives
   SetLocalDerivative(0, r[0]);
   SetLocalDerivative(1, r[0] * (fTrackPos[2] - fTrackPos0[2]));
-  //SetLocalDerivative(1, -r[0] * fTrackPos[2]);
+  // SetLocalDerivative(1, -r[0] * fTrackPos[2]);
 
   SetLocalDerivative(2, r[1]);
   SetLocalDerivative(3, r[1] * (fTrackPos[2] - fTrackPos0[2]));
-  //SetLocalDerivative(3, -r[1] * fTrackPos[2]);
+  // SetLocalDerivative(3, -r[1] * fTrackPos[2]);
 
   // global derivatives
   /*
@@ -1584,11 +1581,11 @@ void Aligner::LocalEquationY(const double* r)
   // store local derivatives
   SetLocalDerivative(0, r[3]);
   SetLocalDerivative(1, r[3] * (fTrackPos[2] - fTrackPos0[2]));
-  //SetLocalDerivative(1, -r[3] * fTrackPos[2]);
+  // SetLocalDerivative(1, -r[3] * fTrackPos[2]);
 
   SetLocalDerivative(2, r[4]);
   SetLocalDerivative(3, r[4] * (fTrackPos[2] - fTrackPos0[2]));
-  //SetLocalDerivative(3, -r[4] * fTrackPos[2]);
+  // SetLocalDerivative(3, -r[4] * fTrackPos[2]);
 
   // set global derivatives
   SetGlobalDerivative(fDetElemNumber * fgNParCh + 0, -r[3]);

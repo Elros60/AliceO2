@@ -156,22 +156,20 @@ void drawHisto(double *params, double *errors, double *pulls, TTree &Res_Tree, s
 int GetDetElemNumber(int iDetElemId);
 int GetDetElemId(int iDetElemNumber);
 
-
 // Load gSystem->Load("libO2MCHMappingImpl4"); in ROOT before compile the marco.
 
 //_________________________________________________________________________________________________
 void mchAlignment(std::string prefix, std::string mchFileName,
-                     std::string muonFileName = "", std::string recDataFileName = "",
-                     std::string recConsFileName = "",
-                     std::string outFileName = "Alignment",
-                     std::string RefGeoFileName = "",
-                     std::string NewGeoFileName = "",
-                     bool doAlign = false,
-                     bool doReAlign = false,
-                     std::string param_config = "pp",
-                     double weightRecord = 1) {
-
-
+                  std::string muonFileName = "", std::string recDataFileName = "",
+                  std::string recConsFileName = "",
+                  std::string outFileName = "Alignment",
+                  std::string RefGeoFileName = "",
+                  std::string NewGeoFileName = "",
+                  bool doAlign = false,
+                  bool doReAlign = false,
+                  std::string param_config = "pp",
+                  double weightRecord = 1)
+{
 
   // prefix defines the path for geometry file
 
@@ -322,14 +320,12 @@ void mchAlignment(std::string prefix, std::string mchFileName,
 
   test_align->SetDoEvaluation(true);
 
-
   // Fix chambers
-  const int chambers[] = {5,10,0};
+  const int chambers[] = {5, 10, 0};
   for (int i = 0; chambers[i] > 0; ++i) {
     std::cout << "Fixing chamber " << chambers[i] << std::endl;
     test_align->FixChamber(chambers[i]);
   }
-
 
   // Variation range for parameters
   test_align->SetAllowedVariation(0, 2.0);
@@ -520,10 +516,7 @@ void mchAlignment(std::string prefix, std::string mchFileName,
   test_align->terminate();
   LOG(info) << "Alignment finished";
   LOG(info) << "Test done!";
-
 }
-
-
 
 //_________________________________________________________________________________________________
 mch::Track MCHFormatConvert(mch::TrackMCH &mchTrack,
@@ -1587,7 +1580,8 @@ void WriteHistos(TFile *f, const char *dirName,
 }
 
 //_________________________________________________________________________________________________
-int GetDetElemNumber(int iDetElemId) {
+int GetDetElemNumber(int iDetElemId)
+{
   /// get det element number from ID
   // get chamber and element number in chamber
   const int iCh = iDetElemId / 100;
@@ -1603,7 +1597,8 @@ int GetDetElemNumber(int iDetElemId) {
 }
 
 //_________________________________________________________________________________________________
-int GetDetElemId(int iDetElemNumber) {
+int GetDetElemId(int iDetElemNumber)
+{
   // make sure detector number is valid
   if (!(iDetElemNumber >= fgSNDetElemCh[0] &&
         iDetElemNumber < fgSNDetElemCh[fgNCh])) {
