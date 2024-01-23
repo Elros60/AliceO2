@@ -20,8 +20,8 @@
 #include <string>
 #include <vector>
 
-#include "MCHAlign/MillePede2.h"
-#include "MCHAlign/MillePedeRecord.h"
+#include "ForwardAlign/MillePede2.h"
+#include "ForwardAlign/MillePedeRecord.h"
 #include "TGeoManager.h"
 
 #include "MCHGeometryCreator/Geometry.h"
@@ -188,9 +188,9 @@ class Aligner : public TObject
     AllSides = SideTop | SideBottom | SideLeft | SideRight
   };
 
-  MillePedeRecord* ProcessTrack(Track& track, const o2::mch::geo::TransformationCreator& transformation, bool doAlignment, double weight = 1);
+  o2::fwdalign::MillePedeRecord* ProcessTrack(Track& track, const o2::mch::geo::TransformationCreator& transformation, Bool_t doAlignment, Double_t weight = 1);
 
-  void ProcessTrack(MillePedeRecord*);
+  void ProcessTrack(o2::fwdalign::MillePedeRecord*);
 
   //@name modifiers
   //@{
@@ -298,7 +298,7 @@ class Aligner : public TObject
   void InitGlobalParameters(double* par);
 
   /// perform global fit
-  void GlobalFit(double* parameters, double* errors, double* pulls);
+  void GlobalFit(std::vector<double>& params, std::vector<double>& errors, std::vector<double>& pulls);
 
   /// print global parameters
   void PrintGlobalParameters(void) const;
@@ -306,7 +306,7 @@ class Aligner : public TObject
   /// get error on a given parameter
   double GetParError(int iPar) const;
 
-  void ReAlign(std::vector<o2::detectors::AlignParam>& params, const double* misAlignments);
+  void ReAlign(std::vector<o2::detectors::AlignParam>& params, std::vector<double>& misAlignments);
 
   void SetAlignmentResolution(const TClonesArray* misAlignArray, int chId, double chResX, double chResY, double deResX, double deResY);
 
@@ -393,7 +393,7 @@ class Aligner : public TObject
   double fResCut;
 
   /// Detector independent alignment class
-  MillePede2* fMillepede;
+  o2::fwdalign::MillePede2* fMillepede; // AliMillePede2 implementation
 
   /// MCH cluster class
   o2::mch::Cluster* fCluster;
@@ -431,19 +431,19 @@ class Aligner : public TObject
 
   /// Array of effective degrees of freedom
   /// it is used to fix detectors, parameters, etc.
-  int fGlobalParameterStatus[fNGlobal];
+  std::vector<int> fGlobalParameterStatus;
 
   /// Array of global derivatives
-  double fGlobalDerivatives[fNGlobal];
+  std::vector<double> fGlobalDerivatives;
 
   /// Array of local derivatives
-  double fLocalDerivatives[fNLocal];
+  std::vector<double> fLocalDerivatives;
 
   /// current detection element number
   int fDetElemNumber;
 
   /// running Track record
-  MillePedeRecord fTrackRecord;
+  o2::fwdalign::MillePedeRecord fTrackRecord;
 
   /// Geometry transformation
   o2::mch::geo::TransformationCreator fTransformCreator;
@@ -463,7 +463,12 @@ class Aligner : public TObject
   /// output TTree
   TTree* fTTree;
 
-}; // class Aligner
+  long mNEntriesAutoSave = 10000;                         ///< number of entries needed to call AutoSave for the output TTrees
+  o2::fwdalign::MilleRecordWriter* mRecordWriter;         ///< utility that handles the writing of the data records to a ROOT file
+  bool mWithConstraintsRecWriter;                         ///< boolean to be set to true if one wants to also write constaints records
+  o2::fwdalign::MilleRecordWriter* mConstraintsRecWriter; ///< utility that handles the writing of the constraints records
+
+}; // class Alignment
 
 } // namespace mch
 } // namespace o2

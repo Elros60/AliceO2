@@ -139,7 +139,14 @@ Aligner::Aligner()
     fCluster(0L),
     fNStdDev(3),
     fDetElemNumber(0),
+    fGlobalParameterStatus(std::vector<int>(fNGlobal)),
+    fGlobalDerivatives(std::vector<double>(fNGlobal)),
+    fLocalDerivatives(std::vector<double>(fNLocal)),
     fTrackRecord(),
+    mNEntriesAutoSave(10000),
+    mRecordWriter(new o2::fwdalign::MilleRecordWriter()),
+    mWithConstraintsRecWriter(false),
+    mConstraintsRecWriter(nullptr),
     fTransformCreator(),
     // fGeoCombiTransInverse(),
     fDoEvaluation(false),
@@ -160,7 +167,7 @@ Aligner::Aligner()
   fAllowVar[3] = 5;    // z
 
   // initialize millepede
-  fMillepede = new MillePede2();
+  fMillepede = new o2::fwdalign::MillePede2();
 
   // initialize degrees of freedom
   // by default all parameters are free
@@ -190,6 +197,16 @@ void Aligner::init(std::string DataRecFName, std::string ConsRecFName, bool read
   */
   if (fInitialized) {
     LOG(fatal) << "Millepede already initialized";
+  }
+
+  mRecordWriter->setCyclicAutoSave(mNEntriesAutoSave);
+  mRecordWriter->setDataFileName(DataRecFName);
+  fMillepede->SetRecordWriter(mRecordWriter);
+
+  if (mWithConstraintsRecWriter) {
+    mConstraintsRecWriter->setCyclicAutoSave(mNEntriesAutoSave);
+    mConstraintsRecWriter->setDataFileName(ConsRecFName);
+    fMillepede->SetConstraintsRecWriter(mConstraintsRecWriter);
   }
 
   // assign proper groupID to free parameters
@@ -229,9 +246,7 @@ void Aligner::init(std::string DataRecFName, std::string ConsRecFName, bool read
 
   // initialize millepedes
   fMillepede->InitMille(fNGlobal, fNLocal, fNStdDev, fResCut, fResCutInitial, fGlobalParameterStatus);
-  fMillepede->SetDataRecFName(DataRecFName);
-  fMillepede->SetConsRecFName(ConsRecFName);
-  fMillepede->InitDataRecStorage(read);
+  mRecordWriter->init();
 
   fInitialized = true;
 
@@ -298,8 +313,8 @@ void Aligner::init(std::string DataRecFName, std::string ConsRecFName, bool read
 //_____________________________________________________
 void Aligner::terminate(void)
 {
-  fMillepede->CloseDataRecStorage();
-  fInitialized = false;
+  mRecordWriter->terminate();
+  fInitialized = kFALSE;
   LOG(info) << "Closing Evaluation TFile";
   if (fTFile && fTTree) {
     fTFile->cd();
@@ -309,7 +324,7 @@ void Aligner::terminate(void)
 }
 
 //_____________________________________________________
-MillePedeRecord* Aligner::ProcessTrack(Track& track, const o2::mch::geo::TransformationCreator& transformation, bool doAlignment, double weight)
+o2::fwdalign::MillePedeRecord* Aligner::ProcessTrack(Track& track, const o2::mch::geo::TransformationCreator& transformation, bool doAlignment, double weight)
 {
 
   /// process track for alignment minimization
@@ -481,14 +496,13 @@ MillePedeRecord* Aligner::ProcessTrack(Track& track, const o2::mch::geo::Transfo
   }
 
   // copy track record
-  fMillepede->SetRecordRun(fRunNumber);
-  fMillepede->SetRecordWeight(weight);
+  mRecordWriter->setRecordRun(fRunNumber);
+  mRecordWriter->setRecordWeight(weight);
   fTrackRecord = *fMillepede->GetRecord();
 
   // save record data
   if (doAlignment) {
-    fMillepede->SaveRecordData();
-    // fMillepede->CloseDataRecStorage();
+    mRecordWriter->fillRecordTree();
   }
 
   // return record
@@ -496,7 +510,7 @@ MillePedeRecord* Aligner::ProcessTrack(Track& track, const o2::mch::geo::Transfo
 }
 
 //______________________________________________________________________________
-void Aligner::ProcessTrack(MillePedeRecord* trackRecord)
+void Aligner::ProcessTrack(o2::fwdalign::MillePedeRecord* trackRecord)
 {
   LOG(fatal) << __PRETTY_FUNCTION__ << " is disabled";
 
@@ -507,15 +521,15 @@ void Aligner::ProcessTrack(MillePedeRecord* trackRecord)
 
   // // make sure record storage is initialized
   if (!fMillepede->GetRecord()) {
-    fMillepede->InitDataRecStorage(false);
+    mRecordWriter->init();
   }
   // // copy content
   *fMillepede->GetRecord() = *trackRecord;
 
   // save record
-  fMillepede->SaveRecordData();
+  mRecordWriter->fillRecordTree();
   // write to local file
-  fMillepede->CloseDataRecStorage();
+  // mRecordWriter->terminate();
 
   return;
 }
@@ -1257,7 +1271,7 @@ void Aligner::SetSigmaXY(double sigmaX, double sigmaY)
 }
 
 //_____________________________________________________
-void Aligner::GlobalFit(double* parameters, double* errors, double* pulls)
+void Aligner::GlobalFit(std::vector<double>& parameters, std::vector<double>& errors, std::vector<double>& pulls)
 {
   /// Call global fit; Global parameters are stored in parameters
   fMillepede->GlobalFit(parameters, errors, pulls);
@@ -1283,7 +1297,7 @@ double Aligner::GetParError(int iPar) const
 //______________________________________________________________________
 void Aligner::ReAlign(
   std::vector<o2::detectors::AlignParam>& params,
-  const double* misAlignments)
+  std::vector<double>& misAlignments)
 {
 
   /// Returns a new AliMUONGeometryTransformer with the found misalignments
@@ -1657,7 +1671,12 @@ void Aligner::AddConstraint(double* par, double value)
     LOG(fatal) << "Millepede is not initialized";
   }
 
-  fMillepede->SetGlobalConstraint(par, value);
+  std::vector<double> vpar(fNGlobal);
+  for (int i = 0; i < fNGlobal; i++) {
+    vpar[i] = par[i];
+  }
+
+  fMillepede->SetGlobalConstraint(vpar, value);
 }
 
 //______________________________________________________________________

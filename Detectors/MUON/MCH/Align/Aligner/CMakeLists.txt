@@ -11,7 +11,7 @@
 
 o2_add_library(MCHAlign
 	SOURCES
-	  src/Alignment.cxx
+	  src/Aligner.cxx
 		src/AlignmentSpec.cxx			           
 	PUBLIC_LINK_LIBRARIES
 	  O2::MathUtils 
@@ -33,7 +33,7 @@ o2_add_library(MCHAlign
 
 o2_target_root_dictionary(MCHAlign
   HEADERS 
-  	include/MCHAlign/Alignment.h
+  	include/MCHAlign/Aligner.h
 	  include/MCHAlign/AlignmentSpec.h)
 
 o2_add_executable(
