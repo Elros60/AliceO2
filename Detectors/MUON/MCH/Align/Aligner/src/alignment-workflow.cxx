@@ -10,7 +10,7 @@
 // or submit itself to any jurisdiction.
 
 /// \file alignment-workflow.cxx
-/// \brief Implementation of a DPL device to perform alignment for muon spectrometer 
+/// \brief Implementation of a DPL device to perform alignment for muon spectrometer
 /// \author Chi ZHANG(CEA-Saclay)
 
 #include "MCHAlign/AlignmentSpec.h"
@@ -31,7 +31,6 @@
 #include "Framework/Logger.h"
 #include "Headers/STFHeader.h"
 #include "DetectorsRaw/HBFUtils.h"
-
 
 using namespace o2::framework;
 using namespace std;
@@ -62,7 +61,7 @@ class SeederTask : public Task
   }
 };
 
-}
+} // namespace o2::mch
 
 o2::framework::DataProcessorSpec getSeederSpec()
 {
@@ -73,7 +72,6 @@ o2::framework::DataProcessorSpec getSeederSpec()
     AlgorithmSpec{o2::framework::adaptFromTask<o2::mch::SeederTask>()},
     Options{}};
 }
-
 
 // we need to add workflow options before including Framework/runDataProcessing
 void customize(vector<ConfigParamSpec>& workflowOptions)

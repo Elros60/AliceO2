@@ -13,7 +13,6 @@
 /// \brief General class (from AliROOT) for solving large system of linear equations
 /// \author ruben.shahoyan@cern.ch
 
-
 #ifndef ALICEO2_MCH_MINRESSOLVE_H
 #define ALICEO2_MCH_MINRESSOLVE_H
 
