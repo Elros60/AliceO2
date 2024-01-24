@@ -114,7 +114,7 @@ class Aligner : public TObject
   ~Aligner() = default;
 
   // initialize
-  void init(std::string DataRecFName, std::string ConsRecFName, bool read);
+  void init(TString DataRecFName = "recDataFile.root", TString ConsRecFName = "recConsFile.root");
 
   // terminate
   void terminate(void);
@@ -315,6 +315,11 @@ class Aligner : public TObject
     return fTTree;
   }
 
+  void SetReadOnly()
+  {
+    mRead = true;
+  }
+
  private:
   /// Not implemented
   Aligner(const Aligner& right);
@@ -463,10 +468,18 @@ class Aligner : public TObject
   /// output TTree
   TTree* fTTree;
 
+  /// Option switch for read/write mode
+  bool mRead;
+
   long mNEntriesAutoSave = 10000;                         ///< number of entries needed to call AutoSave for the output TTrees
+  
   o2::fwdalign::MilleRecordWriter* mRecordWriter;         ///< utility that handles the writing of the data records to a ROOT file
   bool mWithConstraintsRecWriter;                         ///< boolean to be set to true if one wants to also write constaints records
   o2::fwdalign::MilleRecordWriter* mConstraintsRecWriter; ///< utility that handles the writing of the constraints records
+
+  o2::fwdalign::MilleRecordReader* mRecordReader;         ///< utility that handles the reading of the data records from a ROOT file
+  bool mWithConstraintsRecReader = false;                         ///< boolean to be set to true if one wants to also read constaints records
+  o2::fwdalign::MilleRecordReader* mConstraintsRecReader; ///< utility that handles the reading of the constraints records
 
 }; // class Alignment
 

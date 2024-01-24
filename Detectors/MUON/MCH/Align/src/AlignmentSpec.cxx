@@ -260,9 +260,10 @@ class AlignmentTask
     readFromRec = ic.options().get<bool>("use-record");
 
     if (readFromRec) {
+      mAlign.SetReadOnly();
       LOG(info) << "Reading records as input";
     }
-    mAlign.init("recDataFile.root", "recConsFile.root", readFromRec);
+    mAlign.init();
 
     ic.services().get<CallbackService>().set<CallbackService::Id::Stop>([this]() {
       LOG(info) << "Alignment duration = " << mElapsedTime.count() << " s";

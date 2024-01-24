@@ -65,6 +65,9 @@ class MilleRecordReader
   /// \brief return the number of entries
   Long64_t getNEntries() const { return mNEntries; }
 
+  /// \brief return the name of record data tree
+  TString getDataTreeName() const { return mDataTreeName; }
+
  protected:
   TChain* mDataTree;                      ///< TChain container that stores the records
   bool mIsSuccessfulInit;                 ///< boolean to monitor the success of the initialization

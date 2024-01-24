@@ -46,6 +46,7 @@
 #include <TObject.h>
 #include <TGeoManager.h>
 #include <TGeoGlobalMagField.h>
+#include <TString.h>
 
 namespace o2
 {
@@ -147,9 +148,13 @@ Aligner::Aligner()
     mRecordWriter(new o2::fwdalign::MilleRecordWriter()),
     mWithConstraintsRecWriter(false),
     mConstraintsRecWriter(nullptr),
+    mRecordReader(new o2::fwdalign::MilleRecordReader()),
+    mWithConstraintsRecReader(false),
+    mConstraintsRecReader(nullptr),
     fTransformCreator(),
     // fGeoCombiTransInverse(),
     fDoEvaluation(false),
+    mRead(false),
     fTrackParamOrig(0),
     fTrackParamNew(0),
     fTrkClRes(0),
@@ -186,7 +191,7 @@ Aligner::Aligner()
 }
 
 //_____________________________________________________________________
-void Aligner::init(std::string DataRecFName, std::string ConsRecFName, bool read)
+void Aligner::init(TString DataRecFName, TString ConsRecFName)
 {
 
   /// initialize
@@ -199,15 +204,50 @@ void Aligner::init(std::string DataRecFName, std::string ConsRecFName, bool read
     LOG(fatal) << "Millepede already initialized";
   }
 
-  mRecordWriter->setCyclicAutoSave(mNEntriesAutoSave);
-  mRecordWriter->setDataFileName(DataRecFName);
-  fMillepede->SetRecordWriter(mRecordWriter);
+  if(!mRead){
 
-  if (mWithConstraintsRecWriter) {
-    mConstraintsRecWriter->setCyclicAutoSave(mNEntriesAutoSave);
-    mConstraintsRecWriter->setDataFileName(ConsRecFName);
-    fMillepede->SetConstraintsRecWriter(mConstraintsRecWriter);
+    mRecordWriter->setCyclicAutoSave(mNEntriesAutoSave);
+    mRecordWriter->setDataFileName(DataRecFName);
+    fMillepede->SetRecordWriter(mRecordWriter);
+
+    if (mWithConstraintsRecWriter) {
+      mConstraintsRecWriter->setCyclicAutoSave(mNEntriesAutoSave);
+      mConstraintsRecWriter->setDataFileName(ConsRecFName);
+      fMillepede->SetConstraintsRecWriter(mConstraintsRecWriter);
+    }
+
+  } else {
+
+    TChain* ch = new TChain(mRecordReader->getDataTreeName());
+    if (DataRecFName.EndsWith(".root")) {
+      ch->AddFile(DataRecFName);
+    }
+    int nent = ch->GetEntries();
+
+    if(nent < 1) {
+      LOG(fatal) << "Obtained chain is empty, please check your record ROOT file.";
+    }
+
+    mRecordReader->connectToChain(ch);
+    fMillepede->SetRecordReader(mRecordReader);
+
+    if (mConstraintsRecReader) {
+
+      TChain* ch_cons = new TChain(mConstraintsRecReader->getDataTreeName());
+      if (ConsRecFName.EndsWith(".root")) {
+        ch_cons->AddFile(ConsRecFName);
+      }
+      int nent_cons = ch_cons->GetEntries();
+
+      if(nent_cons < 1) {
+        LOG(fatal) << "Obtained chain is empty, please check your record ROOT file.";
+      }
+
+      mConstraintsRecReader->connectToChain(ch_cons);
+      fMillepede->SetConstraintsRecReader(mConstraintsRecReader);
+    }
   }
+
 
   // assign proper groupID to free parameters
   int nGlobal = 0;
@@ -246,7 +286,10 @@ void Aligner::init(std::string DataRecFName, std::string ConsRecFName, bool read
 
   // initialize millepedes
   fMillepede->InitMille(fNGlobal, fNLocal, fNStdDev, fResCut, fResCutInitial, fGlobalParameterStatus);
-  mRecordWriter->init();
+  
+  if(!mRead){
+    mRecordWriter->init();
+  }
 
   fInitialized = true;
 
@@ -312,7 +355,7 @@ void Aligner::init(std::string DataRecFName, std::string ConsRecFName, bool read
 
 //_____________________________________________________
 void Aligner::terminate(void)
-{
+{ 
   mRecordWriter->terminate();
   fInitialized = kFALSE;
   LOG(info) << "Closing Evaluation TFile";

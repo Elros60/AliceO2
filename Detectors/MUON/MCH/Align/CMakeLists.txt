@@ -9,8 +9,41 @@
 # granted to it by virtue of its status as an Intergovernmental Organization
 # or submit itself to any jurisdiction.
 
-add_subdirectory(Aligner)
-if (BUILD_TESTING)
-add_subdirectory(Test)
-endif()
+o2_add_library(MCHAlign
+	SOURCES
+	  src/Aligner.cxx
+		src/AlignmentSpec.cxx			           
+	PUBLIC_LINK_LIBRARIES
+	  O2::MathUtils 
+		O2::CCDB 
+		O2::DataFormatsMCH
+		O2::ForwardAlign
+		O2::MCHTracking
+		O2::MCHGeometryTransformer
+		O2::MCHGeometryCreator
+		O2::MCHGeometryTest
+		O2::CommonUtils
+		O2::DataFormatsParameters
+		O2::DetectorsBase
+		O2::Framework
+		O2::DetectorsRaw
+		O2::Headers
+		O2::ReconstructionDataFormats
+		O2::DetectorsCommonDataFormats)
+
+o2_target_root_dictionary(MCHAlign
+  HEADERS 
+  	include/MCHAlign/Aligner.h
+	  include/MCHAlign/AlignmentSpec.h)
+
+o2_add_executable(
+				alignment-workflow
+				SOURCES src/alignment-workflow.cxx
+				COMPONENT_NAME mch
+				PUBLIC_LINK_LIBRARIES
+					O2::ForwardAlign
+				  O2::MCHAlign
+					Boost::program_options)
+
+
 
