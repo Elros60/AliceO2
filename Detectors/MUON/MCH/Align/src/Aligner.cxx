@@ -23,29 +23,24 @@
 #include <iostream>
 #include <ctime>
 
-#include "MCHAlign/Aligner.h"
+#include "DataFormatsMCH/Cluster.h"
+#include "DetectorsCommonDataFormats/AlignParam.h"
 #include "ForwardAlign/MillePede2.h"
 #include "ForwardAlign/MillePedeRecord.h"
-
+#include "Framework/Logger.h"
+#include "MCHAlign/Aligner.h"
 #include "MCHTracking/Track.h"
 #include "MCHTracking/TrackParam.h"
-#include "DataFormatsMCH/Cluster.h"
-
-#include "MCHGeometryCreator/Geometry.h"
-#include "MCHGeometryTest/Helpers.h"
 #include "MCHGeometryTransformer/Transformations.h"
 
-#include "DetectorsCommonDataFormats/AlignParam.h"
-#include "Framework/Logger.h"
-
-#include <TMath.h>
-#include <TMatrixDSym.h>
-#include <TMatrixD.h>
 #include <TClonesArray.h>
-#include <TGraphErrors.h>
-#include <TObject.h>
 #include <TGeoManager.h>
 #include <TGeoGlobalMagField.h>
+#include <TGraphErrors.h>
+#include <TMath.h>
+#include <TMatrixD.h>
+#include <TMatrixDSym.h>
+#include <TObject.h>
 #include <TString.h>
 
 namespace o2
@@ -204,7 +199,7 @@ void Aligner::init(TString DataRecFName, TString ConsRecFName)
     LOG(fatal) << "Millepede already initialized";
   }
 
-  if(!mRead){
+  if (!mRead) {
 
     mRecordWriter->setCyclicAutoSave(mNEntriesAutoSave);
     mRecordWriter->setDataFileName(DataRecFName);
@@ -224,7 +219,7 @@ void Aligner::init(TString DataRecFName, TString ConsRecFName)
     }
     int nent = ch->GetEntries();
 
-    if(nent < 1) {
+    if (nent < 1) {
       LOG(fatal) << "Obtained chain is empty, please check your record ROOT file.";
     }
 
@@ -239,7 +234,7 @@ void Aligner::init(TString DataRecFName, TString ConsRecFName)
       }
       int nent_cons = ch_cons->GetEntries();
 
-      if(nent_cons < 1) {
+      if (nent_cons < 1) {
         LOG(fatal) << "Obtained chain is empty, please check your record ROOT file.";
       }
 
@@ -247,7 +242,6 @@ void Aligner::init(TString DataRecFName, TString ConsRecFName)
       fMillepede->SetConstraintsRecReader(mConstraintsRecReader);
     }
   }
-
 
   // assign proper groupID to free parameters
   int nGlobal = 0;
@@ -286,8 +280,8 @@ void Aligner::init(TString DataRecFName, TString ConsRecFName)
 
   // initialize millepedes
   fMillepede->InitMille(fNGlobal, fNLocal, fNStdDev, fResCut, fResCutInitial, fGlobalParameterStatus);
-  
-  if(!mRead){
+
+  if (!mRead) {
     mRecordWriter->init();
   }
 
@@ -355,7 +349,7 @@ void Aligner::init(TString DataRecFName, TString ConsRecFName)
 
 //_____________________________________________________
 void Aligner::terminate(void)
-{ 
+{
   mRecordWriter->terminate();
   fInitialized = kFALSE;
   LOG(info) << "Closing Evaluation TFile";

@@ -22,24 +22,24 @@
 #include <vector>
 #include <chrono>
 #include <iostream>
+
 #include <TCanvas.h>
+#include <TChain.h>
 #include <TDatabasePDG.h>
 #include <TF1.h>
 #include <TFile.h>
+#include <TGraph.h>
+#include <TGraphErrors.h>
+#include <TGeoMatrix.h>
 #include <TH1F.h>
 #include <TH2F.h>
 #include <TLegend.h>
+#include <TLine.h>
 #include <TMatrixD.h>
 #include <TSystem.h>
 #include <TTree.h>
 #include <TTreeReader.h>
 #include <TTreeReaderValue.h>
-#include <TChain.h>
-#include <TGraph.h>
-#include <TGraphErrors.h>
-#include <TLine.h>
-#include <TSystem.h>
-#include <TGeoMatrix.h>
 
 #include "Framework/CallbackService.h"
 #include "Framework/ConcreteDataMatcher.h"
@@ -56,28 +56,24 @@
 #include "CCDB/CCDBTimeStampUtils.h"
 #include "CommonUtils/NameConf.h"
 #include "CommonUtils/ConfigurableParam.h"
-#include "DetectorsBase/GRPGeomHelper.h"
 #include "DataFormatsMCH/Cluster.h"
-#include "DataFormatsMCH/Digit.h"
 #include "DataFormatsMCH/ROFRecord.h"
 #include "DataFormatsMCH/TrackMCH.h"
 #include "DataFormatsParameters/GRPObject.h"
 #include "DetectorsBase/GeometryManager.h"
+#include "DetectorsBase/GRPGeomHelper.h"
 #include "DetectorsBase/Propagator.h"
-#include "MCHGeometryTransformer/Transformations.h"
-#include "MCHTracking/TrackExtrap.h"
-#include "MCHTracking/TrackParam.h"
-#include "ReconstructionDataFormats/TrackMCHMID.h"
-#include "DataFormatsMCH/Cluster.h"
-#include "MCHAlign/Aligner.h"
-#include "MCHTracking/Track.h"
-#include "MCHTracking/TrackExtrap.h"
-#include "MCHTracking/TrackParam.h"
-#include "MCHTracking/TrackFitter.h"
 #include "DetectorsCommonDataFormats/AlignParam.h"
 #include "DetectorsCommonDataFormats/DetID.h"
 #include "DetectorsCommonDataFormats/DetectorNameConf.h"
 #include "MathUtils/Cartesian.h"
+#include "MCHAlign/Aligner.h"
+#include "MCHGeometryTransformer/Transformations.h"
+#include "MCHTracking/Track.h"
+#include "MCHTracking/TrackExtrap.h"
+#include "MCHTracking/TrackParam.h"
+#include "MCHTracking/TrackFitter.h"
+#include "ReconstructionDataFormats/TrackMCHMID.h"
 
 namespace o2
 {
