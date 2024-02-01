@@ -20,8 +20,6 @@ o2_add_library(MCHAlign
 		O2::ForwardAlign
 		O2::MCHTracking
 		O2::MCHGeometryTransformer
-		O2::MCHGeometryCreator
-		O2::MCHGeometryTest
 		O2::CommonUtils
 		O2::DataFormatsParameters
 		O2::DetectorsBase

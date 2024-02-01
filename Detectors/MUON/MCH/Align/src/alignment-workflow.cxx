@@ -16,11 +16,11 @@
 
 #include "MCHAlign/AlignmentSpec.h"
 
-#include "CommonUtils/ConfigurableParam.h"
-#include "Headers/STFHeader.h"
-#include "DetectorsRaw/HBFUtils.h"
 #include "CCDB/BasicCCDBManager.h"
 #include "CCDB/CCDBTimeStampUtils.h"
+#include "CommonUtils/ConfigurableParam.h"
+#include "DetectorsRaw/HBFUtils.h"
+#include "Headers/STFHeader.h"
 #include "Framework/CallbackService.h"
 #include "Framework/ConcreteDataMatcher.h"
 #include "Framework/ConfigParamRegistry.h"
@@ -30,8 +30,6 @@
 #include "Framework/Output.h"
 #include "Framework/Task.h"
 #include "Framework/Logger.h"
-#include "Headers/STFHeader.h"
-#include "DetectorsRaw/HBFUtils.h"
 
 using namespace o2::framework;
 using namespace std;

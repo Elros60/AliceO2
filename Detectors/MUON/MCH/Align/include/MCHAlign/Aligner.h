@@ -20,19 +20,15 @@
 #include <string>
 #include <vector>
 
-#include "ForwardAlign/MillePede2.h"
-#include "ForwardAlign/MillePedeRecord.h"
-#include "TGeoManager.h"
-
-#include "MCHGeometryCreator/Geometry.h"
-#include "MCHGeometryTest/Helpers.h"
-#include "MCHGeometryTransformer/Transformations.h"
-
-#include "MCHTracking/Track.h"
 #include "DataFormatsMCH/Cluster.h"
 #include "DetectorsCommonDataFormats/AlignParam.h"
+#include "ForwardAlign/MillePede2.h"
+#include "ForwardAlign/MillePedeRecord.h"
+#include "MCHGeometryTransformer/Transformations.h"
+#include "MCHTracking/Track.h"
 
 #include <TFile.h>
+#include <TGeoManager.h>
 #include <TGeoMatrix.h>
 #include <TObject.h>
 #include <TString.h>
@@ -471,14 +467,14 @@ class Aligner : public TObject
   /// Option switch for read/write mode
   bool mRead;
 
-  long mNEntriesAutoSave = 10000;                         ///< number of entries needed to call AutoSave for the output TTrees
-  
+  long mNEntriesAutoSave = 10000; ///< number of entries needed to call AutoSave for the output TTrees
+
   o2::fwdalign::MilleRecordWriter* mRecordWriter;         ///< utility that handles the writing of the data records to a ROOT file
   bool mWithConstraintsRecWriter;                         ///< boolean to be set to true if one wants to also write constaints records
   o2::fwdalign::MilleRecordWriter* mConstraintsRecWriter; ///< utility that handles the writing of the constraints records
 
   o2::fwdalign::MilleRecordReader* mRecordReader;         ///< utility that handles the reading of the data records from a ROOT file
-  bool mWithConstraintsRecReader = false;                         ///< boolean to be set to true if one wants to also read constaints records
+  bool mWithConstraintsRecReader = false;                 ///< boolean to be set to true if one wants to also read constaints records
   o2::fwdalign::MilleRecordReader* mConstraintsRecReader; ///< utility that handles the reading of the constraints records
 
 }; // class Alignment
