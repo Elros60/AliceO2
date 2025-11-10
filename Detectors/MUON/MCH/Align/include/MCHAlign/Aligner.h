@@ -331,6 +331,11 @@ class Aligner : public TObject
     fDisableRecordWriter = true;
   }
 
+  void SetLocalMode()
+  {
+    fLocalMode = true;
+  }
+
  private:
   /// Not implemented
   Aligner(const Aligner& right);
@@ -466,6 +471,9 @@ class Aligner : public TObject
 
   /// disable record saving
   bool fDisableRecordWriter;
+
+  /// Flag for local or global mode of derivatives (global model by default)
+  bool fLocalMode;
 
   LocalTrackClusterResidual* fTrkClRes;
 

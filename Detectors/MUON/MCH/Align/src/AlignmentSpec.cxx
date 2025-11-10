@@ -162,6 +162,11 @@ class AlignmentTask
       LOG(info) << "No alignment mode, only residuals will be stored";
     }
 
+    doLocal = ic.options().get<bool>("do-local");
+    if (doLocal) {
+      mAlign.SetLocalMode();
+    }
+
     doReAlign = ic.options().get<bool>("do-realign");
 
     if (mCCDBRequest) {
@@ -987,6 +992,7 @@ class AlignmentTask
   bool doAlign{false};
   bool doReAlign{false};
   bool doMatched{false};
+  bool doLocal{false};
   bool readFromRec{false};
   const double weightRecord{1.0};
   Aligner mAlign{};
@@ -1035,6 +1041,7 @@ o2::framework::DataProcessorSpec getAlignmentSpec(bool disableCCDB)
             {"do-record", VariantType::Bool, false, {"Switch for storing records"}},
             {"do-evaluation", VariantType::Bool, false, {"Option for saving residuals for evaluation"}},
             {"do-realign", VariantType::Bool, false, {"Switch for re-alignment using another geometry"}},
+            {"do-local", VariantType::Bool, false, {"Switch for local mode of derivatives"}},
             {"matched", VariantType::Bool, false, {"Switch for using MCH-MID matched tracks"}},
             {"fix-chamber", VariantType::String, "", {"Chamber fixing, ex 1,2,3"}},
             {"use-record", VariantType::Bool, false, {"Option for directly using record in alignment if provided"}},
