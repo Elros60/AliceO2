@@ -150,6 +150,7 @@ Aligner::Aligner()
     fDoEvaluation(false),
     fDisableRecordWriter(false),
     fLocalMode(false),
+    fMeasRes(false),
     mRead(false),
     fTrkClRes(nullptr),
     fTFile(nullptr),
@@ -484,12 +485,12 @@ void Aligner::ProcessTrack(Track& track, const o2::mch::geo::TransformationCreat
     r[9] = transMat(0, 3);
     r[10] = transMat(1, 3);
     r[11] = transMat(2, 3);
-    // for (size_t i = 0; i < 9; i++) {
-    //   r[i] = q[i];
-    // }
-    // for (size_t i = 0; i < 3; i++) {
-    //   r[9 + i] = t[i];
-    // }
+
+    const double a = r[2] * (r[9] + fTrackSlope0[0] * fTrackPos0[2] - fTrackPos0[0]) + r[5] * (r[10] + fTrackSlope0[1] * fTrackPos0[2] - fTrackPos0[1]) + r[8] * r[11];
+    const double b = r[8] + r[2] * fTrackSlope0[0] + r[5] * fTrackSlope0[1];
+    const double z_new = a / b;
+    const double trackPosX = fTrackPos0[0] + fTrackSlope0[0] * (z_new - fTrackPos0[2]);
+    const double trackPosY = fTrackPos0[1] + fTrackSlope0[1] * (z_new - fTrackPos0[2]);
 
     // calculate measurements
     if (fBFieldOn) {
@@ -506,8 +507,17 @@ void Aligner::ProcessTrack(Track& track, const o2::mch::geo::TransformationCreat
       // fMeas[1] = (r[3] * fClustPos[0] + r[4] * fClustPos[1]);
       // fMeas[0] = r[0] * (fClustPos[0] - fTrackPos[0]) + r[1] * (fClustPos[1] - fTrackPos[1]);
       // fMeas[1] = r[3] * (fClustPos[0] - fTrackPos[0]) + r[4] * (fClustPos[1] - fTrackPos[1]);
-      fMeas[0] = r[0] * (fClustPos[0] - fTrackPos[0]) + r[3] * (fClustPos[1] - fTrackPos[1]);
-      fMeas[1] = r[1] * (fClustPos[0] - fTrackPos[0]) + r[4] * (fClustPos[1] - fTrackPos[1]);
+      if (fMeasRes) {
+        // fMeas[0] = r[0] * (fClustPos[0] - fTrackPos[0]) + r[3] * (fClustPos[1] - fTrackPos[1]);
+        // fMeas[1] = r[1] * (fClustPos[0] - fTrackPos[0]) + r[4] * (fClustPos[1] - fTrackPos[1]);
+        // fMeas[0] = r[0] * (fClustPos[0] - trackPosX) + r[3] * (fClustPos[1] - trackPosY) + r[6] * (fClustPos[2] - z_new);
+        // fMeas[1] = r[1] * (fClustPos[0] - trackPosX) + r[4] * (fClustPos[1] - trackPosY) + r[7] * (fClustPos[2] - z_new);
+        fMeas[0] = r[0] * (fClustPos[0] - fTrackPos[0]) + r[3] * (fClustPos[1] - fTrackPos[1]) + r[6] * (fClustPos[2] - fTrackPos[2]);
+        fMeas[1] = r[1] * (fClustPos[0] - fTrackPos[0]) + r[4] * (fClustPos[1] - fTrackPos[1]) + r[7] * (fClustPos[2] - fTrackPos[2]);
+      } else {
+        fMeas[0] = r[0] * fClustPos[0] + r[3] * fClustPos[1];
+        fMeas[1] = r[1] * fClustPos[0] + r[4] * fClustPos[1];
+      }
     }
     // printf("DE %d, X: %f %f (%f); Y: %f %f (%f); Z: %f\n", cluster->getDEId(), fClustPos[0], fTrackPos[0], fMeas[0], fClustPos[1], fTrackPos[1], fMeas[0], fClustPos[2]);
 
@@ -1653,17 +1663,22 @@ void Aligner::LocalEquationX(const double* r)
 
   // 'inverse' (GlobalToLocal) rotation matrix
   // const double* r(fGeoCombiTransInverse.GetRotationMatrix());
+  const double a = r[2] * (r[9] + fTrackSlope0[0] * fTrackPos0[2] - fTrackPos0[0]) + r[5] * (r[10] + fTrackSlope0[1] * fTrackPos0[2] - fTrackPos0[1]) + r[8] * r[11];
+  const double b = r[8] + r[2] * fTrackSlope0[0] + r[5] * fTrackSlope0[1];
+  const double z_new = a / b;
+  const double trackPosX = fTrackPos0[0] + fTrackSlope0[0] * (z_new - fTrackPos0[2]);
+  const double trackPosY = fTrackPos0[1] + fTrackSlope0[1] * (z_new - fTrackPos0[2]);
 
   // local derivatives
-  SetLocalDerivative(0, r[0]);
-  SetLocalDerivative(1, r[0] * (fTrackPos[2] - fTrackPos0[2]));
+  SetLocalDerivative(0, r[0] - (r[0] * fTrackSlope0[0] + r[3] * fTrackSlope0[1] + r[6]) * r[2] / b);
+  SetLocalDerivative(1, r[0] * (r[2] * (r[9] - fTrackPos0[0]) + r[5] * (r[10] - fTrackPos0[1]) + r[8] * (r[11] - fTrackPos0[2])) / b + (r[0] * fTrackSlope0[0] + r[3] * fTrackSlope0[1] + r[6]) * (b * r[2] * fTrackPos0[2] - a * r[2]));
   // SetLocalDerivative(1, -r[0] * fTrackPos[2]);
 
   // SetLocalDerivative(2, r[1]);
   // SetLocalDerivative(3, r[1] * (fTrackPos[2] - fTrackPos0[2]));
   // SetLocalDerivative(3, -r[1] * fTrackPos[2]);
-  SetLocalDerivative(2, r[3]);
-  SetLocalDerivative(3, r[3] * (fTrackPos[2] - fTrackPos0[2]));
+  SetLocalDerivative(2, r[3] - (r[0] * fTrackSlope0[0] + r[3] * fTrackSlope0[1] + r[6]) * r[5] / b);
+  SetLocalDerivative(3, r[3] * (r[2] * (r[9] - fTrackPos0[0]) + r[5] * (r[10] - fTrackPos0[1]) + r[8] * (r[11] - fTrackPos0[2])) / b + (r[0] * fTrackSlope0[0] + r[3] * fTrackSlope0[1] + r[6]) * (b * r[5] * fTrackPos0[2] - a * r[5]));
 
   // global derivatives
   /*
@@ -1680,8 +1695,8 @@ void Aligner::LocalEquationX(const double* r)
     SetGlobalDerivative(fDetElemNumber * fgNParCh + 0, -1);
     SetGlobalDerivative(fDetElemNumber * fgNParCh + 1, 0);
   } else {
-    SetGlobalDerivative(fDetElemNumber * fgNParCh + 0, -r[0]);
-    SetGlobalDerivative(fDetElemNumber * fgNParCh + 1, -r[3]);
+    SetGlobalDerivative(fDetElemNumber * fgNParCh + 0, -r[0] + (r[0] * fTrackSlope0[0] + r[3] * fTrackSlope0[1] + r[6]) * r[2] / b);
+    SetGlobalDerivative(fDetElemNumber * fgNParCh + 1, -r[3] + (r[0] * fTrackSlope0[0] + r[3] * fTrackSlope0[1] + r[6]) * r[5] / b);
   }
 
   if (fBFieldOn) {
@@ -1696,28 +1711,30 @@ void Aligner::LocalEquationX(const double* r)
   } else {
 
     // local copy of extrapolated track positions
-    const double trackPosX = fTrackPos0[0] + fTrackSlope0[0] * (fTrackPos[2] - fTrackPos0[2]);
-    const double trackPosY = fTrackPos0[1] + fTrackSlope0[1] * (fTrackPos[2] - fTrackPos0[2]);
+    // const double trackPosX = fTrackPos0[0] + fTrackSlope0[0] * (fTrackPos[2] - fTrackPos0[2]);
+    // const double trackPosY = fTrackPos0[1] + fTrackSlope0[1] * (fTrackPos[2] - fTrackPos0[2]);
 
     // use properly extrapolated position for derivatives vs 'delta_phi_z'
     // SetGlobalDerivative(fDetElemNumber * fgNParCh + 2, -r[1] * trackPosX + r[0] * trackPosY);
     // local delta with z
     // SetGlobalDerivative(fDetElemNumber * fgNParCh + 2, r[3] * (trackPosX - r[9]) + r[4] * (trackPosY - r[10]));
-    SetGlobalDerivative(fDetElemNumber * fgNParCh + 2, -r[3] * fTrackPos[0] + r[0] * fTrackPos[1]);
+    SetGlobalDerivative(fDetElemNumber * fgNParCh + 2, r[0] * trackPosY - r[3] * trackPosX + (r[0] * fTrackSlope0[0] + r[3] * fTrackSlope0[1] + r[6]) * (b * (r[2] * (fTrackSlope0[1] * fTrackPos0[2] - fTrackPos0[1]) + r[5] * (fTrackPos0[0] - fTrackSlope0[0] * fTrackPos0[2])) - a * (fTrackSlope0[1] * r[2] - fTrackSlope0[0] * r[5])) / pow(b, 2));
 
     // use slopes at origin for derivatives vs 'delta_z'
     // SetGlobalDerivative(fDetElemNumber * fgNParCh + 3, -r[2]);
     // SetGlobalDerivative(fDetElemNumber * fgNParCh + 3, r[0] * fTrackSlope0[0]);
     // local delta with z
     // SetGlobalDerivative(fDetElemNumber * fgNParCh + 3, (r[0] * fTrackSlope0[0] + r[2]) / r[8]);
-    SetGlobalDerivative(fDetElemNumber * fgNParCh + 3, -r[6]);
+    // SetGlobalDerivative(fDetElemNumber * fgNParCh + 3, -r[6]);
+    SetGlobalDerivative(fDetElemNumber * fgNParCh + 3, -r[6] + (r[0] * fTrackSlope0[0] + r[3] * fTrackSlope0[1] + r[6]) * r[8] / b);
 
     // straight calculation with global delta
     // SetGlobalDerivative(fDetElemNumber * fgNParCh + 4, -r[0] * trackPosY + r[1] * fTrackPos[2]);
     // SetGlobalDerivative(fDetElemNumber * fgNParCh + 4, r[0] * fTrackSlope0[0] * trackPosY + r[1] * fTrackPos[2]);
     // local delta with z
     // SetGlobalDerivative(fDetElemNumber * fgNParCh + 4, ((r[0] * fTrackSlope0[0] + r[2]) * r[4] * (trackPosY - r[10])) / r[8]);
-    SetGlobalDerivative(fDetElemNumber * fgNParCh + 4, -r[6] * fTrackPos[1] + r[3] * fTrackPos[2]);
+    SetGlobalDerivative(fDetElemNumber * fgNParCh + 4, r[3] * a / b - r[6] * trackPosY +
+                                                         (r[0] * fTrackSlope0[0] + r[3] * fTrackSlope0[1] + r[6]) * (b * r[8] * (fTrackPos0[1] - fTrackSlope0[1] * fTrackPos0[2]) - a * (r[5] - r[8] * fTrackSlope0[1])) / pow(b, 2));
 
     // straight calculation with global delta
     // SetGlobalDerivative(fDetElemNumber * fgNParCh + 5, r[2] * trackPosX - r[0] * fTrackPos[2]);
@@ -1726,7 +1743,9 @@ void Aligner::LocalEquationX(const double* r)
     //                                                     (r[0] * r[7] * (trackPosY - r[10])) / r[8]));
     // local delta with z
     // SetGlobalDerivative(fDetElemNumber * fgNParCh + 5, ((-r[0] * fTrackSlope0[0] - r[2]) * r[0] * (trackPosX - r[9])) / r[8]);
-    SetGlobalDerivative(fDetElemNumber * fgNParCh + 5, r[6] * fTrackPos[0] - r[0] * fTrackPos[2]);
+    SetGlobalDerivative(fDetElemNumber * fgNParCh + 5, -r[0] * a / b + r[6] * trackPosX +
+                                                         (r[0] * fTrackSlope0[0] + r[3] * fTrackSlope0[1] + r[6]) * (b * r[8] * (fTrackSlope0[0] * fTrackPos0[2] - fTrackPos0[0]) - a * (r[8] * fTrackSlope0[0] - r[2])) / pow(b, 2));
+    // SetGlobalDerivative(fDetElemNumber * fgNParCh + 5, r[6] * trackPosX - r[0] * fTrackPos[2]);
   }
 
   // store local equation
@@ -1741,27 +1760,39 @@ void Aligner::LocalEquationY(const double* r)
 
   // 'inverse' (GlobalToLocal) rotation matrix
   // const double* r(fGeoCombiTransInverse.GetRotationMatrix());
+  const double a = r[2] * (r[9] + fTrackSlope0[0] * fTrackPos0[2] - fTrackPos0[0]) + r[5] * (r[10] + fTrackSlope0[1] * fTrackPos0[2] - fTrackPos0[1]) + r[8] * r[11];
+  const double b = r[8] + r[2] * fTrackSlope0[0] + r[5] * fTrackSlope0[1];
+  const double z_new = a / b;
+  const double trackPosX = fTrackPos0[0] + fTrackSlope0[0] * (z_new - fTrackPos0[2]);
+  const double trackPosY = fTrackPos0[1] + fTrackSlope0[1] * (z_new - fTrackPos0[2]);
 
   // store local derivatives
   // SetLocalDerivative(0, r[3]);
   // SetLocalDerivative(1, r[3] * (fTrackPos[2] - fTrackPos0[2]));
   // SetLocalDerivative(1, -r[3] * fTrackPos[2]);
-  SetLocalDerivative(0, r[1]);
-  SetLocalDerivative(1, r[1] * (fTrackPos[2] - fTrackPos0[2]));
+  SetLocalDerivative(0, r[1] - (r[1] * fTrackSlope0[0] + r[4] * fTrackSlope0[1] + r[7]) * r[2] / b);
+  SetLocalDerivative(1, r[1] * (r[2] * (r[9] - fTrackPos0[0]) + r[5] * (r[10] - fTrackPos0[1]) + r[8] * (r[11] - fTrackPos0[2])) / b + (r[1] * fTrackSlope0[0] + r[4] * fTrackSlope0[1] + r[7]) * (b * r[2] * fTrackPos0[2] - a * r[2]));
 
-  SetLocalDerivative(2, r[4]);
-  SetLocalDerivative(3, r[4] * (fTrackPos[2] - fTrackPos0[2]));
+  SetLocalDerivative(2, r[4] - (r[1] * fTrackSlope0[0] + r[4] * fTrackSlope0[1] + r[7]) * r[5] / b);
+  SetLocalDerivative(3, r[4] * (r[2] * (r[9] - fTrackPos0[0]) + r[5] * (r[10] - fTrackPos0[1]) + r[8] * (r[11] - fTrackPos0[2])) / b + (r[1] * fTrackSlope0[0] + r[4] * fTrackSlope0[1] + r[7]) * (b * r[5] * fTrackPos0[2] - a * r[5]));
   // SetLocalDerivative(3, -r[4] * fTrackPos[2]);
 
   // set global derivatives
   // SetGlobalDerivative(fDetElemNumber * fgNParCh + 0, -r[3]);
   // local delta with z
   // SetGlobalDerivative(fDetElemNumber * fgNParCh + 0, 0);
-  SetGlobalDerivative(fDetElemNumber * fgNParCh + 0, -r[1]);
+  // SetGlobalDerivative(fDetElemNumber * fgNParCh + 0, -r[1]);
   // local delta with z
   // SetGlobalDerivative(fDetElemNumber * fgNParCh + 1, -r[4]);
   // SetGlobalDerivative(fDetElemNumber * fgNParCh + 1, -1);
-  SetGlobalDerivative(fDetElemNumber * fgNParCh + 1, -r[4]);
+  // SetGlobalDerivative(fDetElemNumber * fgNParCh + 1, -r[4]);
+  if (fLocalMode) {
+    SetGlobalDerivative(fDetElemNumber * fgNParCh + 0, 0);
+    SetGlobalDerivative(fDetElemNumber * fgNParCh + 1, -1);
+  } else {
+    SetGlobalDerivative(fDetElemNumber * fgNParCh + 0, -r[1] + (r[1] * fTrackSlope0[0] + r[4] * fTrackSlope0[1] + r[7]) * r[2] / b);
+    SetGlobalDerivative(fDetElemNumber * fgNParCh + 1, -r[4] + (r[1] * fTrackSlope0[0] + r[4] * fTrackSlope0[1] + r[7]) * r[5] / b);
+  }
 
   if (fBFieldOn) {
     // use local position for derivatives vs 'delta_phi'
@@ -1771,21 +1802,23 @@ void Aligner::LocalEquationY(const double* r)
     SetGlobalDerivative(fDetElemNumber * fgNParCh + 3, r[3] * fTrackSlope[0] + r[4] * fTrackSlope[1]);
   } else {
     // local copy of extrapolated track positions
-    const double trackPosX = fTrackPos0[0] + fTrackSlope0[0] * (fTrackPos[2] - fTrackPos0[2]);
-    const double trackPosY = fTrackPos0[1] + fTrackSlope0[1] * (fTrackPos[2] - fTrackPos0[2]);
+    // const double trackPosX = fTrackPos0[0] + fTrackSlope0[0] * (fTrackPos[2] - fTrackPos0[2]);
+    // const double trackPosY = fTrackPos0[1] + fTrackSlope0[1] * (fTrackPos[2] - fTrackPos0[2]);
 
     // use properly extrapolated position for derivatives vs 'delta_phi'
     // SetGlobalDerivative(fDetElemNumber * fgNParCh + 2, -r[4] * trackPosX + r[3] * trackPosY);
     // local delta with z
     // SetGlobalDerivative(fDetElemNumber * fgNParCh + 2, -r[0] * (trackPosX - r[9]) - r[1] * (trackPosY - r[10]));
-    SetGlobalDerivative(fDetElemNumber * fgNParCh + 2, -r[4] * fTrackPos[0] + r[1] * fTrackPos[1]);
+    SetGlobalDerivative(fDetElemNumber * fgNParCh + 2, r[1] * trackPosY - r[4] * trackPosX +
+                                                         (r[1] * fTrackSlope0[0] + r[4] * fTrackSlope0[1] + r[7]) * (b * (r[2] * (fTrackSlope0[1] * fTrackPos0[2] - fTrackPos0[1]) + r[5] * (fTrackPos0[0] - fTrackSlope0[0] * fTrackPos0[2])) - a * (fTrackSlope0[1] * r[2] - fTrackSlope0[0] * r[5])) / pow(b, 2));
 
     // use slopes at origin for derivatives vs 'delta_z'
     // SetGlobalDerivative(fDetElemNumber * fgNParCh + 3, -r[5]);
     // SetGlobalDerivative(fDetElemNumber * fgNParCh + 3, r[4] * fTrackSlope0[1]);
     // local delta with z
     // SetGlobalDerivative(fDetElemNumber * fgNParCh + 3, (r[4] * fTrackSlope0[1] + r[5]) / r[8]);
-    SetGlobalDerivative(fDetElemNumber * fgNParCh + 3, -r[7]);
+    // SetGlobalDerivative(fDetElemNumber * fgNParCh + 3, -r[7]);
+    SetGlobalDerivative(fDetElemNumber * fgNParCh + 3, -r[7] + (r[1] * fTrackSlope0[0] + r[4] * fTrackSlope0[1] + r[7]) * r[8] / b);
 
     // // delta_psi
     // SetGlobalDerivative(fDetElemNumber * fgNParCh + 4, -r[5] * trackPosY + r[4] * fTrackPos[2]);
@@ -1794,14 +1827,18 @@ void Aligner::LocalEquationY(const double* r)
     //                                                     (-r[4] * r[7] * (trackPosY - r[10])) / r[8]));
     // local delta with z
     // SetGlobalDerivative(fDetElemNumber * fgNParCh + 4, ((r[4] * fTrackSlope0[1] + r[5]) * r[4] * (trackPosY - r[10])) / r[8]);
-    SetGlobalDerivative(fDetElemNumber * fgNParCh + 4, -r[7] * fTrackPos[1] + r[4] * fTrackPos[2]);
+    SetGlobalDerivative(fDetElemNumber * fgNParCh + 4, r[4] * a / b - r[7] * trackPosY +
+                                                         (r[1] * fTrackSlope0[0] + r[4] * fTrackSlope0[1] + r[7]) * (b * r[8] * (fTrackPos0[1] - fTrackSlope0[1] * fTrackPos0[2]) - a * (r[5] - r[8] * fTrackSlope0[1])) / pow(b, 2));
+    // SetGlobalDerivative(fDetElemNumber * fgNParCh + 4, -r[7] * trackPosY + r[4] * fTrackPos[2]);
 
     // // delta_theta
     // SetGlobalDerivative(fDetElemNumber * fgNParCh + 5, r[5] * trackPosX - r[3] * fTrackPos[2]);
     // SetGlobalDerivative(fDetElemNumber * fgNParCh + 5, -r[4] * fTrackSlope0[1] * trackPosX - r[3] * fTrackPos[2]);
     // local delta with z
     // SetGlobalDerivative(fDetElemNumber * fgNParCh + 5, ((-r[4] * fTrackSlope0[1] - r[5]) * r[0] * (trackPosX - r[9])) / r[8]);
-    SetGlobalDerivative(fDetElemNumber * fgNParCh + 5, r[7] * fTrackPos[0] - r[1] * fTrackPos[2]);
+    SetGlobalDerivative(fDetElemNumber * fgNParCh + 5, -r[1] * a / b + r[7] * trackPosX +
+                                                         (r[1] * fTrackSlope0[0] + r[4] * fTrackSlope0[1] + r[7]) * (b * r[8] * (fTrackSlope0[0] * fTrackPos0[2] - fTrackPos0[0]) - a * (r[8] * fTrackSlope0[0] - r[2])) / pow(b, 2));
+    // SetGlobalDerivative(fDetElemNumber * fgNParCh + 5, r[7] * trackPosX - r[1] * fTrackPos[2]);
   }
 
   // store local equation

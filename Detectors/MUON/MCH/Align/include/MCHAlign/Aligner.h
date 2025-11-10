@@ -336,6 +336,16 @@ class Aligner : public TObject
     fLocalMode = true;
   }
 
+  void SetIterativeMethod()
+  {
+    fMillepede->SetGlobalMatSparse(true);
+  }
+
+  void SetMeasureResidual()
+  {
+    fMeasRes = true;
+  }
+
  private:
   /// Not implemented
   Aligner(const Aligner& right);
@@ -474,6 +484,9 @@ class Aligner : public TObject
 
   /// Flag for local or global mode of derivatives (global model by default)
   bool fLocalMode;
+
+  /// Flag for measurement
+  bool fMeasRes;
 
   LocalTrackClusterResidual* fTrkClRes;
 

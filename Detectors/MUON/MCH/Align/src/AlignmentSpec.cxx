@@ -167,6 +167,16 @@ class AlignmentTask
       mAlign.SetLocalMode();
     }
 
+    doIterative = ic.options().get<bool>("do-iterative");
+    if (doIterative) {
+      mAlign.SetIterativeMethod();
+    }
+
+    doMeasRes = ic.options().get<bool>("do-measresidual");
+    if (doMeasRes) {
+      mAlign.SetMeasureResidual();
+    }
+
     doReAlign = ic.options().get<bool>("do-realign");
 
     if (mCCDBRequest) {
@@ -239,10 +249,10 @@ class AlignmentTask
     auto AllowY = ic.options().get<float>("variation-y");
     auto AllowPhi = ic.options().get<float>("variation-phi");
     auto AllowZ = ic.options().get<float>("variation-z");
-    // auto AllowPsi = 1.0;
-    // auto AllowTheta = 1.0;
-    auto AllowPsi = 0.005;
-    auto AllowTheta = 0.005;
+    auto AllowPsi = 1.0;
+    auto AllowTheta = 1.0;
+    // auto AllowPsi = 0.005;
+    // auto AllowTheta = 0.005;
 
     mAlign.SetAllowedVariation(0, AllowX);
     mAlign.SetAllowedVariation(1, AllowY);
@@ -993,6 +1003,8 @@ class AlignmentTask
   bool doReAlign{false};
   bool doMatched{false};
   bool doLocal{false};
+  bool doIterative{false};
+  bool doMeasRes{false};
   bool readFromRec{false};
   const double weightRecord{1.0};
   Aligner mAlign{};
@@ -1042,6 +1054,8 @@ o2::framework::DataProcessorSpec getAlignmentSpec(bool disableCCDB)
             {"do-evaluation", VariantType::Bool, false, {"Option for saving residuals for evaluation"}},
             {"do-realign", VariantType::Bool, false, {"Switch for re-alignment using another geometry"}},
             {"do-local", VariantType::Bool, false, {"Switch for local mode of derivatives"}},
+            {"do-iterative", VariantType::Bool, false, {"Switch for using iterative method"}},
+            {"do-measresidual", VariantType::Bool, false, {"Switch for using residual as measurement"}},
             {"matched", VariantType::Bool, false, {"Switch for using MCH-MID matched tracks"}},
             {"fix-chamber", VariantType::String, "", {"Chamber fixing, ex 1,2,3"}},
             {"use-record", VariantType::Bool, false, {"Option for directly using record in alignment if provided"}},
@@ -1138,10 +1152,10 @@ o2::framework::DataProcessorSpec getAlignmentSpec(bool disableCCDB)
             // {"fix-de", VariantType::String, "", {"DE fixing, ex 101,1019"}},
             // {"mask-fix-de", VariantType::String, "", {"Mask for DE d.o.f fixing, ex 0,2,4"}},
             // {"output", VariantType::String, "Alignment", {"Option for name of output file"}}
-            {"variation-x", VariantType::Float, 0.5f, {"Allowed variation for x axis in cm"}}, // P9
-            {"variation-y", VariantType::Float, 0.25f, {"Allowed variation for y axis in cm"}},
-            {"variation-phi", VariantType::Float, 0.005f, {"Allowed variation for phi axis in rad"}},
-            {"variation-z", VariantType::Float, 1.0f, {"Allowed variation for z axis in cm"}},
+            {"variation-x", VariantType::Float, 5.f, {"Allowed variation for x axis in cm"}}, // P9
+            {"variation-y", VariantType::Float, 5.f, {"Allowed variation for y axis in cm"}},
+            {"variation-phi", VariantType::Float, 1.f, {"Allowed variation for phi axis in rad"}},
+            {"variation-z", VariantType::Float, 5.f, {"Allowed variation for z axis in cm"}},
             {"sigma-x", VariantType::Float, 0.15f, {"Sigma cut along X"}},
             {"sigma-y", VariantType::Float, 0.1f, {"Sigma cut along Y"}},
             {"fix-de", VariantType::String, "", {"DE fixing, ex 101,1019"}},
