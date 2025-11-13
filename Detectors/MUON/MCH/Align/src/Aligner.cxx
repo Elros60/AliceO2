@@ -445,21 +445,32 @@ void Aligner::ProcessTrack(Track& track, const o2::mch::geo::TransformationCreat
       continue;
     }
 
+    // Use previous plane for linear propagation
+    if (itTrackParam != track.begin()) {
+      auto itTrackParamPrev = prev(itTrackParam);
+      fTrackPos0[0] = itTrackParamPrev->getNonBendingCoor();
+      fTrackPos0[1] = itTrackParamPrev->getBendingCoor();
+      fTrackPos0[2] = itTrackParamPrev->getZ();
+      fTrackSlope0[0] = itTrackParamPrev->getNonBendingSlope();
+      fTrackSlope0[1] = itTrackParamPrev->getBendingSlope();
+    }
+
     // fill local variables for this position --> one measurement
 
     FillDetElemData(cluster); // function to get the transformation matrix
     FillRecPointData(cluster);
-    if (!fBFieldOn) {
-      TrackParam out;
-      out.setNonBendingCoor(fTrackPos0[0] + fTrackSlope0[0] * (itTrackParam->getZ() - fTrackPos0[2]));
-      out.setBendingCoor(fTrackPos0[1] + fTrackSlope0[1] * (itTrackParam->getZ() - fTrackPos0[2]));
-      out.setZ(itTrackParam->getZ());
-      out.setNonBendingSlope(fTrackSlope0[0]);
-      out.setBendingSlope(fTrackSlope0[1]);
-      FillTrackParamData(&out);
-    } else {
-      FillTrackParamData(&*itTrackParam);
-    }
+    FillTrackParamData(&*itTrackParam);
+    // if (!fBFieldOn) {
+    //   TrackParam out;
+    //   out.setNonBendingCoor(fTrackPos0[0] + fTrackSlope0[0] * (itTrackParam->getZ() - fTrackPos0[2]));
+    //   out.setBendingCoor(fTrackPos0[1] + fTrackSlope0[1] * (itTrackParam->getZ() - fTrackPos0[2]));
+    //   out.setZ(itTrackParam->getZ());
+    //   out.setNonBendingSlope(fTrackSlope0[0]);
+    //   out.setBendingSlope(fTrackSlope0[1]);
+    //   FillTrackParamData(&out);
+    // } else {
+    //   FillTrackParamData(&*itTrackParam);
+    // }
     // 'inverse' (GlobalToLocal) rotation matrix
     // const double* r(fGeoCombiTransInverse.GetRotationMatrix());
     o2::math_utils::Transform3D trans = transformation(cluster->getDEId());
@@ -510,10 +521,10 @@ void Aligner::ProcessTrack(Track& track, const o2::mch::geo::TransformationCreat
       if (fMeasRes) {
         // fMeas[0] = r[0] * (fClustPos[0] - fTrackPos[0]) + r[3] * (fClustPos[1] - fTrackPos[1]);
         // fMeas[1] = r[1] * (fClustPos[0] - fTrackPos[0]) + r[4] * (fClustPos[1] - fTrackPos[1]);
-        // fMeas[0] = r[0] * (fClustPos[0] - trackPosX) + r[3] * (fClustPos[1] - trackPosY) + r[6] * (fClustPos[2] - z_new);
-        // fMeas[1] = r[1] * (fClustPos[0] - trackPosX) + r[4] * (fClustPos[1] - trackPosY) + r[7] * (fClustPos[2] - z_new);
-        fMeas[0] = r[0] * (fClustPos[0] - fTrackPos[0]) + r[3] * (fClustPos[1] - fTrackPos[1]) + r[6] * (fClustPos[2] - fTrackPos[2]);
-        fMeas[1] = r[1] * (fClustPos[0] - fTrackPos[0]) + r[4] * (fClustPos[1] - fTrackPos[1]) + r[7] * (fClustPos[2] - fTrackPos[2]);
+        fMeas[0] = r[0] * (fClustPos[0] - trackPosX) + r[3] * (fClustPos[1] - trackPosY) + r[6] * (fClustPos[2] - z_new);
+        fMeas[1] = r[1] * (fClustPos[0] - trackPosX) + r[4] * (fClustPos[1] - trackPosY) + r[7] * (fClustPos[2] - z_new);
+        // fMeas[0] = r[0] * (fClustPos[0] - fTrackPos[0]) + r[3] * (fClustPos[1] - fTrackPos[1]) + r[6] * (fClustPos[2] - fTrackPos[2]);
+        // fMeas[1] = r[1] * (fClustPos[0] - fTrackPos[0]) + r[4] * (fClustPos[1] - fTrackPos[1]) + r[7] * (fClustPos[2] - fTrackPos[2]);
       } else {
         fMeas[0] = r[0] * fClustPos[0] + r[3] * fClustPos[1];
         fMeas[1] = r[1] * fClustPos[0] + r[4] * fClustPos[1];
